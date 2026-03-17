@@ -248,7 +248,7 @@ export default function AnalyticsPage() {
                         tick={{ fill: '#71717a', fontSize: 10 }}
                         axisLine={false}
                         tickLine={false}
-                        interval={(i) => trajectoryData[i]?.isLabel}
+                        interval="preserveStartEnd"
                       />
                       <YAxis
                         domain={[0, 100]}
