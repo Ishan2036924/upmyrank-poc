@@ -69,11 +69,13 @@ app = FastAPI(title="UpMyRank POC", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",   # Next.js dev server
-        "http://localhost:8501",   # Streamlit (backward compat)
+        "http://localhost:3000",        # Next.js dev
+        "http://localhost:8501",        # Streamlit (legacy)
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8501",
+        "https://upmyrank.vercel.app",  # production (update if custom domain)
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",  # all Vercel preview URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
