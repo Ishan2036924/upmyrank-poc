@@ -16,6 +16,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS students (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT NOT NULL,
+    grade       TEXT,
     exam_type   TEXT NOT NULL DEFAULT 'JEE' CHECK (exam_type IN ('JEE', 'NEET')),
     target_year INTEGER DEFAULT 2026,
     created_at  TIMESTAMPTZ DEFAULT NOW()

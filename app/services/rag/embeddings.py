@@ -22,7 +22,11 @@ EMBEDDING_DIM = 1536
 def _get_client() -> openai.OpenAI:
     global _client
     if _client is None:
-        _client = openai.OpenAI(api_key=settings.openai_api_key)
+        _client = openai.OpenAI(
+            api_key=settings.openai_api_key,
+            timeout=10.0,   # fail fast — don't hang the request thread
+            max_retries=2,  # auto-retry on 429 / 500
+        )
         logger.info("OpenAI embedding client initialised (model=%s)", _MODEL)
     return _client
 

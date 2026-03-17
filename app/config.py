@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -6,8 +7,8 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql://upmyrank:upmyrank@localhost:5432/upmyrank"
     redis_url: str = "redis://localhost:6379"
-    openai_api_key: str = ""
-    embedding_model: str = "all-MiniLM-L6-v2"
+    openai_api_key: str = Field(default="", min_length=0)  # validated at startup if blank
+    embedding_model: str = "text-embedding-3-small"
     llm_model: str = "gpt-4o-mini"  # kept for backwards compat
 
     # Tiered model routing

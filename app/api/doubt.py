@@ -12,7 +12,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/doubt", tags=["doubt"])
@@ -25,6 +25,13 @@ class AskRequest(BaseModel):
     student_id: str
     subject: str = "Physics"
     study_session_id: Optional[str] = None
+
+    @field_validator("question")
+    @classmethod
+    def question_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("question must not be empty or whitespace")
+        return v.strip()
 
 
 class HintRequest(BaseModel):
