@@ -306,7 +306,7 @@ export default function AnalyticsPage() {
                           fontSize: 12,
                           color: '#fafafa',
                         }}
-                        formatter={(v: number) => [`${v}%`, 'Mastery']}
+                        formatter={(v) => [`${v ?? 0}%`, 'Mastery']}
                       />
                     </RadarChart>
                   </ResponsiveContainer>
