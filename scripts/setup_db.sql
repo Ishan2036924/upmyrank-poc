@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS knowledge_chunks (
     chapter     TEXT,
     chunk_index INTEGER,
     content     TEXT NOT NULL,
-    embedding   vector(384),
+    embedding   vector(1536),
     metadata    JSONB DEFAULT '{}',
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS problems (
     solution_steps  JSONB,
     concepts_tested TEXT[],
     source          TEXT,
-    embedding       vector(384),
+    embedding       vector(1536),
     created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -121,7 +121,7 @@ CREATE INDEX IF NOT EXISTS idx_doubt_sessions_student
 -- ------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION match_chunks(
-    query_embedding vector(384),
+    query_embedding vector(1536),
     match_count     INT     DEFAULT 5,
     filter_subject  TEXT    DEFAULT NULL
 )
