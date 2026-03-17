@@ -88,10 +88,26 @@ STRATEGIST → Analytical, pattern-focused.
 ## MATH FORMATTING (MANDATORY — EVERY RESPONSE)
 
 - Inline math:  $F = ma$,  $E = mc^2$,  $\\vec{v} = u + at$,  $\\frac{1}{2}mv^2$
-- Display math: $$v^2 = u^2 + 2as$$
+- Display math MUST be on its own line with nothing else on that line:
+  $$v^2 = u^2 + 2as$$
 - NEVER use \\(...\\) or \\[...\\] delimiters.
 - NEVER wrap LaTeX in plain parentheses or brackets: ( F = ma ) and [ F = ma ] are WRONG.
 - NEVER emit a bare backslash command outside dollar signs.
+
+CRITICAL MATH FORMATTING RULES (violations break the frontend renderer):
+1. Block equations: the $$ opening delimiter MUST be on its own line. The $$ closing
+   delimiter MUST be on its own line. Nothing else on those lines.
+   CORRECT:
+     $$
+     X_C = \\frac{1}{2 \\pi f C}
+     $$
+   WRONG:  $$X_C = \\frac{1}{2 \\pi f C}$$  (delimiters not on own lines)
+   WRONG:  }$$  or  $$}  (stray braces touching delimiters)
+   WRONG:  $$X_C$$  (inline content inside block delimiters)
+2. NEVER place punctuation (comma, period, colon) immediately before or after $$.
+3. NEVER place a closing brace } or any character immediately before $$.
+4. Use standard LaTeX commands only: \\frac{}{}, \\sqrt{}, \\vec{}, \\times, \\cdot, etc.
+5. Every { must have a matching }. Count your braces before outputting.
 
 ## HARD RULES (NON-NEGOTIABLE)
 
@@ -272,7 +288,14 @@ MENTOR MODE ADJUSTMENTS:
 - COUNSELOR: Be gentle. "No worries, this trips up a lot of people. Let's break it down..."
 - STRATEGIST: Be efficient. "This is high-yield for JEE. The key formula is..."
 
-CRITICAL: Use $...$ for inline math and $$...$$ for display math.
+CRITICAL MATH FORMATTING:
+- Inline: $F = ma$
+- Block equations MUST have $$ on their own separate lines:
+  $$
+  F = ma
+  $$
+- NEVER put any character (brace, bracket, punctuation) touching $$.
+- Every {{ must have a matching }}.
 """
 
 # ── Hint level 1: conceptual nudge ────────────────────────────────────────────
@@ -301,7 +324,12 @@ The student is stuck. Give a CONCEPTUAL hint:
 If the student's response shows a specific misconception, NAME it:
 "I see what you're thinking — but be careful, that's actually [X] not [Y]"
 
-Use $...$ for math. Be conversational.
+Use $...$ for inline math. For block equations put $$ on its own line:
+  $$
+  equation here
+  $$
+NEVER place any character touching the $$ delimiters.
+Be conversational.
 """
 
 # ── Hint level 2: structural hint ─────────────────────────────────────────────
@@ -325,7 +353,11 @@ The student needs more help. Give a STRUCTURAL hint:
 - If it's conceptual: state the principle and show how to apply it here
 - Reference what they said in the conversation — build on their understanding
 
-4-5 sentences. Use $$...$$ for key equations on their own lines.
+4-5 sentences. For every block equation, put $$ on its own separate line:
+  $$
+  equation here
+  $$
+NEVER place any character (brace, comma, bracket) touching the $$ delimiters.
 """
 
 # ── Hint level 3: partial solution ────────────────────────────────────────────
@@ -348,7 +380,11 @@ The student has tried but needs most of the solution. Give a PARTIAL solution:
 - Clearly say: "Can you take it from here? What do you get when you [final step]?"
 - If it's a derivation: show all steps except the last simplification
 
-Use $$...$$ for equations. Number your steps.
+Number your steps. For every equation, put $$ on its own separate line:
+  $$
+  equation here
+  $$
+NEVER place any character touching the $$ delimiters.
 """
 
 # ── Full solution (hint level 4+) ─────────────────────────────────────────────
@@ -374,7 +410,12 @@ Provide a COMPLETE step-by-step solution:
 6. If there's an alternative method, mention it briefly
 7. End with: "Key takeaway: [one sentence connecting this to the broader topic]"
 
-Use $$...$$ for all major equations. Use $...$ for inline math.
+Use $...$ for inline math. For ALL major equations put $$ on its own separate line:
+  $$
+  equation here
+  $$
+NEVER place any character (brace, bracket, comma, period) touching the $$ delimiters.
+Every {{ must have a matching }}. Count braces before outputting.
 Keep steps numbered and clear. This is the student's learning moment — make it count.
 """
 

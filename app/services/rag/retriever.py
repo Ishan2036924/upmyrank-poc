@@ -238,11 +238,16 @@ class Retriever:
         """
         Return up to 4 concept IDs most relevant to *query*.
 
-        Algorithm:
-        1. Run search() to get top-3 knowledge chunks.
-        2. Parse the "Topic: <name>" header from each chunk's content.
-        3. Look up matching concept IDs in the `concepts` table via
-           ILIKE on `subtopic` and `description`.
+        Three-layer matching strategy (most-specific → least-specific):
+          Layer 1 — Full topic ILIKE on subtopic/description columns, plus
+                    reverse check (DB subtopic is substring of RAG topic text).
+          Layer 2 — Concept ID contains any meaningful keyword from the topic
+                    (e.g. "capacitance" in "physics.12.capacitance").
+          Layer 3 — Individual keyword ILIKE on subtopic/description columns.
+
+        This ensures that even loosely-worded RAG topic strings (e.g.
+        "Capacitors") reliably map to the correct concept ID
+        (e.g. "physics.12.capacitance").
         """
         chunks = await self.search(query, k=3)
 
@@ -257,26 +262,80 @@ class Retriever:
         if not topic_texts:
             return []
 
-        # Look up concepts whose subtopic / description contains the topic text
         concept_ids: list[str] = []
         seen: set[str] = set()
 
         for topic_text in topic_texts:
+            topic_lower = topic_text.lower()
+
+            # Extract meaningful keywords (≥3 chars, not stop words)
+            words = [
+                w for w in re.findall(r"\b[a-z]{3,}\b", topic_lower)
+                if w not in _STOP_WORDS
+            ]
+            # Also add stemmed variants: strip trailing 's' to catch
+            # "Capacitors" → "capacitor", "Waves" → "wave", etc.
+            stemmed = {w[:-1] if w.endswith("s") else w for w in words}
+            keywords = list(dict.fromkeys(list(words) + list(stemmed)))  # dedup, order-stable
+
+            rows: list = []
+
+            # ── Layer 1: full topic text ILIKE ──────────────────────────────
             rows = await self._pool.fetch(
                 """
                 SELECT id FROM concepts
                 WHERE LOWER(subtopic)    ILIKE $1
                    OR LOWER(description) ILIKE $1
+                   OR $2 LIKE '%' || LOWER(subtopic) || '%'
                 LIMIT 2
                 """,
-                f"%{topic_text.lower()}%",
+                f"%{topic_lower}%",
+                topic_lower,
             )
+            logger.debug(
+                "get_related_concepts layer1 topic=%r → %d rows",
+                topic_text, len(rows),
+            )
+
+            # ── Layer 2: keyword match against concept ID ───────────────────
+            if not rows and keywords:
+                placeholders = " OR ".join(
+                    f"LOWER(id) LIKE ${i + 1}" for i in range(len(keywords))
+                )
+                rows = await self._pool.fetch(
+                    f"SELECT id FROM concepts WHERE {placeholders} LIMIT 2",
+                    *[f"%{kw}%" for kw in keywords],
+                )
+                logger.debug(
+                    "get_related_concepts layer2 keywords=%r → %d rows",
+                    keywords, len(rows),
+                )
+
+            # ── Layer 3: individual keyword ILIKE on subtopic/description ───
+            if not rows and keywords:
+                conditions = " OR ".join(
+                    f"LOWER(subtopic) ILIKE ${i + 1} OR LOWER(description) ILIKE ${i + 1}"
+                    for i in range(len(keywords))
+                )
+                rows = await self._pool.fetch(
+                    f"SELECT id FROM concepts WHERE {conditions} LIMIT 2",
+                    *[f"%{kw}%" for kw in keywords],
+                )
+                logger.debug(
+                    "get_related_concepts layer3 keywords=%r → %d rows",
+                    keywords, len(rows),
+                )
+
             for row in rows:
                 cid = row["id"]
                 if cid not in seen:
                     seen.add(cid)
                     concept_ids.append(cid)
 
+        logger.info(
+            "get_related_concepts query=%r topics=%r → concepts=%r",
+            query, topic_texts, concept_ids,
+        )
         return concept_ids[:4]
 
     # ── private helpers ───────────────────────────────────────────────────────
