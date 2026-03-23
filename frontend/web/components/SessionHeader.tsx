@@ -19,23 +19,21 @@ export default function SessionHeader({ startedAt, doubtCount }: Props) {
 
   useEffect(() => {
     const start = new Date(startedAt).getTime()
-
-    const tick = () => {
-      setElapsed(formatElapsed(Date.now() - start))
-    }
-    tick() // immediate
+    const tick = () => { setElapsed(formatElapsed(Date.now() - start)) }
+    tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
   }, [startedAt])
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-gray-800/50 border-b border-gray-700/50 text-xs text-gray-400">
+    <div className="flex items-center gap-3 px-6 py-2.5 border-b border-slate-100 text-xs text-slate-500">
       <span className="flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-        Study session &middot; {elapsed}
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="font-medium text-slate-700">Study session</span>
+        <span>· {elapsed}</span>
       </span>
-      <span className="text-gray-600">|</span>
-      <span>{doubtCount} doubt{doubtCount !== 1 ? 's' : ''}</span>
+      <span className="text-slate-300">|</span>
+      <span>{doubtCount} doubt{doubtCount !== 1 ? 's' : ''} asked</span>
     </div>
   )
 }

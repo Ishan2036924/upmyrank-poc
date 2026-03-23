@@ -2,10 +2,13 @@
 @import "katex/dist/katex.min.css";
 
 :root {
-  --background: #09090b;   /* zinc-950 — softer than pure black */
-  --foreground: #fafafa;   /* zinc-50  — slightly warm white */
-  --surface:    #18181b;   /* zinc-900 — card/panel surface */
-  --border:     rgba(255,255,255,0.06); /* subtle white-alpha border */
+  --background: #f0f4ff;
+  --foreground: #0f172a;
+  --surface:    rgba(255,255,255,0.80);
+  --border:     rgba(0,0,0,0.06);
+  --mesh-1:     #e0e9ff;  /* blue-100 */
+  --mesh-2:     #f3e8ff;  /* purple-100 */
+  --mesh-3:     #fff1e6;  /* orange-50 */
 }
 
 body {
@@ -15,20 +18,32 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbar */
+/* Animated mesh gradient backdrop */
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(199,210,254,0.55) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 70% at 80% 10%, rgba(216,180,254,0.40) 0%, transparent 65%),
+    radial-gradient(ellipse 70% 50% at 60% 90%, rgba(254,215,170,0.45) 0%, transparent 65%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, #f0f4ff 0%, #eef2ff 100%);
+}
+
+/* Custom scrollbar — light theme */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #111827;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #374151;
-  border-radius: 3px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4B5563;
+  background: rgba(0,0,0,0.25);
 }
 
 /* KaTeX math rendering */
@@ -42,9 +57,6 @@ body {
   font-size: 1em;
 }
 
-/* Prevent MathML from rendering visually alongside KaTeX HTML in Chrome 109+.
-   rehypeKatex is configured with output:'html' so .katex-mathml is never
-   generated, but this rule guards against any future regression. */
 .katex .katex-mathml {
   position: absolute !important;
   width: 1px !important;
@@ -58,8 +70,8 @@ body {
 
 /* Typing indicator animation */
 @keyframes typing-dot {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
-  30% { transform: translateY(-6px); opacity: 1; }
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-5px); opacity: 1; }
 }
 
 .typing-dot {

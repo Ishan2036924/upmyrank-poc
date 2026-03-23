@@ -459,152 +459,199 @@ export default function DoubtPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen p-3 gap-3">
       <Sidebar />
 
-      <div className="ml-[280px] flex-1 flex flex-col overflow-hidden">
+      {/* ── Floating glassmorphic main window ─────────────────────────────── */}
+      <div className="ml-[76px] flex-1 flex gap-3 min-w-0">
 
-        {/* ── Top bar ──────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-800 bg-gray-950 flex-shrink-0">
-          <Link href="/" className="text-gray-400 hover:text-white transition-colors">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+        {/* ── Center chat panel ─────────────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col bg-white/70 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl shadow-slate-200/60 overflow-hidden min-w-0">
 
-          <div className="flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-white">Ask a doubt</span>
-              <span className="rounded-full bg-gray-800 border border-gray-700 px-2.5 py-0.5 text-xs text-gray-400">
-                Socratic mode
-              </span>
-              {mentorMode && MENTOR_LABELS[mentorMode] && (
-                <span className="rounded-full bg-gray-800 border border-gray-700 px-2.5 py-0.5 text-xs text-gray-400">
-                  {MENTOR_LABELS[mentorMode]}
+          {/* ── Top bar ─────────────────────────────────────────────────────── */}
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 flex-shrink-0">
+            <Link href="/" className="text-slate-400 hover:text-slate-700 transition-colors">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-slate-800">Ask a doubt</span>
+                <span className="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs text-slate-500 font-medium">
+                  Socratic mode
                 </span>
+                {mentorMode && MENTOR_LABELS[mentorMode] && (
+                  <span className="rounded-full bg-violet-50 border border-violet-200 px-2.5 py-0.5 text-xs text-violet-600 font-medium">
+                    {MENTOR_LABELS[mentorMode]}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {analysis && (
+              <div className="flex items-center gap-2">
+                {(analysis as { subtopic?: string }).subtopic && (
+                  <span className="rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs text-blue-600 font-medium">
+                    {(analysis as { subtopic: string }).subtopic}
+                  </span>
+                )}
+                {(analysis as { difficulty?: number }).difficulty != null && (
+                  <span className="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs text-slate-500">
+                    Difficulty {(analysis as { difficulty: number }).difficulty}/10
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Session header ───────────────────────────────────────────────── */}
+          {sessionStartedAt && (
+            <SessionHeader startedAt={sessionStartedAt} doubtCount={doubtCount} />
+          )}
+
+          {/* ── Chat area ───────────────────────────────────────────────────── */}
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+
+            {/* Empty state */}
+            {messages.length === 0 && !isLoading && (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center mb-5 shadow-sm">
+                  <span className="text-3xl">🎓</span>
+                </div>
+                <p className="text-slate-600 text-sm mb-1 font-medium">
+                  I&apos;m your AI Socratic tutor for JEE Physics.
+                </p>
+                <p className="text-slate-400 text-sm mb-6">
+                  Ask me any question from NCERT Physics (Class 11 &amp; 12).
+                </p>
+                <div className="grid grid-cols-1 gap-2 w-full max-w-sm">
+                  {[
+                    'Why does a ball thrown upward come back down?',
+                    'What is the difference between speed and velocity?',
+                    'How does a capacitor store charge?',
+                    "Explain Newton's third law with an example.",
+                  ].map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => handleSend(q)}
+                      className="text-left rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 px-4 py-3 text-sm text-slate-600 transition-colors shadow-sm"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Message list */}
+            <AnimatePresence initial={false}>
+              {messages.map((msg) => (
+                <ChatMessage
+                  key={msg.id}
+                  message={msg}
+                  dimmed={
+                    msg.role !== 'divider' &&
+                    !!currentBlockId &&
+                    !!msg.metadata?.doubt_block_id &&
+                    msg.metadata.doubt_block_id !== currentBlockId
+                  }
+                />
+              ))}
+            </AnimatePresence>
+
+            {isLoading && <TypingIndicator />}
+
+            {/* Quick actions */}
+            {showQuickActions && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 mb-3"
+              >
+                <p className="text-xs text-slate-400 mb-2 px-1 font-medium">Quick actions:</p>
+                <QuickActions
+                  onGotIt={handleGotIt}
+                  onHint={handleHint}
+                  onFullSolution={handleFullSolution}
+                  disabled={isLoading}
+                />
+              </motion.div>
+            )}
+
+            {/* Block solved — next question prompt */}
+            {currentBlockSolved && (
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={handleNewQuestion}
+                  className="flex items-center gap-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2 text-sm text-slate-600 font-medium transition-colors shadow-sm"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  New question
+                </button>
+              </div>
+            )}
+
+            <div ref={bottomRef} />
+          </div>
+
+          {/* ── Floating pill input ──────────────────────────────────────────── */}
+          <ChatInput
+            ref={inputRef}
+            onSend={handleSend}
+            disabled={isLoading}
+            placeholder={
+              currentBlockSolved
+                ? 'Ask a new Physics question…'
+                : sessionId
+                  ? 'Type your answer, or say "I got it" / "show solution"…'
+                  : 'Ask a Physics question…'
+            }
+          />
+        </div>
+
+        {/* ── Right stats sidebar ──────────────────────────────────────────── */}
+        <div className="hidden lg:flex flex-col w-[240px] flex-shrink-0 gap-3">
+          {/* Session stats card */}
+          <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl shadow-slate-200/40 p-5">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Session</p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Doubts asked</span>
+                <span className="text-sm font-bold text-slate-800">{doubtCount}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Current block</span>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${currentBlockSolved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                  {currentBlockSolved ? 'Solved' : currentBlockId ? 'Active' : 'Idle'}
+                </span>
+              </div>
+              {analysis && (analysis as { topic?: string }).topic && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Topic</span>
+                  <span className="text-xs font-medium text-slate-700 text-right max-w-[120px] truncate">
+                    {(analysis as { topic: string }).topic}
+                  </span>
+                </div>
+              )}
+              {analysis && (analysis as { difficulty?: number }).difficulty != null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Difficulty</span>
+                  <span className="text-xs font-medium text-slate-700">
+                    {(analysis as { difficulty: number }).difficulty}/10
+                  </span>
+                </div>
               )}
             </div>
           </div>
 
-          {analysis && (
-            <div className="flex items-center gap-2">
-              {(analysis as { subtopic?: string }).subtopic && (
-                <span className="rounded-full bg-blue-950/60 border border-blue-800/40 px-2.5 py-0.5 text-xs text-blue-400">
-                  {(analysis as { subtopic: string }).subtopic}
-                </span>
-              )}
-              {(analysis as { difficulty?: number }).difficulty != null && (
-                <span className="rounded-full bg-gray-800 border border-gray-700 px-2.5 py-0.5 text-xs text-gray-400">
-                  Difficulty {(analysis as { difficulty: number }).difficulty}/10
-                </span>
-              )}
-            </div>
-          )}
+          {/* Hint card */}
+          <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-3xl border border-violet-100 p-5">
+            <p className="text-xs font-semibold text-violet-500 uppercase tracking-wider mb-2">Tip</p>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Try to work through each step before asking for a hint — it builds deeper understanding.
+            </p>
+          </div>
         </div>
-
-        {/* ── Session header ────────────────────────────────────────────────── */}
-        {sessionStartedAt && (
-          <SessionHeader startedAt={sessionStartedAt} doubtCount={doubtCount} />
-        )}
-
-        {/* ── Chat area ─────────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-5 py-5">
-
-          {/* Empty state / starter prompts */}
-          {messages.length === 0 && !isLoading && (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-14 h-14 rounded-full bg-green-900/50 flex items-center justify-center mb-4">
-                <span className="text-2xl">🎓</span>
-              </div>
-              <p className="text-gray-400 text-sm mb-1">
-                I&apos;m your AI Socratic tutor for JEE Physics.
-              </p>
-              <p className="text-gray-500 text-sm mb-4">
-                Ask me any question from NCERT Physics (Class 11 &amp; 12).
-              </p>
-              <div className="grid grid-cols-1 gap-2 w-full max-w-sm">
-                {[
-                  'Why does a ball thrown upward come back down?',
-                  'What is the difference between speed and velocity?',
-                  'How does a capacitor store charge?',
-                  "Explain Newton's third law with an example.",
-                ].map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => handleSend(q)}
-                    className="text-left rounded-lg border border-gray-800 bg-gray-900 hover:border-gray-700 hover:bg-gray-800/60 px-3 py-2 text-xs text-gray-400 transition-colors"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Message list */}
-          <AnimatePresence initial={false}>
-            {messages.map((msg) => (
-              <ChatMessage
-                key={msg.id}
-                message={msg}
-                dimmed={
-                  // Dim messages that belong to a previous (not current) block.
-                  // Messages without a block ID (greetings etc.) are never dimmed.
-                  msg.role !== 'divider' &&
-                  !!currentBlockId &&
-                  !!msg.metadata?.doubt_block_id &&
-                  msg.metadata.doubt_block_id !== currentBlockId
-                }
-              />
-            ))}
-          </AnimatePresence>
-
-          {isLoading && <TypingIndicator />}
-
-          {/* Quick action buttons – only on the current active block */}
-          {showQuickActions && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-2 mb-3"
-            >
-              <p className="text-xs text-gray-600 mb-2 px-1">Quick actions:</p>
-              <QuickActions
-                onGotIt={handleGotIt}
-                onHint={handleHint}
-                onFullSolution={handleFullSolution}
-                disabled={isLoading}
-              />
-            </motion.div>
-          )}
-
-          {/* Block solved → prompt for next question */}
-          {currentBlockSolved && (
-            <div className="flex justify-center mt-4">
-              <button
-                onClick={handleNewQuestion}
-                className="flex items-center gap-2 rounded-full border border-gray-700 bg-gray-800 hover:bg-gray-700 px-4 py-2 text-sm text-gray-300 transition-colors"
-              >
-                <RotateCcw className="h-4 w-4" />
-                New question
-              </button>
-            </div>
-          )}
-
-          <div ref={bottomRef} />
-        </div>
-
-        {/* ── Input bar ─────────────────────────────────────────────────────── */}
-        <ChatInput
-          ref={inputRef}
-          onSend={handleSend}
-          disabled={isLoading}
-          placeholder={
-            currentBlockSolved
-              ? 'Ask a new Physics question…'
-              : sessionId
-                ? 'Type your answer, or say "I got it" / "show solution"…'
-                : 'Ask a Physics question…'
-          }
-        />
       </div>
     </div>
   )

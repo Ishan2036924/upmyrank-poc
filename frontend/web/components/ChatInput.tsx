@@ -1,7 +1,7 @@
 'use client'
 
 import { forwardRef, useState, useRef, KeyboardEvent } from 'react'
-import { Send } from 'lucide-react'
+import { Send, Plus } from 'lucide-react'
 
 interface Props {
   onSend: (text: string) => void
@@ -13,7 +13,6 @@ const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
   function ChatInput({ onSend, disabled, placeholder }, forwardedRef) {
     const [value, setValue] = useState('')
     const internalRef = useRef<HTMLTextAreaElement>(null)
-    // Use forwarded ref if provided, otherwise fall back to internal
     const ref = (forwardedRef as React.RefObject<HTMLTextAreaElement>) || internalRef
 
     const handleSend = () => {
@@ -38,8 +37,18 @@ const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
     }
 
     return (
-      <div className="border-t border-gray-800 bg-gray-950 px-4 py-4">
-        <div className="flex items-end gap-3 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3">
+      <div className="px-6 pb-6 pt-3 flex-shrink-0">
+        {/* Floating pill container */}
+        <div className="flex items-end gap-3 bg-white/90 backdrop-blur-sm border border-slate-200/80 rounded-3xl px-4 py-3 shadow-lg shadow-slate-200/60">
+          {/* Left attach button */}
+          <button
+            className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors mb-0.5"
+            title="Attach"
+            type="button"
+          >
+            <Plus style={{ width: 16, height: 16 }} />
+          </button>
+
           <textarea
             ref={ref}
             rows={1}
@@ -48,19 +57,23 @@ const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
             onKeyDown={handleKey}
             disabled={disabled}
             placeholder={placeholder ?? 'Type your response or ask a question…'}
-            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 resize-none outline-none leading-relaxed"
+            className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 resize-none outline-none leading-relaxed py-1"
             style={{ maxHeight: 160 }}
           />
+
+          {/* Right send button — dark circle */}
           <button
             onClick={handleSend}
             disabled={disabled || !value.trim()}
-            className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+            className="flex-shrink-0 w-9 h-9 rounded-full bg-slate-900 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-md shadow-slate-900/20 mb-0.5"
           >
-            <Send className="h-4 w-4 text-white" />
+            <Send style={{ width: 15, height: 15 }} className="text-white translate-x-0.5" />
           </button>
         </div>
-        <div className="flex gap-4 mt-2 px-1 text-xs text-gray-600">
-          <span>↵ Send  ·  Shift+↵ New line</span>
+
+        {/* Help text */}
+        <div className="flex gap-4 mt-2 px-4 text-xs text-slate-400">
+          <span>↵ Send · Shift+↵ New line</span>
           <span>Supports LaTeX: $f(x)$</span>
         </div>
       </div>
