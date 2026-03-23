@@ -25,6 +25,7 @@ class AskRequest(BaseModel):
     student_id: str
     subject: str = "Physics"
     study_session_id: Optional[str] = None
+    topic_lock: Optional[str] = None   # When set, skips intent classification and pins the topic
 
     @field_validator("question")
     @classmethod
@@ -281,9 +282,14 @@ async def ask_doubt(body: AskRequest, request: Request, background_tasks: Backgr
 
     has_active_block = active_block is not None and not active_block.get("solved", False)
 
-    # ── 2. Classify intent ────────────────────────────────────────────────────
-    intent = await engine.classify_intent(body.question, has_active_block)
-    logger.info("Intent classified: %s (active_block=%s)", intent, has_active_block)
+    # ── 2. Classify intent (skipped when topic_lock is set) ───────────────────
+    if body.topic_lock:
+        # Topic is pinned from the syllabus — no LLM classification needed
+        intent = "physics_doubt"
+        logger.info("topic_lock=%r → bypassing intent classifier, forcing physics_doubt", body.topic_lock)
+    else:
+        intent = await engine.classify_intent(body.question, has_active_block)
+        logger.info("Intent classified: %s (active_block=%s)", intent, has_active_block)
 
     # ── 3. Non-physics intents → immediate response, NO DB writes ─────────────
     if intent in ("greeting", "meta", "emotional", "out_of_scope"):
@@ -383,6 +389,7 @@ async def ask_doubt(body: AskRequest, request: Request, background_tasks: Backgr
             student_id=body.student_id,
             subject=body.subject,
             study_session_id=body.study_session_id,
+            locked_topic=body.topic_lock,
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

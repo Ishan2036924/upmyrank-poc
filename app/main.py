@@ -6,7 +6,7 @@ import openai
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import doubt, health, mock, session, student
+from app.api import doubt, health, mock, session, student, taxonomy
 from app.config import settings
 from app.db.database import close_db, get_pool, init_db
 from app.services.doubt.engine import SocraticEngine
@@ -86,3 +86,4 @@ app.include_router(doubt.router)
 app.include_router(session.router)
 app.include_router(student.router)
 app.include_router(mock.router)
+app.include_router(taxonomy.router)

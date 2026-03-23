@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, RotateCcw } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { ArrowLeft, RotateCcw, Target } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from '@/components/Sidebar'
 import ChatMessage from '@/components/ChatMessage'
@@ -94,6 +95,10 @@ function rebuildMessages(blocks: DoubtBlock[]): ChatMessageType[] {
 // ── Page component ────────────────────────────────────────────────────────────
 
 export default function DoubtPage() {
+  // Read topic lock from URL query param (?topic=...)
+  const searchParams = useSearchParams()
+  const topicLock = searchParams.get('topic') ?? null
+
   // Study-session state
   const [studySessionId,  setStudySessionId]  = useState<string | null>(null)
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null)
@@ -262,6 +267,7 @@ export default function DoubtPage() {
         subject:          'Physics',
         study_session_id: studySessionId ?? undefined,
         doubt_block_id:   currentBlockId ?? undefined,
+        ...(topicLock ? { topic_lock: topicLock } : {}),
       })
 
       const intent: string = res.intent ?? 'physics_doubt'
@@ -480,6 +486,12 @@ export default function DoubtPage() {
                 <span className="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs text-slate-500 font-medium">
                   Socratic mode
                 </span>
+                {topicLock && (
+                  <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs text-indigo-700 font-medium flex items-center gap-1">
+                    <Target className="h-3 w-3" />
+                    Locked to: {topicLock}
+                  </span>
+                )}
                 {mentorMode && MENTOR_LABELS[mentorMode] && (
                   <span className="rounded-full bg-violet-50 border border-violet-200 px-2.5 py-0.5 text-xs text-violet-600 font-medium">
                     {MENTOR_LABELS[mentorMode]}
@@ -519,18 +531,30 @@ export default function DoubtPage() {
                   <span className="text-3xl">🎓</span>
                 </div>
                 <p className="text-slate-600 text-sm mb-1 font-medium">
-                  I&apos;m your AI Socratic tutor for JEE Physics.
+                  {topicLock
+                    ? `Session locked to: ${topicLock}`
+                    : "I\u2019m your AI Socratic tutor for JEE Physics."}
                 </p>
                 <p className="text-slate-400 text-sm mb-6">
-                  Ask me any question from NCERT Physics (Class 11 &amp; 12).
+                  {topicLock
+                    ? 'Ask me any question about this topic and I\u2019ll guide you step by step.'
+                    : 'Ask me any question from NCERT Physics (Class 11 \u0026 12).'}
                 </p>
                 <div className="grid grid-cols-1 gap-2 w-full max-w-sm">
-                  {[
-                    'Why does a ball thrown upward come back down?',
-                    'What is the difference between speed and velocity?',
-                    'How does a capacitor store charge?',
-                    "Explain Newton's third law with an example.",
-                  ].map((q) => (
+                  {(topicLock
+                    ? [
+                        `Explain ${topicLock} from first principles.`,
+                        `What are the key formulas for ${topicLock}?`,
+                        `Give me a JEE-level problem on ${topicLock}.`,
+                        `What are common mistakes students make in ${topicLock}?`,
+                      ]
+                    : [
+                        'Why does a ball thrown upward come back down?',
+                        'What is the difference between speed and velocity?',
+                        'How does a capacitor store charge?',
+                        "Explain Newton\u2019s third law with an example.",
+                      ]
+                  ).map((q) => (
                     <button
                       key={q}
                       onClick={() => handleSend(q)}
@@ -601,10 +625,10 @@ export default function DoubtPage() {
             disabled={isLoading}
             placeholder={
               currentBlockSolved
-                ? 'Ask a new Physics question…'
+                ? topicLock ? `Ask another question about ${topicLock}…` : 'Ask a new Physics question…'
                 : sessionId
                   ? 'Type your answer, or say "I got it" / "show solution"…'
-                  : 'Ask a Physics question…'
+                  : topicLock ? `Ask a question about ${topicLock}…` : 'Ask a Physics question…'
             }
           />
         </div>

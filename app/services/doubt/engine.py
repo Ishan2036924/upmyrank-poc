@@ -130,6 +130,7 @@ class SocraticEngine:
         student_id: str,
         subject: str = "Physics",
         study_session_id: Optional[str] = None,
+        locked_topic: Optional[str] = None,
     ) -> dict:
         """
         Start a new doubt-resolution session and return the Socratic response.
@@ -156,27 +157,14 @@ class SocraticEngine:
         mentor_mode = self._detect_mentor_mode(student_ctx)
 
         # ── 2. Problem analysis with student context ──────────────────────────
-        logger.info("Analyzing problem …")
-        analysis_raw = await self._call_llm(
-            PROBLEM_ANALYSIS_PROMPT.format(
-                question=question,
-                overall_mastery=student_ctx["overall_mastery"],
-                concept_mastery_details=student_ctx["weak_areas"],
-                recent_errors=student_ctx["recent_errors"],
-                session_count=student_ctx["session_count"],
-            ),
-            max_tokens=600,
-            temperature=0.1,
-            model_tier="cheap",
-        )
-        try:
-            analysis = _parse_json_response(analysis_raw)
-        except (ValueError, json.JSONDecodeError) as exc:
-            logger.warning("JSON parse failed; using fallback analysis. Error: %s", exc)
+        if locked_topic:
+            # Syllabus-pinned session — skip LLM classification entirely and use
+            # the exact topic supplied by the student's syllabus selection.
+            logger.info("Skipping LLM analysis — topic locked to %r", locked_topic)
             analysis = {
                 "subject": subject,
-                "topic": "Physics",
-                "subtopic": "General",
+                "topic": locked_topic,
+                "subtopic": locked_topic,
                 "concepts_required": [],
                 "difficulty": 5,
                 "problem_type": "conceptual",
@@ -184,6 +172,35 @@ class SocraticEngine:
                 "common_misconceptions": [],
                 "brief_analysis": question,
             }
+        else:
+            logger.info("Analyzing problem …")
+            analysis_raw = await self._call_llm(
+                PROBLEM_ANALYSIS_PROMPT.format(
+                    question=question,
+                    overall_mastery=student_ctx["overall_mastery"],
+                    concept_mastery_details=student_ctx["weak_areas"],
+                    recent_errors=student_ctx["recent_errors"],
+                    session_count=student_ctx["session_count"],
+                ),
+                max_tokens=600,
+                temperature=0.1,
+                model_tier="cheap",
+            )
+            try:
+                analysis = _parse_json_response(analysis_raw)
+            except (ValueError, json.JSONDecodeError) as exc:
+                logger.warning("JSON parse failed; using fallback analysis. Error: %s", exc)
+                analysis = {
+                    "subject": subject,
+                    "topic": "Physics",
+                    "subtopic": "General",
+                    "concepts_required": [],
+                    "difficulty": 5,
+                    "problem_type": "conceptual",
+                    "key_insight": "",
+                    "common_misconceptions": [],
+                    "brief_analysis": question,
+                }
 
         # Store mentor_mode in analysis so get_hint() can retrieve it later
         analysis["mentor_mode"] = mentor_mode
