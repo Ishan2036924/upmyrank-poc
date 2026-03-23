@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ArrowLeft, RotateCcw, Target } from 'lucide-react'
@@ -94,7 +94,7 @@ function rebuildMessages(blocks: DoubtBlock[]): ChatMessageType[] {
 
 // ── Page component ────────────────────────────────────────────────────────────
 
-export default function DoubtPage() {
+function DoubtPageInner() {
   // Read topic lock from URL query param (?topic=...)
   const searchParams = useSearchParams()
   const topicLock = searchParams.get('topic') ?? null
@@ -678,5 +678,13 @@ export default function DoubtPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function DoubtPage() {
+  return (
+    <Suspense>
+      <DoubtPageInner />
+    </Suspense>
   )
 }
