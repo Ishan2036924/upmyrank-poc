@@ -9,7 +9,7 @@ interface QuestionRecord {
   problem: Problem
   result: SubmitResult | null
   answer: string
-  timeTaken: number // seconds
+  timeTaken: number
 }
 
 interface Props {
@@ -34,56 +34,57 @@ export default function PostMortem({ records, onRetake, onPracticeWeak }: Props)
   const attempted = records.filter((r) => r.result !== null)
   const correct = attempted.filter((r) => r.result?.correct)
   const avgTime = attempted.length
-    ? Math.round(attempted.reduce((s, r) => s + r.timeTaken, 0) / attempted.length)
-    : 0
+    ? Math.round(attempted.reduce((s, r) => s + r.timeTaken, 0) / attempted.length) : 0
   const accuracy = attempted.length ? Math.round((correct.length / attempted.length) * 100) : 0
   const topicAcc = topicAccuracy(records)
 
   return (
-    <div className="max-w-2xl mx-auto px-8 py-10">
-      <h1 className="text-2xl font-bold mb-1">Test Complete!</h1>
-      <p className="text-gray-400 mb-8 text-sm">Here&apos;s how you did:</p>
+    <div className="max-w-2xl mx-auto px-6 py-10 space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800 mb-1">Test Complete!</h1>
+        <p className="text-slate-400 text-sm">Here&apos;s how you did:</p>
+      </div>
 
       {/* Score cards */}
-      <div className="grid grid-cols-4 gap-3 mb-8">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-white">{correct.length}/{records.length}</div>
-          <div className="text-xs text-gray-500 mt-1">Score</div>
+      <div className="grid grid-cols-4 gap-3">
+        <div className="bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-4 text-center">
+          <div className="text-2xl font-bold text-slate-800">{correct.length}/{records.length}</div>
+          <div className="text-xs text-slate-400 mt-1">Score</div>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+        <div className="bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-4 text-center">
           <div className="text-2xl font-bold" style={{ color: accuracy >= 70 ? '#22C55E' : accuracy >= 50 ? '#F59E0B' : '#EF4444' }}>
             {accuracy}%
           </div>
-          <div className="text-xs text-gray-500 mt-1">Accuracy</div>
+          <div className="text-xs text-slate-400 mt-1">Accuracy</div>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-white">{avgTime}s</div>
-          <div className="text-xs text-gray-500 mt-1">Avg time</div>
+        <div className="bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-4 text-center">
+          <div className="text-2xl font-bold text-slate-800">{avgTime}s</div>
+          <div className="text-xs text-slate-400 mt-1">Avg time</div>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-blue-400">
+        <div className="bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-4 text-center">
+          <div className="text-2xl font-bold text-indigo-500">
             {accuracy >= 90 ? 'A+' : accuracy >= 75 ? 'B' : accuracy >= 60 ? 'C' : 'D'}
           </div>
-          <div className="text-xs text-gray-500 mt-1">Rank est.</div>
+          <div className="text-xs text-slate-400 mt-1">Rank est.</div>
         </div>
       </div>
 
       {/* Topic breakdown */}
       {Object.keys(topicAcc).length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Topic breakdown</h2>
+        <div>
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Topic breakdown</h2>
           <div className="space-y-2">
             {Object.entries(topicAcc).map(([topic, { correct, total }]) => {
               const pct = Math.round((correct / total) * 100)
               const cls = pct >= 70
-                ? 'bg-green-950/40 border-green-800/40 text-green-400'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                 : pct >= 50
-                ? 'bg-amber-950/40 border-amber-800/40 text-amber-400'
-                : 'bg-red-950/40 border-red-800/40 text-red-400'
+                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                : 'bg-red-50 border-red-200 text-red-700'
               return (
-                <div key={topic} className={`flex justify-between items-center rounded-lg border px-4 py-2.5 text-sm ${cls}`}>
+                <div key={topic} className={`flex justify-between items-center rounded-xl border px-4 py-2.5 text-sm font-medium ${cls}`}>
                   <span>{topic}</span>
-                  <span className="font-medium">{correct}/{total} ({pct}%)</span>
+                  <span>{correct}/{total} ({pct}%)</span>
                 </div>
               )
             })}
@@ -92,20 +93,20 @@ export default function PostMortem({ records, onRetake, onPracticeWeak }: Props)
       )}
 
       {/* Answer review */}
-      <div className="mb-8">
-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Review answers</h2>
+      <div>
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Review answers</h2>
         <div className="space-y-2">
           {records.map((r, i) => (
-            <div key={i} className="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3">
+            <div key={i} className="bg-white/80 backdrop-blur-md border border-white/60 rounded-xl px-4 py-3 shadow-sm">
               <div className="flex items-start gap-2">
                 {r.result?.correct
-                  ? <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" />
                   : <XCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
                 }
                 <div className="min-w-0 text-sm">
-                  <div className="text-white"><MathText>{r.problem?.question_text ?? '—'}</MathText></div>
+                  <div className="text-slate-800"><MathText>{r.problem?.question_text ?? '—'}</MathText></div>
                   {r.result && !r.result.correct && (
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-slate-400 mt-1">
                       Correct: <MathText>{r.result.verified_answer}</MathText>
                     </div>
                   )}
@@ -120,17 +121,17 @@ export default function PostMortem({ records, onRetake, onPracticeWeak }: Props)
       <div className="flex flex-wrap gap-3">
         <button
           onClick={onPracticeWeak}
-          className="rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-sm font-medium text-white transition-colors"
+          className="rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors"
         >
           Practice weak areas
         </button>
         <button
           onClick={onRetake}
-          className="rounded-xl border border-gray-700 hover:bg-gray-800 px-5 py-2.5 text-sm text-gray-300 transition-colors"
+          className="rounded-xl border border-slate-200 hover:bg-slate-50 px-5 py-2.5 text-sm text-slate-600 font-medium transition-colors"
         >
           Take another test
         </button>
-        <Link href="/" className="rounded-xl border border-gray-700 hover:bg-gray-800 px-5 py-2.5 text-sm text-gray-400 transition-colors">
+        <Link href="/" className="rounded-xl border border-slate-200 hover:bg-slate-50 px-5 py-2.5 text-sm text-slate-500 transition-colors">
           Home
         </Link>
       </div>

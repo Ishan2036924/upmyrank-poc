@@ -66,63 +66,59 @@ export default function Home() {
   }, [])
 
   const weakest = genome?.weakest_concepts ?? []
-
   const studyPlan = weakest.slice(0, 3).map((c) => ({
     subtopic: c.subtopic,
     mastery: c.mastery,
     problems: 5,
     time: '15–20 min',
   }))
-
   const mentor = genome ? getMentorMode(genome) : null
 
   return (
     <div className="flex h-full">
       <Sidebar />
-      <main className="md:ml-[280px] flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-8 py-8 pb-24 md:pb-8">
+      <main className="md:ml-[80px] flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-6 py-6 pb-24 md:pb-8 space-y-6">
 
           {/* Mentor greeting card */}
           <div
-            className="mb-8 rounded-xl bg-zinc-900 border border-white/5 border-l-4 overflow-hidden"
+            className="rounded-2xl bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-l-4 overflow-hidden"
             style={{ borderLeftColor: mentor?.accentColor ?? '#7C3AED' }}
           >
             <div className="px-6 py-5">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg">{mentor?.icon ?? '🎓'}</span>
-                <span className="text-sm font-medium" style={{ color: mentor?.accentColor ?? '#A78BFA' }}>
+                <span className="text-sm font-semibold" style={{ color: mentor?.accentColor ?? '#7C3AED' }}>
                   AI Mentor · {mentor?.mode ?? 'Loading…'}
                 </span>
               </div>
               {genome ? (
-                <p className="text-zinc-100 leading-relaxed text-sm">
-                  {mentor?.greeting}
-                </p>
+                <p className="text-slate-700 leading-relaxed text-sm">{mentor?.greeting}</p>
               ) : (
-                <p className="text-zinc-500 text-sm">Loading your progress…</p>
+                <p className="text-slate-400 text-sm">Loading your progress…</p>
               )}
             </div>
           </div>
 
           {/* Action cards 2×2 */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-4">
             {ACTION_CARDS.map((card) => (
               <Link
                 key={card.href}
                 href={card.href}
-                className="group bg-zinc-900 border border-white/5 rounded-xl p-5 hover:bg-zinc-800 hover:border-white/10 transition-colors duration-200"
+                className="group bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-5 hover:bg-white/95 hover:shadow-md transition-all duration-200"
               >
-                <card.icon className="h-5 w-5 text-indigo-400 mb-3" />
-                <div className="font-semibold text-zinc-50 mb-1">{card.title}</div>
-                <div className="text-sm text-zinc-500">{card.desc}</div>
+                <card.icon className="h-5 w-5 text-indigo-500 mb-3" />
+                <div className="font-semibold text-slate-800 mb-1">{card.title}</div>
+                <div className="text-sm text-slate-500">{card.desc}</div>
               </Link>
             ))}
           </div>
 
           {/* Today's study plan */}
           {studyPlan.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">
+            <div>
+              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
                 Today&apos;s study plan
               </h2>
               <div className="space-y-2">
@@ -130,18 +126,18 @@ export default function Home() {
                   <Link
                     key={i}
                     href="/practice"
-                    className="flex items-center gap-4 bg-zinc-900 border border-white/5 rounded-lg px-4 py-3 hover:bg-zinc-800 hover:border-white/10 transition-colors"
+                    className="flex items-center gap-4 bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-xl px-4 py-3 hover:bg-white/95 hover:shadow-sm transition-all"
                   >
-                    <div className="w-5 h-5 rounded-full border-2 border-zinc-700 flex-shrink-0" />
+                    <div className="w-5 h-5 rounded-full border-2 border-slate-200 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-zinc-100 font-medium truncate">{item.subtopic}</div>
-                      <div className="text-xs text-zinc-500">{item.problems} problems · {item.time}</div>
+                      <div className="text-sm text-slate-800 font-medium truncate">{item.subtopic}</div>
+                      <div className="text-xs text-slate-400">{item.problems} problems · {item.time}</div>
                     </div>
                     <div className="flex-shrink-0 flex items-center gap-2">
-                      <span className="text-sm font-medium" style={{ color: masteryColor(item.mastery) }}>
+                      <span className="text-sm font-semibold" style={{ color: masteryColor(item.mastery) }}>
                         {Math.round(item.mastery * 100)}%
                       </span>
-                      <ChevronRight className="h-4 w-4 text-zinc-600" />
+                      <ChevronRight className="h-4 w-4 text-slate-300" />
                     </div>
                   </Link>
                 ))}
@@ -151,23 +147,23 @@ export default function Home() {
 
           {/* Subject Overview */}
           {genome && Object.keys(genome.topic_mastery).length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">
+            <div>
+              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
                 Subject Overview
               </h2>
-              <div className="bg-zinc-900 border border-white/5 rounded-xl p-5 space-y-4">
+              <div className="bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-5 space-y-4">
                 {Object.entries(genome.topic_mastery).slice(0, 6).map(([topic, data]) => {
                   const pct = Math.round(data.average * 100)
                   const barColor = pct >= 70 ? '#22C55E' : pct >= 40 ? '#F59E0B' : '#EF4444'
                   return (
                     <div key={topic}>
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm text-zinc-300 truncate pr-4">{topic}</span>
+                        <span className="text-sm text-slate-700 truncate pr-4">{topic}</span>
                         <span className="text-xs font-semibold flex-shrink-0" style={{ color: barColor }}>
                           {pct}%
                         </span>
                       </div>
-                      <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-500"
                           style={{ width: `${pct}%`, backgroundColor: barColor }}
@@ -181,7 +177,7 @@ export default function Home() {
           )}
 
           {/* Footer */}
-          <div className="mt-12 text-xs text-zinc-700 text-center">
+          <div className="text-xs text-slate-400 text-center pt-4">
             UpMyRank POC · Built with FastAPI + pgvector + GPT-4o-mini · NCERT Physics Class 11 &amp; 12
           </div>
 
