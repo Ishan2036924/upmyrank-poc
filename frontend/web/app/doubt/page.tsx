@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from '@/components/Sidebar'
 import ChatMessage from '@/components/ChatMessage'
 import ChatInput from '@/components/ChatInput'
+import ConfidenceMeter, { ConfidenceLevel } from '@/components/ConfidenceMeter'
 import QuickActions from '@/components/QuickActions'
 import SessionHeader from '@/components/SessionHeader'
 import TypingIndicator from '@/components/TypingIndicator'
@@ -115,6 +116,10 @@ function DoubtPageInner() {
   const [analysis,   setAnalysis]   = useState<Record<string, unknown> | null>(null)
   const [mentorMode, setMentorMode] = useState<string | null>(null)
 
+  // ── Confidence meter intercept ─────────────────────────────────────────────
+  const [showConfidenceMeter, setShowConfidenceMeter] = useState(false)
+  const [pendingAnswer,       setPendingAnswer]       = useState<string | null>(null)
+
   const bottomRef       = useRef<HTMLDivElement>(null)
   const inputRef        = useRef<HTMLTextAreaElement>(null)
   const studySessionRef = useRef<string | null>(null)
@@ -221,11 +226,83 @@ function DoubtPageInner() {
     setMessages((prev) => [...prev, { ...msg, id: nanoid() }])
   }, [])
 
+  // ── Derived: are we in a forced-attempt state? ────────────────────────────
+  // True when the last message in the chat is the tutor's FORCED_ATTEMPT prompt.
+  const lastMsg = messages[messages.length - 1]
+  const forcedAttemptActive =
+    !currentBlockSolved &&
+    !!sessionId &&
+    lastMsg?.role === 'tutor' &&
+    lastMsg?.metadata?.is_forced_attempt === true
+
+  // ── Confidence meter: called once user picks a level ─────────────────────
+  const handleConfidenceSelect = async (level: ConfidenceLevel) => {
+    const text = pendingAnswer
+    setPendingAnswer(null)
+    setShowConfidenceMeter(false)
+    if (!text) return
+
+    // Add student message with confidence badge
+    addMessage({
+      role: 'student',
+      content: text,
+      metadata: { confidence: level, doubt_block_id: currentBlockId ?? undefined },
+    })
+    setIsLoading(true)
+
+    try {
+      const res = await apiPost('/doubt/ask', {
+        question:         text,
+        student_id:       TEST_STUDENT_ID,
+        subject:          'Physics',
+        study_session_id: studySessionId ?? undefined,
+        ...(topicLock ? { topic_lock: topicLock } : {}),
+      })
+
+      const intent: string = res.intent ?? 'continuation'
+
+      if (intent === 'continuation' || intent === 'physics_doubt') {
+        if (res.session_id)  setSessionId(res.session_id)
+        if (res.mentor_mode) setMentorMode(res.mentor_mode)
+
+        addMessage({
+          role: 'tutor',
+          content: res.hint ?? res.response ?? res.message ?? JSON.stringify(res),
+          metadata: {
+            hint_level:       res.hint_level,
+            verification:     res.verification,
+            is_full_solution: res.resolved ?? res.is_full_solution ?? false,
+            is_forced_attempt: false,
+            mentor_mode:      res.mentor_mode ?? undefined,
+            doubt_block_id:   res.doubt_block_id ?? currentBlockId ?? undefined,
+          },
+        })
+        if (res.resolved) setCurrentBlockSolved(true)
+      } else {
+        addMessage({ role: 'tutor', content: res.response ?? res.hint ?? JSON.stringify(res) })
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      addMessage({ role: 'tutor', content: `⚠️ Error: ${msg}` })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   // ── Primary send handler ───────────────────────────────────────────────────
   const handleSend = async (text: string) => {
     if (isLoading) return
 
     const jumpToFull = GIVE_UP_RE.test(text)
+
+    // ── CONFIDENCE METER INTERCEPT ────────────────────────────────────────
+    // When the tutor has issued a FORCED_ATTEMPT (max hints reached), intercept
+    // the student's submission to capture their confidence level before sending.
+    if (forcedAttemptActive && !jumpToFull) {
+      setPendingAnswer(text)
+      setShowConfidenceMeter(true)
+      return
+    }
 
     // Optimistic user message
     addMessage({
@@ -248,11 +325,12 @@ function DoubtPageInner() {
           role: 'tutor',
           content: res.hint ?? res.response ?? JSON.stringify(res),
           metadata: {
-            hint_level:      res.hint_level,
-            verification:    res.verification,
+            hint_level:       res.hint_level,
+            verification:     res.verification,
             is_full_solution: true,
-            mentor_mode:     res.mentor_mode ?? undefined,
-            doubt_block_id:  res.doubt_block_id ?? currentBlockId ?? undefined,
+            is_forced_attempt: false,
+            mentor_mode:      res.mentor_mode ?? undefined,
+            doubt_block_id:   res.doubt_block_id ?? currentBlockId ?? undefined,
           },
         })
         if (res.mentor_mode) setMentorMode(res.mentor_mode)
@@ -329,12 +407,13 @@ function DoubtPageInner() {
           role: 'tutor',
           content: res.hint ?? res.response ?? res.message ?? JSON.stringify(res),
           metadata: {
-            hint_level:      res.hint_level,
-            verification:    res.verification,
+            hint_level:       res.hint_level,
+            verification:     res.verification,
             is_full_solution: res.resolved ?? false,
-            mentor_mode:     res.mentor_mode ?? undefined,
+            is_forced_attempt: res.is_forced_attempt ?? false,
+            mentor_mode:      res.mentor_mode ?? undefined,
             intent,
-            doubt_block_id:  res.doubt_block_id ?? currentBlockId ?? undefined,
+            doubt_block_id:   res.doubt_block_id ?? currentBlockId ?? undefined,
           },
         })
         if (res.resolved) setCurrentBlockSolved(true)
@@ -369,11 +448,12 @@ function DoubtPageInner() {
         role: 'tutor',
         content: res.hint ?? res.response ?? JSON.stringify(res),
         metadata: {
-          hint_level:      res.hint_level,
-          verification:    res.verification,
+          hint_level:       res.hint_level,
+          verification:     res.verification,
           is_full_solution: res.resolved ?? false,
-          mentor_mode:     res.mentor_mode ?? undefined,
-          doubt_block_id:  res.doubt_block_id ?? currentBlockId ?? undefined,
+          is_forced_attempt: res.is_forced_attempt ?? false,
+          mentor_mode:      res.mentor_mode ?? undefined,
+          doubt_block_id:   res.doubt_block_id ?? currentBlockId ?? undefined,
         },
       })
       if (res.mentor_mode) setMentorMode(res.mentor_mode)
@@ -452,11 +532,12 @@ function DoubtPageInner() {
     setCurrentBlockSolved(false)
     setAnalysis(null)
     setMentorMode(null)
+    setShowConfidenceMeter(false)
+    setPendingAnswer(null)
     setTimeout(() => inputRef.current?.focus(), 100)
   }
 
   // Quick-actions appear only above the last message of the current active block
-  const lastMsg = messages[messages.length - 1]
   const showQuickActions =
     !!sessionId &&
     !currentBlockSolved &&
@@ -472,7 +553,7 @@ function DoubtPageInner() {
       <div className="ml-[76px] flex-1 flex gap-3 min-w-0">
 
         {/* ── Center chat panel ─────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col bg-white/70 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl shadow-slate-200/60 overflow-hidden min-w-0">
+        <div className="flex-1 flex flex-col bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden min-w-0">
 
           {/* ── Top bar ─────────────────────────────────────────────────────── */}
           <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 flex-shrink-0">
@@ -526,27 +607,27 @@ function DoubtPageInner() {
 
             {/* Empty state */}
             {messages.length === 0 && !isLoading && (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center mb-5 shadow-sm">
-                  <span className="text-3xl">🎓</span>
+              <div className="flex flex-col items-center justify-center h-full text-center px-8">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-100 via-indigo-50 to-blue-100 flex items-center justify-center mb-6 shadow-[0_8px_30px_rgb(99,102,241,0.12)] ring-4 ring-white">
+                  <span className="text-4xl">🎓</span>
                 </div>
-                <p className="text-slate-600 text-sm mb-1 font-medium">
+                <p className="text-slate-800 text-base mb-1.5 font-semibold tracking-tight">
                   {topicLock
-                    ? `Session locked to: ${topicLock}`
-                    : "I\u2019m your AI Socratic tutor for JEE Physics."}
+                    ? `Locked to: ${topicLock}`
+                    : 'Your Socratic AI Physics tutor'}
                 </p>
-                <p className="text-slate-400 text-sm mb-6">
+                <p className="text-slate-400 text-sm mb-8 max-w-xs leading-relaxed">
                   {topicLock
-                    ? 'Ask me any question about this topic and I\u2019ll guide you step by step.'
-                    : 'Ask me any question from NCERT Physics (Class 11 \u0026 12).'}
+                    ? `Ask anything about ${topicLock} — I\u2019ll guide you step by step without giving away the answer.`
+                    : 'I won\u2019t just give you the answer. I\u2019ll ask the right questions until you find it yourself.'}
                 </p>
-                <div className="grid grid-cols-1 gap-2 w-full max-w-sm">
+                <div className="grid grid-cols-1 gap-2.5 w-full max-w-sm">
                   {(topicLock
                     ? [
                         `Explain ${topicLock} from first principles.`,
                         `What are the key formulas for ${topicLock}?`,
                         `Give me a JEE-level problem on ${topicLock}.`,
-                        `What are common mistakes students make in ${topicLock}?`,
+                        `What are common mistakes in ${topicLock}?`,
                       ]
                     : [
                         'Why does a ball thrown upward come back down?',
@@ -558,7 +639,7 @@ function DoubtPageInner() {
                     <button
                       key={q}
                       onClick={() => handleSend(q)}
-                      className="text-left rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 px-4 py-3 text-sm text-slate-600 transition-colors shadow-sm"
+                      className="text-left rounded-2xl border border-slate-100 bg-white/80 hover:border-indigo-200 hover:bg-indigo-50/50 px-5 py-3.5 text-sm text-slate-600 hover:text-slate-800 transition-all duration-300 ease-out active:scale-[0.98] shadow-[0_2px_8px_rgb(0,0,0,0.04)]"
                     >
                       {q}
                     </button>
@@ -618,19 +699,38 @@ function DoubtPageInner() {
             <div ref={bottomRef} />
           </div>
 
-          {/* ── Floating pill input ──────────────────────────────────────────── */}
-          <ChatInput
-            ref={inputRef}
-            onSend={handleSend}
-            disabled={isLoading}
-            placeholder={
-              currentBlockSolved
-                ? topicLock ? `Ask another question about ${topicLock}…` : 'Ask a new Physics question…'
-                : sessionId
-                  ? 'Type your answer, or say "I got it" / "show solution"…'
-                  : topicLock ? `Ask a question about ${topicLock}…` : 'Ask a Physics question…'
-            }
-          />
+          {/* ── Input area — swaps between ChatInput and ConfidenceMeter ─────── */}
+          <AnimatePresence mode="wait">
+            {showConfidenceMeter ? (
+              <ConfidenceMeter
+                key="meter"
+                onSelect={handleConfidenceSelect}
+              />
+            ) : (
+              <motion.div
+                key="input"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{    opacity: 0, y: 4 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <ChatInput
+                  ref={inputRef}
+                  onSend={handleSend}
+                  disabled={isLoading}
+                  placeholder={
+                    forcedAttemptActive
+                      ? 'Write your full answer and working — I\'ll evaluate it…'
+                      : currentBlockSolved
+                        ? topicLock ? `Ask another question about ${topicLock}…` : 'Ask a new Physics question…'
+                        : sessionId
+                          ? 'Type your answer, or say "I got it" / "show solution"…'
+                          : topicLock ? `Ask a question about ${topicLock}…` : 'Ask a Physics question…'
+                  }
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* ── Right stats sidebar ──────────────────────────────────────────── */}

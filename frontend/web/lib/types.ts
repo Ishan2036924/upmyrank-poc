@@ -60,6 +60,8 @@ export interface ChatMessage {
     doubt_block_number?: number
     doubt_block_topic?: string
     doubt_block_solved?: boolean
+    is_forced_attempt?: boolean
+    confidence?: 'low' | 'medium' | 'high'
   }
 }
 
