@@ -92,15 +92,18 @@ These are non-negotiable constraints baked into `app/services/doubt/prompts.py`.
 - 4 progressive hint levels, each more revealing
 - Full solution + verification badge at hint_level 4
 - Model routing: `gpt-4o-mini` (cheap tasks) vs `gpt-4.1-mini` (quality responses)
+- **Mastery updates**: exclusively handled by `_genome_update_task` background task in `doubt.py` on block close — never in `engine.py`
+- **Mentor mode**: loaded from `stored_analysis["mentor_mode"]` each call; switches to COUNSELOR on frustration detection and is **persisted back** via `UPDATE doubt_sessions SET analysis = ...`
+- **LaTeX sanitizer**: `_sanitize_latex()` runs on every LLM response — normalises `$$` delimiters and collapses `\n\n` inside all equation blocks
 
 ### 2. Hint Level System (0–4) — Strict 3-Hint Cutoff
 - **Level 0**: Socratic question (no hints yet)
-- **Level 1**: Conceptual nudge (identify the principle)
-- **Level 2**: Structural/approach hint (how to set up the problem)
-- **Level 3**: **FORCED ATTEMPT** — max hints reached; LLM asks student to write their full final answer. No more hints or partial solutions given until student responds.
-- **Level 4+**: Full solution with two-layer verification (SymPy → LLM fallback)
+- **Level 1**: Conceptual nudge — RAG + genome injected, `TUTOR_SYSTEM_PROMPT`
+- **Level 2**: Structural/approach hint — RAG + analysis injected, `TUTOR_SYSTEM_PROMPT`
+- **Level 3**: **FORCED ATTEMPT** — RAG, analysis, and genome stripped entirely; `SYSTEM_PROMPT_FORCED_ATTEMPT` replaces `TUTOR_SYSTEM_PROMPT`; `max_tokens=256`, `temperature=0.3`; LLM output constrained to 2 sentences
+- **Level 4+**: Full solution with two-layer verification (SymPy → LLM fallback), `max_tokens=2048`
 
-**Enforcement gate** (`engine.py` → `get_hint()`): If `current_hint_level >= 3` and no `student_response` is provided (e.g. button click without typing), the engine returns a gate message and does NOT advance to full solution. Student must type their attempt first.
+**Enforcement gate** (`engine.py` → `get_hint()`): If `current_hint_level >= 3` and no `student_response` is provided, the engine returns a static gate message and does NOT call the LLM at all. Student must type their attempt first.
 
 ### 3. Two-Layer Verification Pipeline
 - **File**: `app/services/verify/`
