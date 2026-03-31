@@ -215,6 +215,24 @@ These are non-negotiable constraints baked into `app/services/doubt/prompts.py`.
 
 ---
 
+## Known Bugs Fixed (2026-03-30 Audit) — ✅ All Implemented
+
+Full engine audit was run and all identified bugs were fixed in the same session.
+
+| Bug | File | Fix | Status |
+|-----|------|-----|--------|
+| Double mastery update (race condition) | `engine.py` | Removed entire eager EMA block from `get_hint()`; `_genome_update_task` in `doubt.py` is the sole canonical updater | ✅ |
+| Mentor mode reassignment not persisted | `engine.py:354-356` | Mutates `stored_analysis["mentor_mode"]` at switch point; `UPDATE doubt_sessions` now writes `analysis` column on every hint | ✅ |
+| RAG dict missing keys at hint level 3 | `engine.py` | `rag = {"context_text": "", "chunks": [], "chunk_count": 0}` — full shape even when empty | ✅ |
+| Hint level 3 docstring said "70-80% solution" | `engine.py`, `prompts.py` | Updated to "FORCED ATTEMPT — zero teaching" | ✅ |
+| LaTeX sanitizer only fixed first `$$` block | `engine.py` | Replaced `re.sub` with explicit `while` loop scanning all `$$` pairs | ✅ |
+| Summarization failure logged as WARNING | `engine.py` | Escalated to `logger.error` with message noting recap will be broken | ✅ |
+
+### Key Architectural Decisions from Audit
+- **Mastery update is exclusively owned by `_genome_update_task`** in `doubt.py`. Never add a second update path in `engine.py`.
+- **`stored_analysis` is the source of truth for `mentor_mode`** across hint calls. Always mutate it before the `UPDATE doubt_sessions` statement.
+- **Level 3 = Forced Attempt (zero teaching). Level 4+ = Full Solution.** These are different states. Do not conflate them.
+
 ## Pending / Next Steps
 
 ### Vision AI — Image-to-Doubt (IN PROGRESS)

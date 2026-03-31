@@ -301,7 +301,7 @@ class SocraticEngine:
         Hint levels:
             1 → gentle conceptual nudge
             2 → structural / approach hint
-            3 → partial solution (70-80 %)
+            3 → FORCED ATTEMPT — zero teaching; LLM demands student's final written answer
             4+ → full solution, session marked resolved
 
         Returns a dict with:
@@ -354,6 +354,7 @@ class SocraticEngine:
                 if response_analysis.get("emotional_state") == "frustrated":
                     logger.info("Student seems frustrated — switching to COUNSELOR mode.")
                     mentor_mode = "COUNSELOR"
+                    stored_analysis["mentor_mode"] = "COUNSELOR"
             except Exception as exc:
                 logger.warning("Response analysis failed (non-fatal): %s", exc)
 
@@ -399,7 +400,7 @@ class SocraticEngine:
         # and NO analysis. Starving the LLM of this material makes solution leakage
         # structurally impossible — it cannot teach what it has not been given.
         if new_level == 3:
-            rag = {"context_text": ""}
+            rag = {"context_text": "", "chunks": [], "chunk_count": 0}
             genome_injection = ""
         else:
             analysis_topic = stored_analysis.get("topic", "")
@@ -488,21 +489,10 @@ class SocraticEngine:
             except Exception as exc:
                 logger.warning("Verification failed (non-fatal): %s", exc)
 
-        # ── 11. Update concept mastery on full solution ───────────────────────
-        if is_full_solution and session_concept_ids:
-            try:
-                _perf_map = {1: 0.8, 2: 0.6, 3: 0.4}
-                performance_score = _perf_map.get(new_level, 0.2)
-                for cid in session_concept_ids:
-                    await update_concept_mastery(
-                        self._pool, session_student_id, cid, performance_score
-                    )
-                logger.info(
-                    "Mastery updated for %d concept(s), student=%s",
-                    len(session_concept_ids), session_student_id,
-                )
-            except Exception as exc:
-                logger.warning("Mastery update failed (non-fatal): %s", exc)
+        # ── 11. (Mastery update removed) ──────────────────────────────────────
+        # Mastery is updated by _genome_update_task in doubt.py when the doubt
+        # block closes. Updating here too caused a double EMA application with
+        # conflicting performance scores, corrupting the student's mastery score.
 
         # ── 12. Update conversation history ───────────────────────────────────
         history.append({"role": "tutor", "content": hint_response})
@@ -515,13 +505,15 @@ class SocraticEngine:
             SET current_hint_level   = $1,
                 conversation_history = $2::jsonb,
                 resolved             = $3,
-                resolved_at          = CASE WHEN $3 THEN NOW() ELSE NULL END
+                resolved_at          = CASE WHEN $3 THEN NOW() ELSE NULL END,
+                analysis             = $5::jsonb
             WHERE id = $4
             """,
             new_level,
             json.dumps(history),
             resolved,
             uuid.UUID(session_id),
+            json.dumps(stored_analysis),
         )
 
         # ── 14. Log event ─────────────────────────────────────────────────────
@@ -692,7 +684,7 @@ class SocraticEngine:
             )
             return summary.strip()
         except Exception as exc:
-            logger.warning("Doubt block summarization failed: %s", exc)
+            logger.error("Doubt block summarization failed (summary will be NULL, recap broken): %s", exc)
             return None
 
     # ── private helpers ───────────────────────────────────────────────────────
@@ -897,12 +889,30 @@ class SocraticEngine:
         text = re.sub(r'(?<!\n)\$\$', r'\n$$', text)
         text = re.sub(r'\$\$(?!\n)', r'$$\n', text)
 
-        # 2. Inside $$ blocks, collapse multiple blank lines to a single newline
-        def _collapse_block(m: re.Match) -> str:
-            inner = re.sub(r'\n{2,}', '\n', m.group(1))
-            return f'$$\n{inner.strip()}\n$$'
-
-        text = re.sub(r'\$\$\n(.*?)\n\$\$', _collapse_block, text, flags=re.DOTALL)
+        # 2. Inside every $$ block, collapse multiple blank lines to a single newline.
+        # Previous implementation used re.sub with a single pattern, which only fixed
+        # the FIRST $$ pair due to non-overlapping match semantics. This loop processes
+        # all blocks by scanning through the string explicitly.
+        result_parts: list[str] = []
+        remaining = text
+        while True:
+            open_idx = remaining.find('\n$$\n')
+            if open_idx == -1:
+                result_parts.append(remaining)
+                break
+            close_idx = remaining.find('\n$$\n', open_idx + 4)
+            if close_idx == -1:
+                # Unclosed $$ block — leave as-is
+                result_parts.append(remaining)
+                break
+            # Append text before the block unchanged
+            result_parts.append(remaining[:open_idx])
+            # Extract and clean the block interior
+            inner = remaining[open_idx + 4 : close_idx]
+            inner = re.sub(r'\n{2,}', '\n', inner).strip()
+            result_parts.append(f'\n$$\n{inner}\n$$')
+            remaining = remaining[close_idx + 4:]
+        text = ''.join(result_parts)
 
         # 3. No more than 2 consecutive newlines anywhere in the output
         text = re.sub(r'\n{3,}', '\n\n', text)
