@@ -314,6 +314,8 @@ function DoubtPageInner() {
 
     try {
       // Explicit give-up → call /doubt/hint directly with jump_to_full_solution
+      // Backend may override jump_to_full if current_level < 3 (progressive
+      // disclosure gate), so we MUST read is_full_solution from the response.
       if (jumpToFull && sessionId) {
         const res = await apiPost('/doubt/hint', {
           session_id:            sessionId,
@@ -321,20 +323,21 @@ function DoubtPageInner() {
           jump_to_full_solution: true,
           study_session_id:      studySessionId ?? undefined,
         })
+        const wasFull = res.is_full_solution ?? false
         addMessage({
           role: 'tutor',
           content: res.hint ?? res.response ?? JSON.stringify(res),
           metadata: {
             hint_level:       res.hint_level,
             verification:     res.verification,
-            is_full_solution: true,
-            is_forced_attempt: false,
+            is_full_solution: wasFull,
+            is_forced_attempt: res.is_forced_attempt ?? false,
             mentor_mode:      res.mentor_mode ?? undefined,
             doubt_block_id:   res.doubt_block_id ?? currentBlockId ?? undefined,
           },
         })
         if (res.mentor_mode) setMentorMode(res.mentor_mode)
-        setCurrentBlockSolved(true)
+        if (wasFull) setCurrentBlockSolved(true)
         return
       }
 
@@ -477,19 +480,21 @@ function DoubtPageInner() {
         jump_to_full_solution: true,
         study_session_id:      studySessionId ?? undefined,
       })
+      const wasFull = res.is_full_solution ?? false
       addMessage({
         role: 'tutor',
         content: res.hint ?? res.response ?? JSON.stringify(res),
         metadata: {
-          hint_level:      res.hint_level,
-          verification:    res.verification ?? undefined,
-          is_full_solution: true,
-          mentor_mode:     res.mentor_mode ?? undefined,
-          doubt_block_id:  res.doubt_block_id ?? currentBlockId ?? undefined,
+          hint_level:       res.hint_level,
+          verification:     res.verification ?? undefined,
+          is_full_solution: wasFull,
+          is_forced_attempt: res.is_forced_attempt ?? false,
+          mentor_mode:      res.mentor_mode ?? undefined,
+          doubt_block_id:   res.doubt_block_id ?? currentBlockId ?? undefined,
         },
       })
       if (res.mentor_mode) setMentorMode(res.mentor_mode)
-      setCurrentBlockSolved(true)
+      if (wasFull) setCurrentBlockSolved(true)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       addMessage({ role: 'tutor', content: `⚠️ Error: ${msg}` })
