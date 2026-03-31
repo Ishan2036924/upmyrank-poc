@@ -47,6 +47,7 @@ from app.services.doubt.prompts import (
     PROBLEM_ANALYSIS_PROMPT,
     SOCRATIC_QUESTION_PROMPT,
     STUDENT_RESPONSE_ANALYSIS_PROMPT,
+    SYSTEM_PROMPT_FORCED_ATTEMPT,
     TUTOR_SYSTEM_PROMPT,
 )
 from app.services.mastery import update_concept_mastery
@@ -369,12 +370,43 @@ class SocraticEngine:
             new_level = current_level + 1
         is_full_solution: bool = new_level > 3
 
+        # ── 4b. FORCED ATTEMPT GATE ───────────────────────────────────────────
+        # After 3 hints have been delivered (current_level >= 3), the student
+        # MUST type a response before seeing the full solution. If they click
+        # "Get hint" without submitting any text, bounce back with the gate
+        # message instead of advancing to the full solution.
+        if current_level >= 3 and not jump_to_full and not (student_response and student_response.strip()):
+            gate_msg = (
+                "You've received the maximum 3 hints. "
+                "Please type out your final answer and working — "
+                "I'll give you complete feedback and then walk through the full solution with you."
+            )
+            return {
+                "session_id": session_id,
+                "hint_level": current_level,
+                "hint": gate_msg,
+                "response": gate_msg,
+                "is_full_solution": False,
+                "is_forced_attempt": True,
+                "resolved": False,
+                "verification": None,
+                "mentor_mode": mentor_mode,
+                "response_analysis": {},
+            }
+
         # ── 5+6. RAG context + targeted genome injection (concurrent) ────────────
-        analysis_topic = stored_analysis.get("topic", "")
-        rag, genome_injection = await asyncio.gather(
-            get_rag_context(self._retriever, problem_text, subject, analysis_topic),
-            get_student_mastery_str(self._pool, str(session_student_id), analysis_topic),
-        )
+        # Nuclear override: hint level 3 (Forced Attempt) receives NO RAG context
+        # and NO analysis. Starving the LLM of this material makes solution leakage
+        # structurally impossible — it cannot teach what it has not been given.
+        if new_level == 3:
+            rag = {"context_text": ""}
+            genome_injection = ""
+        else:
+            analysis_topic = stored_analysis.get("topic", "")
+            rag, genome_injection = await asyncio.gather(
+                get_rag_context(self._retriever, problem_text, subject, analysis_topic),
+                get_student_mastery_str(self._pool, str(session_student_id), analysis_topic),
+            )
 
         # ── 7. Format conversation and student response for prompts ───────────
         conversation_text = self._format_conversation(history)
@@ -398,11 +430,12 @@ class SocraticEngine:
                 context=rag["context_text"],
             )
         elif new_level == 3:
+            # Nuclear option: isolated prompt with no analysis or RAG context.
+            # System prompt is also swapped to SYSTEM_PROMPT_FORCED_ATTEMPT,
+            # removing the helpful-tutor persona entirely for this call.
             prompt = HINT_LEVEL_3_PROMPT.format(
                 conversation_history=conversation_text,
                 student_response=student_response_text,
-                analysis=analysis_json,
-                context=rag["context_text"],
             )
         else:
             prompt = FULL_SOLUTION_PROMPT.format(
@@ -413,16 +446,23 @@ class SocraticEngine:
             )
 
         # ── 9. Generate hint via LLM ──────────────────────────────────────────
+        # Hint level 3 uses SYSTEM_PROMPT_FORCED_ATTEMPT (stripped proctor persona)
+        # instead of TUTOR_SYSTEM_PROMPT to prevent persona override.
+        active_system_prompt = SYSTEM_PROMPT_FORCED_ATTEMPT if new_level == 3 else TUTOR_SYSTEM_PROMPT
         logger.info(
-            "Generating hint level %d for session %s (full=%s, mentor=%s)",
+            "Generating hint level %d for session %s (full=%s, mentor=%s, system=%s)",
             new_level, session_id, is_full_solution, mentor_mode,
+            "FORCED_ATTEMPT" if new_level == 3 else "TUTOR",
         )
         hint_response = await self._call_llm(
             prompt,
-            max_tokens=1024 if not is_full_solution else 2048,
-            temperature=0.5,
-            system_prompt=TUTOR_SYSTEM_PROMPT,
+            max_tokens=256 if new_level == 3 else (2048 if is_full_solution else 1024),
+            temperature=0.3 if new_level == 3 else 0.5,
+            system_prompt=active_system_prompt,
         )
+
+        # ── 9b. LaTeX post-processing sanitizer ───────────────────────────────
+        hint_response = self._sanitize_latex(hint_response)
 
         # ── 10. Verify full solution ───────────────────────────────────────────
         verification_result: Optional[dict] = None
@@ -431,7 +471,7 @@ class SocraticEngine:
                 verification_result = await self._verifier.verify(
                     question=problem_text,
                     solution=hint_response,
-                    context=context,
+                    context=rag["context_text"],
                 )
                 logger.info(
                     "Solution verified for %s: verified=%s confidence=%.2f method=%s",
@@ -505,6 +545,7 @@ class SocraticEngine:
             "hint": hint_response,          # explicit alias
             "response": hint_response,      # backward-compat
             "is_full_solution": is_full_solution,
+            "is_forced_attempt": (new_level == 3 and not jump_to_full),
             "resolved": resolved,
             "verification": verification_result,
             "mentor_mode": mentor_mode,
@@ -840,6 +881,33 @@ class SocraticEngine:
             content = turn.get("content", "")
             lines.append(f"{role}: {content}")
         return "\n".join(lines)
+
+    def _sanitize_latex(self, text: str) -> str:
+        """
+        Post-process LLM output to fix common LaTeX rendering bugs before
+        sending to the frontend KaTeX renderer.
+
+        Fixes applied:
+        1. Ensure every $$ delimiter is on its own line (adds surrounding newlines).
+        2. Collapse \\n\\n inside $$ ... $$ blocks — RAG chunks sometimes inject
+           blank lines into equations, breaking the renderer.
+        3. Collapse 3+ consecutive newlines globally to at most 2.
+        """
+        # 1. Ensure $$ always has a newline before and after it
+        text = re.sub(r'(?<!\n)\$\$', r'\n$$', text)
+        text = re.sub(r'\$\$(?!\n)', r'$$\n', text)
+
+        # 2. Inside $$ blocks, collapse multiple blank lines to a single newline
+        def _collapse_block(m: re.Match) -> str:
+            inner = re.sub(r'\n{2,}', '\n', m.group(1))
+            return f'$$\n{inner.strip()}\n$$'
+
+        text = re.sub(r'\$\$\n(.*?)\n\$\$', _collapse_block, text, flags=re.DOTALL)
+
+        # 3. No more than 2 consecutive newlines anywhere in the output
+        text = re.sub(r'\n{3,}', '\n\n', text)
+
+        return text
 
     async def _call_llm(
         self,
