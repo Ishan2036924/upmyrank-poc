@@ -104,6 +104,11 @@ Every fraction MUST use \frac{}{}. Every vector MUST use \vec{}.
 - NEVER wrap LaTeX in plain parentheses or brackets: ( F = ma ) and [ F = ma ] are WRONG.
 - NEVER emit a bare backslash command outside dollar signs.
 
+Block equations MUST be isolated on their own lines. You must place a newline before
+the opening $$ and a newline after the closing $$. NEVER put standard text on the same
+line as a $$ delimiter. Example of what is WRONG: "The speed is $$ v = 10 $$ m/s".
+That MUST be rewritten as: "The speed is\n$$\nv = 10\n$$\nm/s."
+
 CRITICAL MATH FORMATTING RULES (violations break the frontend renderer):
 1. Block equations: the $$ opening delimiter MUST be on its own line. The $$ closing
    delimiter MUST be on its own line. Nothing else on those lines.

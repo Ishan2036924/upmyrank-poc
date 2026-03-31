@@ -341,8 +341,12 @@ class SocraticEngine:
         mentor_mode: str = stored_analysis.get("mentor_mode", "COACH")
 
         # ── 2. Analyze student response before appending to history ───────────
+        # Skip response analysis at the forced-attempt stage (current_level >= 3).
+        # At this point ANY response should unlock the full solution — spending
+        # an LLM call to detect "frustrated" would route to counselor mode and
+        # block the full solution (the "therapist hijack" bug).
         response_analysis: dict = {}
-        if student_response and student_response.strip():
+        if student_response and student_response.strip() and current_level < 3:
             try:
                 response_analysis = await self._analyze_student_response(
                     question=problem_text,
@@ -363,8 +367,19 @@ class SocraticEngine:
             history.append({"role": "student", "content": student_response})
 
         # ── 4. Determine new hint level ───────────────────────────────────────
-        # jump_to_full=True skips directly to the full-solution level in one call,
-        # preventing the frontend from having to loop multiple times.
+        # Progressive disclosure gate: jump_to_full is ONLY honoured if the
+        # student has already reached hint level 3 (forced attempt).  If they
+        # try to skip early, we silently override the flag and route them to
+        # the next normal hint instead, with a "nice try" message injected.
+        nice_try_intercepted: bool = False
+        if jump_to_full and current_level < 3:
+            logger.info(
+                "jump_to_full blocked: current_level=%d < 3, overriding to next hint",
+                current_level,
+            )
+            jump_to_full = False
+            nice_try_intercepted = True
+
         if jump_to_full:
             new_level = max(current_level + 1, 4)
         else:
@@ -462,7 +477,14 @@ class SocraticEngine:
             system_prompt=active_system_prompt,
         )
 
-        # ── 9b. LaTeX post-processing sanitizer ───────────────────────────────
+        # ── 9b. "Nice Try" prefix — intercepted early jump_to_full ────────────
+        if nice_try_intercepted:
+            hint_response = (
+                "Nice try, but I'm not going to just give you the answer! "
+                "Let's work through this step-by-step.\n\n" + hint_response
+            )
+
+        # ── 9c. LaTeX post-processing sanitizer ───────────────────────────────
         hint_response = self._sanitize_latex(hint_response)
 
         # ── 10. Verify full solution ───────────────────────────────────────────

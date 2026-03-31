@@ -282,8 +282,21 @@ async def ask_doubt(body: AskRequest, request: Request, background_tasks: Backgr
 
     has_active_block = active_block is not None and not active_block.get("solved", False)
 
-    # ── 2. Classify intent (skipped when topic_lock is set) ───────────────────
-    if body.topic_lock:
+    # ── 1b. Forced-attempt bypass ─────────────────────────────────────────────
+    # If the active block is at hint_level >= 3 (forced attempt), ANY student
+    # response — including "I don't know", "skip", emotional messages — must go
+    # straight to the full solution.  We skip intent classification entirely to
+    # prevent the therapist hijack (emotional intent routing).
+    if has_active_block and active_block.get("hint_level", 0) >= 3:
+        logger.info(
+            "Forced-attempt bypass: block %s at hint_level=%d, routing directly to get_hint (full solution)",
+            active_block["doubt_block_id"], active_block["hint_level"],
+        )
+        intent = "continuation"
+        # Fall through to continuation handler below
+
+    # ── 2. Classify intent (skipped when topic_lock is set or forced-attempt) ─
+    elif body.topic_lock:
         # Topic is pinned from the syllabus — no LLM classification needed
         intent = "physics_doubt"
         logger.info("topic_lock=%r → bypassing intent classifier, forcing physics_doubt", body.topic_lock)
@@ -436,8 +449,10 @@ async def get_hint(body: HintRequest, request: Request, background_tasks: Backgr
     Hint level escalation:
         1 → gentle conceptual nudge
         2 → structural / approach hint
-        3 → partial solution (60-70 %)
+        3 → FORCED ATTEMPT — zero teaching; demands student's final written answer
         4+ → full solution, session marked resolved
+
+    jump_to_full_solution is only honoured if current_hint_level >= 3.
     """
     engine = request.app.state.socratic_engine
     pool = request.app.state.db_pool

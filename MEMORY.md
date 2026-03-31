@@ -65,11 +65,13 @@ These are non-negotiable constraints baked into `app/services/doubt/prompts.py`.
 - Block equations must have `$$` on their own separate lines — no characters touching delimiters
 - This is required for frontend KaTeX rendering stability — violations break the UI
 
-**Forced Attempt gatekeeper (`HINT_LEVEL_3_PROMPT`):**
-- Prompt opens with "STOP teaching" — processed before any context
-- `{analysis}` and `{context}` slots deliberately removed to prevent derivation leakage
-- LLM is constrained to exactly 2 sentences: effort acknowledgement + demand for final answer
-- No equations, formulas, derivations, steps, or "almost there" language permitted
+**Forced Attempt gatekeeper (`HINT_LEVEL_3_PROMPT` + `SYSTEM_PROMPT_FORCED_ATTEMPT`):**
+- At hint level 3, **both** the system prompt AND the user prompt are swapped — `TUTOR_SYSTEM_PROMPT` is replaced entirely with `SYSTEM_PROMPT_FORCED_ATTEMPT`
+- `SYSTEM_PROMPT_FORCED_ATTEMPT` sets persona to "strict exam proctor", lists 6 ABSOLUTE RULES banning any equations/derivations/hints
+- `HINT_LEVEL_3_PROMPT` contains only `{conversation_history}` and `{student_response}` — `{analysis}` and `{context}` slots removed
+- RAG retrieval and genome injection are **skipped entirely** at level 3 — LLM cannot leak what it was never given
+- `max_tokens=256`, `temperature=0.3` — tight budget prevents verbose drift
+- LLM output constrained to exactly 2 sentences: effort acknowledgement + demand for final answer
 - Purpose: enforce productive struggle — student must commit a full written attempt before solution is unlocked
 
 ### RAG Setup (Supabase / pgvector)
@@ -103,7 +105,10 @@ These are non-negotiable constraints baked into `app/services/doubt/prompts.py`.
 - **Level 3**: **FORCED ATTEMPT** — RAG, analysis, and genome stripped entirely; `SYSTEM_PROMPT_FORCED_ATTEMPT` replaces `TUTOR_SYSTEM_PROMPT`; `max_tokens=256`, `temperature=0.3`; LLM output constrained to 2 sentences
 - **Level 4+**: Full solution with two-layer verification (SymPy → LLM fallback), `max_tokens=2048`
 
-**Enforcement gate** (`engine.py` → `get_hint()`): If `current_hint_level >= 3` and no `student_response` is provided, the engine returns a static gate message and does NOT call the LLM at all. Student must type their attempt first.
+**Enforcement gates** (three layers):
+1. **Forced-attempt gate** (`engine.py` → `get_hint()`): If `current_hint_level >= 3` and no `student_response` is provided, the engine returns a static gate message and does NOT call the LLM at all. Student must type their attempt first.
+2. **Progressive disclosure gate** (`engine.py` → `get_hint()`): `jump_to_full` is silently overridden to `False` if `current_level < 3`. Student gets the next normal hint with a "Nice try, but I'm not going to just give you the answer!" prefix.
+3. **Therapist hijack bypass** (`doubt.py` → `/ask`): If the active doubt block is at `hint_level >= 3`, intent classification is **skipped entirely** — "I don't know", "skip", or emotional messages all route directly to `get_hint()` which produces the full solution. Response analysis (`_analyze_student_response`) is also skipped in `engine.py` at `current_level >= 3` to prevent COUNSELOR mode from intercepting.
 
 ### 3. Two-Layer Verification Pipeline
 - **File**: `app/services/verify/`
@@ -158,6 +163,21 @@ These are non-negotiable constraints baked into `app/services/doubt/prompts.py`.
 - See **Prompt Engineering Constraints** under Core Architecture for full invariant spec
 - **`TUTOR_SYSTEM_PROMPT`**: `CRITICAL FORMATTING` block injected — bans plain-text fractions, mandates `\frac{}{}` and `\vec{}`, enforces `$$` block equation rules
 - **`HINT_LEVEL_3_PROMPT`**: Stripped to 10 lines — `{analysis}` and `{context}` removed, 2-sentence output only, solution leakage structurally impossible
+
+### 12. Engine Hardening (2026-03-30 → 2026-03-31)
+Two rounds of hardening after live test failures:
+
+**Round 1 — Prompt patches (`prompts.py`)**
+- `TUTOR_SYSTEM_PROMPT`: injected `CRITICAL FORMATTING` block banning plain-text fractions, mandating `\frac{}{}` + `\vec{}`, and explicitly banning `\n\n` inside equations or copy-pasting broken RAG chunk formatting
+- `HINT_LEVEL_3_PROMPT`: rewritten to 10 lines, stripped of `{analysis}` and `{context}`
+- `SYSTEM_PROMPT_FORCED_ATTEMPT`: new constant replacing `TUTOR_SYSTEM_PROMPT` at level 3 — "strict exam proctor" persona, 6 ABSOLUTE RULES
+
+**Round 2 — Nuclear override + sanitizer (`engine.py`)**
+- Level 3 RAG/genome fetch skipped entirely (`rag = {"context_text": "", "chunks": [], "chunk_count": 0}`)
+- System prompt swapped to `SYSTEM_PROMPT_FORCED_ATTEMPT` at level 3 only
+- `_sanitize_latex()` post-processor runs on every LLM response: normalises `$$` delimiter newlines, collapses `\n\n` inside all `$$` blocks via explicit `while` loop (not regex — handles multiple blocks), caps global newlines at 2
+
+**Bug fixes applied in same session** — see Known Bugs Fixed table above.
 
 ---
 
@@ -230,11 +250,16 @@ Full engine audit was run and all identified bugs were fixed in the same session
 | Hint level 3 docstring said "70-80% solution" | `engine.py`, `prompts.py` | Updated to "FORCED ATTEMPT — zero teaching" | ✅ |
 | LaTeX sanitizer only fixed first `$$` block | `engine.py` | Replaced `re.sub` with explicit `while` loop scanning all `$$` pairs | ✅ |
 | Summarization failure logged as WARNING | `engine.py` | Escalated to `logger.error` with message noting recap will be broken | ✅ |
+| `jump_to_full` bypasses progressive disclosure | `engine.py` | Hard-gate: `jump_to_full` overridden to `False` if `current_level < 3`; "Nice Try" prefix injected | ✅ |
+| Therapist hijack at forced-attempt stage | `doubt.py` + `engine.py` | Intent classification skipped when block at hint_level >= 3; response analysis skipped at `current_level >= 3` | ✅ |
+| LaTeX `$$` not isolated on own lines | `prompts.py` | Added explicit block isolation mandate with wrong/correct examples to CRITICAL FORMATTING | ✅ |
 
 ### Key Architectural Decisions from Audit
 - **Mastery update is exclusively owned by `_genome_update_task`** in `doubt.py`. Never add a second update path in `engine.py`.
 - **`stored_analysis` is the source of truth for `mentor_mode`** across hint calls. Always mutate it before the `UPDATE doubt_sessions` statement.
 - **Level 3 = Forced Attempt (zero teaching). Level 4+ = Full Solution.** These are different states. Do not conflate them.
+- **`jump_to_full` is only honoured at `current_level >= 3`.** Below that, it is silently overridden to `False` — never remove this gate.
+- **Intent classification is bypassed at forced-attempt stage** (active block `hint_level >= 3`). Any student response — emotional, off-topic, or otherwise — routes to full solution. Never add intent classification back at this stage.
 
 ## Pending / Next Steps
 
