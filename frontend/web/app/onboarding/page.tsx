@@ -479,51 +479,64 @@ export default function OnboardingPage() {
                     transition={{ duration: 0.5, ease: EASE }}
                     className="w-full text-left"
                   >
-                    {/* Header */}
-                    <div className="text-center mb-6">
-                      <div className="text-3xl mb-3">🎉</div>
-                      <h2 className="text-xl font-bold text-slate-900">Your profile is ready!</h2>
-                      <p className="text-sm text-slate-500 mt-1">Here&apos;s how I&apos;ll teach you.</p>
-                    </div>
+                    {(() => {
+                      // Extract typed values once — personaResult is Record<string,unknown>
+                      const level        = String(personaResult.scaffolding_level ?? 'HIGH')
+                      const style        = String(personaResult.preferred_style   ?? 'analogy')
+                      const summary      = String(personaResult.persona_summary   ?? '')
+                      const weakConcepts = Array.isArray(personaResult.weak_concepts)
+                        ? (personaResult.weak_concepts as unknown[]).map(String)
+                        : []
+                      const badgeCls  = SCAFFOLDING_COLOR[level]  ?? 'bg-slate-100 text-slate-600 border-slate-200'
+                      const levelLabel = SCAFFOLDING_LABEL[level] ?? level
+                      const styleDesc  = STYLE_DESC[style]        ?? style
 
-                    {/* Level badge */}
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Level</span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold border ${SCAFFOLDING_COLOR[personaResult.scaffolding_level as string] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                        {SCAFFOLDING_LABEL[personaResult.scaffolding_level as string] ?? String(personaResult.scaffolding_level)}
-                      </span>
-                    </div>
+                      return (
+                        <>
+                          {/* Header */}
+                          <div className="text-center mb-6">
+                            <div className="text-3xl mb-3">🎉</div>
+                            <h2 className="text-xl font-bold text-slate-900">Your profile is ready!</h2>
+                            <p className="text-sm text-slate-500 mt-1">Here&apos;s how I&apos;ll teach you.</p>
+                          </div>
 
-                    {/* Teaching style */}
-                    <div className="rounded-2xl bg-indigo-50/60 border border-indigo-100 px-4 py-3 mb-4">
-                      <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Your AI tutor will…</p>
-                      <p className="text-sm text-slate-700 font-medium">
-                        {STYLE_DESC[personaResult.preferred_style as string] ?? String(personaResult.preferred_style)}
-                      </p>
-                    </div>
-
-                    {/* Weak concepts */}
-                    {Array.isArray(personaResult.weak_concepts) && (personaResult.weak_concepts as string[]).length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Priority topics</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(personaResult.weak_concepts as string[]).slice(0, 3).map((c) => (
-                            <span key={c} className="px-3 py-1 rounded-full bg-rose-50 border border-rose-100 text-xs font-medium text-rose-600">
-                              {c.replace(/_/g, ' ')}
+                          {/* Level badge */}
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Level</span>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${badgeCls}`}>
+                              {levelLabel}
                             </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                          </div>
 
-                    {/* Summary */}
-                    {personaResult.persona_summary && (
-                      <div className="rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 mb-6">
-                        <p className="text-xs text-slate-500 leading-relaxed">
-                          {String(personaResult.persona_summary)}
-                        </p>
-                      </div>
-                    )}
+                          {/* Teaching style */}
+                          <div className="rounded-2xl bg-indigo-50/60 border border-indigo-100 px-4 py-3 mb-4">
+                            <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Your AI tutor will…</p>
+                            <p className="text-sm text-slate-700 font-medium">{styleDesc}</p>
+                          </div>
+
+                          {/* Weak concepts */}
+                          {weakConcepts.length > 0 && (
+                            <div className="mb-4">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Priority topics</p>
+                              <div className="flex flex-wrap gap-2">
+                                {weakConcepts.slice(0, 3).map((c) => (
+                                  <span key={c} className="px-3 py-1 rounded-full bg-rose-50 border border-rose-100 text-xs font-medium text-rose-600">
+                                    {c.replace(/_/g, ' ')}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Summary */}
+                          {summary && (
+                            <div className="rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 mb-6">
+                              <p className="text-xs text-slate-500 leading-relaxed">{summary}</p>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
 
                     <button
                       type="button"
