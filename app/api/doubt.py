@@ -500,10 +500,10 @@ async def ask_doubt(
             await pool.execute(
                 """
                 UPDATE doubt_blocks
-                SET hint_level            = $1,
-                    student_confidence    = COALESCE($3, student_confidence),
-                    misconception_detected = CASE WHEN $4 IS NOT NULL THEN TRUE ELSE misconception_detected END,
-                    misconception_id      = COALESCE($4, misconception_id)
+                SET hint_level             = $1,
+                    student_confidence     = COALESCE($3::varchar, student_confidence),
+                    misconception_detected = CASE WHEN $4::varchar IS NOT NULL THEN TRUE ELSE misconception_detected END,
+                    misconception_id       = COALESCE($4::varchar, misconception_id)
                 WHERE doubt_block_id = $2
                 """,
                 hint_result.get("hint_level", active_block["hint_level"]),
@@ -642,8 +642,8 @@ async def get_hint(
                 """
                 UPDATE doubt_blocks
                 SET hint_level             = $1,
-                    misconception_detected = CASE WHEN $3 IS NOT NULL THEN TRUE ELSE misconception_detected END,
-                    misconception_id       = COALESCE($3, misconception_id)
+                    misconception_detected = CASE WHEN $3::varchar IS NOT NULL THEN TRUE ELSE misconception_detected END,
+                    misconception_id       = COALESCE($3::varchar, misconception_id)
                 WHERE doubt_block_id = $2
                 """,
                 result.get("hint_level", block["hint_level"]),

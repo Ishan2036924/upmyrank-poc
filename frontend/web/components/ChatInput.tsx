@@ -34,9 +34,14 @@ const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
 
       if (imageFile) {
         try {
+          const sb = getSupabase()
+          if (!sb) {
+            setUploadError('Image upload is not configured. Please contact support.')
+            setUploading(false)
+            return
+          }
           const ext = imageFile.name.split('.').pop() ?? 'jpg'
           const path = `${crypto.randomUUID()}.${ext}`
-          const sb = getSupabase()
           const { error } = await sb.storage
             .from(BUCKET)
             .upload(path, imageFile, { contentType: imageFile.type, upsert: false })
