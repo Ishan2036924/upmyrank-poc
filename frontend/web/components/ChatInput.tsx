@@ -2,7 +2,7 @@
 
 import { forwardRef, useState, useRef, KeyboardEvent } from 'react'
 import { Send, ImagePlus, X } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 
 interface Props {
   onSend: (text: string, imageUrl?: string) => void
@@ -36,13 +36,14 @@ const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
         try {
           const ext = imageFile.name.split('.').pop() ?? 'jpg'
           const path = `${crypto.randomUUID()}.${ext}`
-          const { error } = await supabase.storage
+          const sb = getSupabase()
+          const { error } = await sb.storage
             .from(BUCKET)
             .upload(path, imageFile, { contentType: imageFile.type, upsert: false })
 
           if (error) throw error
 
-          const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path)
+          const { data: urlData } = sb.storage.from(BUCKET).getPublicUrl(path)
           imageUrl = urlData.publicUrl
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err)

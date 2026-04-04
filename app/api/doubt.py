@@ -502,7 +502,7 @@ async def ask_doubt(
                 UPDATE doubt_blocks
                 SET hint_level            = $1,
                     student_confidence    = COALESCE($3, student_confidence),
-                    misconception_detected = CASE WHEN $4 THEN TRUE ELSE misconception_detected END,
+                    misconception_detected = CASE WHEN $4 IS NOT NULL THEN TRUE ELSE misconception_detected END,
                     misconception_id      = COALESCE($4, misconception_id)
                 WHERE doubt_block_id = $2
                 """,
@@ -642,7 +642,7 @@ async def get_hint(
                 """
                 UPDATE doubt_blocks
                 SET hint_level             = $1,
-                    misconception_detected = CASE WHEN $3 THEN TRUE ELSE misconception_detected END,
+                    misconception_detected = CASE WHEN $3 IS NOT NULL THEN TRUE ELSE misconception_detected END,
                     misconception_id       = COALESCE($3, misconception_id)
                 WHERE doubt_block_id = $2
                 """,
@@ -723,12 +723,78 @@ async def ask_doubt_stream(
             media_type="text/event-stream",
         )
 
+    if intent == "recap":
+        if body.study_session_id:
+            rows = await pool.fetch(
+                """
+                SELECT topic, summary, solved, started_at
+                FROM doubt_blocks
+                WHERE study_session_id = $1
+                ORDER BY started_at ASC
+                """,
+                uuid.UUID(body.study_session_id),
+            )
+            completed = [r for r in rows if r["summary"]]
+            if completed:
+                lines = ["Here's what we've covered in this session:\n"]
+                for i, row in enumerate(completed, 1):
+                    topic = row["topic"] or "Physics question"
+                    solved_label = "✓ Solved" if row["solved"] else "⟳ In progress"
+                    lines.append(f"**{i}. {topic}** — {solved_label}\n{row['summary']}")
+                response = "\n\n".join(lines)
+            elif rows:
+                topics = [r["topic"] or "Physics question" for r in rows]
+                response = (
+                    f"We're currently working through: {', '.join(f'**{t}**' for t in topics)}. "
+                    "Summaries are generated once a question is resolved — keep going! 💪"
+                )
+            else:
+                response = (
+                    "We haven't covered any topics yet in this session. "
+                    "Ask me a Physics question to get started!"
+                )
+        else:
+            response = (
+                "I don't have a record of this session. "
+                "Start a new session and I'll track everything you cover!"
+            )
+        return StreamingResponse(
+            _single_event({"intent": "recap", "response": response, "session_id": None}),
+            media_type="text/event-stream",
+        )
+
     if intent == "continuation" and active_block:
         try:
             hint_result = await engine.get_hint(
                 session_id=str(active_block["doubt_session_id"]),
                 student_response=question,
             )
+            # Mirror the non-streaming path: update block + fire genome_update on resolution
+            _mc_id_stream = hint_result.get("misconception_id")
+            await pool.execute(
+                """
+                UPDATE doubt_blocks
+                SET hint_level             = $1,
+                    student_confidence     = COALESCE($3, student_confidence),
+                    misconception_detected = CASE WHEN $4 IS NOT NULL THEN TRUE ELSE misconception_detected END,
+                    misconception_id       = COALESCE($4, misconception_id)
+                WHERE doubt_block_id = $2
+                """,
+                hint_result.get("hint_level", active_block["hint_level"]),
+                active_block["doubt_block_id"],
+                body.student_confidence,
+                _mc_id_stream,
+            )
+            if hint_result.get("resolved"):
+                await _close_doubt_block(pool, engine, str(active_block["doubt_block_id"]), solved=True)
+                asyncio.create_task(_genome_update_task(
+                    pool,
+                    str(active_block["doubt_session_id"]),
+                    give_up_flag=False,
+                    mistake_tag=None,
+                    student_confidence=body.student_confidence,
+                    misconception_id=active_block.get("misconception_id") or _mc_id_stream,
+                ))
             return StreamingResponse(
                 _single_event({"intent": "continuation",
                                 "doubt_block_id": str(active_block["doubt_block_id"]),

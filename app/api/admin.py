@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from app.db.database import get_pool
+from app.middleware.auth import get_current_student_id
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -46,6 +47,7 @@ class AdminMetrics(BaseModel):
 async def get_admin_metrics(
     days: int = Query(7, ge=1, le=90, description="Lookback window in days"),
     db=Depends(get_pool),
+    _: str = Depends(get_current_student_id),
 ):
     """
     Aggregate eval metrics for the admin dashboard.

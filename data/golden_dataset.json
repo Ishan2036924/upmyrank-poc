@@ -229,7 +229,7 @@
     "topic": "Gravitation",
     "context_chunk": "Escape velocity is the minimum speed needed to escape a planet's gravitational field: v_esc = √(2GM/R). It depends on the planet's mass and radius, not on the object's mass.",
     "student_question": "Why does escape velocity not depend on the mass of the rocket?",
-    "ideal_socratic_response": "When you throw a ball upward, both the heavier and lighter ball need to reach the same height to escape gravity — think about how the energy required and the kinetic energy available both scale with mass, and what happens when you divide them.",
+    "ideal_socratic_response": "When you throw a ball upward, both the heavier and lighter ball need to reach the same height to escape gravity — think about how the energy required and the kinetic energy available both scale with mass, and what cancels when you write out the condition for escape?",
     "hint_level": 0,
     "misconception_addressed": "heavier_objects_fall_faster"
   },

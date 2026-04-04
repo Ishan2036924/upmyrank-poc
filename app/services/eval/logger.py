@@ -52,7 +52,7 @@ async def log_scaffolding_score(
             WHERE id = (
                 SELECT id FROM session_events
                 WHERE session_id = $1
-                  AND event_type IN ('hint_requested', 'solution_revealed')
+                  AND event_type IN ('question_asked', 'hint_requested', 'solution_revealed')
                 ORDER BY created_at DESC
                 LIMIT 1
             )

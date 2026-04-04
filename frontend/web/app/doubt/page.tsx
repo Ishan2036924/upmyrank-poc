@@ -367,108 +367,98 @@ function DoubtPageInner() {
         return
       }
 
-      // All other messages → /doubt/ask (intent-gated on backend)
-      const res = await apiPost('/doubt/ask', {
-        question:         text || undefined,
-        image_url:        imageUrl || undefined,
-        student_id:       studentId,
-        subject:          'Physics',
-        study_session_id: studySessionId ?? undefined,
-        doubt_block_id:   currentBlockId ?? undefined,
-        ...(topicLock ? { topic_lock: topicLock } : {}),
-      })
+      // All messages (new doubts, continuations, non-physics) → unified streaming endpoint.
+      // /doubt/ask/stream handles all intents internally and returns either a single
+      // SSE event (non-physics / continuation) or streamed tokens (physics_doubt).
+      // This eliminates the double-request bug where the non-streaming call would run
+      // the full pipeline (analysis + RAG + LLM + DB write) and then be discarded.
 
-      const intent: string = res.intent ?? 'physics_doubt'
+      const streamId  = nanoid()
+      const wasBlockSolved = currentBlockSolved
+      const wasBlockId     = currentBlockId
 
-      // ── Non-physics intents: append response, change nothing else ──────────
-      if (['greeting', 'meta', 'emotional', 'out_of_scope'].includes(intent)) {
-        addMessage({ role: 'tutor', content: res.response, metadata: { intent } })
-        return
-      }
+      setStreamingMsgId(streamId)
+      setMessages((prev) => [
+        ...prev,
+        { id: streamId, role: 'tutor', content: '', isStreaming: true },
+      ])
 
-      // ── New physics_doubt — SSE streaming ──────────────────────────────────
-      if (intent === 'physics_doubt') {
-        // Divider on transition from solved block
-        if (currentBlockSolved && currentBlockId) {
-          addMessage({
-            role: 'divider',
-            content: '',
-            metadata: {
-              doubt_block_number: doubtCount,
-              doubt_block_topic:  (analysis?.topic as string | undefined) ?? 'Physics',
-              doubt_block_solved: true,
-              doubt_block_id:     currentBlockId,
-            },
-          })
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('umr_token') : null
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (token) headers['Authorization'] = `Bearer ${token}`
+
+        const fetchRes = await fetch(`${API_URL}/doubt/ask/stream`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            question:         text || undefined,
+            image_url:        imageUrl || undefined,
+            student_id:       studentId,
+            subject:          'Physics',
+            study_session_id: studySessionId ?? undefined,
+            ...(topicLock ? { topic_lock: topicLock } : {}),
+          }),
+        })
+
+        if (!fetchRes.ok || !fetchRes.body) {
+          throw new Error(await fetchRes.text().catch(() => 'Stream connection failed'))
         }
 
-        // Insert a placeholder streaming message immediately so the user sees the cursor
-        const streamId = nanoid()
-        setStreamingMsgId(streamId)
-        setMessages((prev) => [
-          ...prev,
-          { id: streamId, role: 'tutor', content: '', isStreaming: true },
-        ])
+        const reader  = fetchRes.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer    = ''
 
-        // Reset block state
-        setCurrentBlockSolved(false)
-        setDoubtCount((c) => c + 1)
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
 
-        try {
-          const token = typeof window !== 'undefined' ? localStorage.getItem('umr_token') : null
-          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-          if (token) headers['Authorization'] = `Bearer ${token}`
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            try {
+              const chunk = JSON.parse(line.slice(6)) as Record<string, unknown>
 
-          const fetchRes = await fetch(`${API_URL}/doubt/ask/stream`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              question:         text || undefined,
-              image_url:        imageUrl || undefined,
-              student_id:       studentId,
-              subject:          'Physics',
-              study_session_id: studySessionId ?? undefined,
-              doubt_block_id:   currentBlockId ?? undefined,
-              ...(topicLock ? { topic_lock: topicLock } : {}),
-            }),
-          })
+              if (chunk.error) {
+                setChatError(chunk.error as string)
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === streamId
+                      ? { ...m, content: '⚠️ ' + (chunk.error as string), isStreaming: false }
+                      : m,
+                  ),
+                )
+                return
+              }
 
-          if (!fetchRes.ok || !fetchRes.body) {
-            throw new Error(await fetchRes.text().catch(() => 'Stream connection failed'))
-          }
+              if (chunk.done) {
+                const intent = chunk.intent as string | undefined
 
-          const reader = fetchRes.body.getReader()
-          const decoder = new TextDecoder()
-          let buffer = ''
-          let finalMeta: Record<string, unknown> = {}
+                if (intent === 'physics_doubt') {
+                  // Insert divider before streaming message if transitioning from solved block
+                  if (wasBlockSolved && wasBlockId) {
+                    setMessages((prev) => {
+                      const idx = prev.findIndex((m) => m.id === streamId)
+                      if (idx === -1) return prev
+                      const divider: ChatMessageType = {
+                        id: nanoid(),
+                        role: 'divider',
+                        content: '',
+                        metadata: {
+                          doubt_block_number: doubtCount,
+                          doubt_block_topic:  (analysis?.topic as string | undefined) ?? 'Physics',
+                          doubt_block_solved: true,
+                          doubt_block_id:     wasBlockId,
+                        },
+                      }
+                      return [...prev.slice(0, idx), divider, ...prev.slice(idx)]
+                    })
+                  }
+                  setCurrentBlockSolved(false)
+                  setDoubtCount((c) => c + 1)
 
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop() ?? ''
-
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue
-              try {
-                const chunk = JSON.parse(line.slice(6)) as Record<string, unknown>
-
-                if (chunk.error) {
-                  setChatError(chunk.error as string)
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === streamId
-                        ? { ...m, content: '⚠️ ' + (chunk.error as string), isStreaming: false }
-                        : m,
-                    ),
-                  )
-                  return
-                }
-
-                if (chunk.done) {
-                  finalMeta = chunk
-                  // Finalize the streaming message with metadata
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === streamId
@@ -476,70 +466,80 @@ function DoubtPageInner() {
                             ...m,
                             isStreaming: false,
                             metadata: {
-                              analysis:       finalMeta.analysis as Record<string, unknown> | undefined,
-                              out_of_scope:   Boolean(finalMeta.out_of_scope),
-                              mentor_mode:    finalMeta.mentor_mode as string | undefined,
+                              analysis:       chunk.analysis as Record<string, unknown> | undefined,
+                              out_of_scope:   Boolean(chunk.out_of_scope),
+                              mentor_mode:    chunk.mentor_mode as string | undefined,
                               intent:         'physics_doubt',
-                              doubt_block_id: finalMeta.doubt_block_id as string | undefined,
+                              doubt_block_id: chunk.doubt_block_id as string | undefined,
                             },
                           }
                         : m,
                     ),
                   )
-                  // Update block state from metadata
-                  if (finalMeta.session_id)   setSessionId(finalMeta.session_id as string)
-                  if (finalMeta.doubt_block_id) setCurrentBlockId(finalMeta.doubt_block_id as string)
-                  if (finalMeta.analysis)     setAnalysis(finalMeta.analysis as Record<string, unknown>)
-                  if (finalMeta.mentor_mode)  setMentorMode(finalMeta.mentor_mode as string)
-                } else if (chunk.token) {
-                  // Append token to the streaming message
+                  if (chunk.session_id)    setSessionId(chunk.session_id as string)
+                  if (chunk.doubt_block_id) setCurrentBlockId(chunk.doubt_block_id as string)
+                  if (chunk.analysis)      setAnalysis(chunk.analysis as Record<string, unknown>)
+                  if (chunk.mentor_mode)   setMentorMode(chunk.mentor_mode as string)
+
+                } else if (intent === 'continuation') {
+                  // Single-event continuation — hint result is embedded in the done event
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === streamId
-                        ? { ...m, content: m.content + (chunk.token as string) }
+                        ? {
+                            ...m,
+                            content:    (chunk.hint ?? chunk.response ?? '') as string,
+                            isStreaming: false,
+                            metadata: {
+                              hint_level:       chunk.hint_level as number | undefined,
+                              verification:     chunk.verification as ChatMessageType['metadata'],
+                              is_full_solution: Boolean(chunk.is_full_solution),
+                              is_forced_attempt: Boolean(chunk.is_forced_attempt),
+                              mentor_mode:      chunk.mentor_mode as string | undefined,
+                              intent:           'continuation',
+                              doubt_block_id:   (chunk.doubt_block_id ?? currentBlockId ?? undefined) as string | undefined,
+                            },
+                          }
+                        : m,
+                    ),
+                  )
+                  if (chunk.session_id)  setSessionId(chunk.session_id as string)
+                  if (chunk.mentor_mode) setMentorMode(chunk.mentor_mode as string)
+                  if (chunk.resolved)    setCurrentBlockSolved(true)
+
+                } else {
+                  // Non-physics single-event (greeting, meta, emotional, out_of_scope, recap)
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === streamId
+                        ? {
+                            ...m,
+                            content:    (chunk.response ?? '') as string,
+                            isStreaming: false,
+                            metadata:   { intent: intent ?? '' },
+                          }
                         : m,
                     ),
                   )
                 }
-              } catch {
-                // Malformed SSE line — skip
+
+              } else if (chunk.token) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === streamId
+                      ? { ...m, content: m.content + (chunk.token as string) }
+                      : m,
+                  ),
+                )
               }
+            } catch {
+              // Malformed SSE line — skip
             }
           }
-        } finally {
-          setStreamingMsgId(null)
         }
-        return
+      } finally {
+        setStreamingMsgId(null)
       }
-
-      // ── Continuation ────────────────────────────────────────────────────────
-      if (intent === 'continuation') {
-        if (res.session_id)   setSessionId(res.session_id)
-        if (res.mentor_mode)  setMentorMode(res.mentor_mode)
-
-        addMessage({
-          role: 'tutor',
-          content: res.hint ?? res.response ?? res.message ?? JSON.stringify(res),
-          metadata: {
-            hint_level:       res.hint_level,
-            verification:     res.verification,
-            is_full_solution: res.resolved ?? false,
-            is_forced_attempt: res.is_forced_attempt ?? false,
-            mentor_mode:      res.mentor_mode ?? undefined,
-            intent,
-            doubt_block_id:   res.doubt_block_id ?? currentBlockId ?? undefined,
-          },
-        })
-        if (res.resolved) setCurrentBlockSolved(true)
-        return
-      }
-
-      // Fallback for any unexpected intent
-      addMessage({
-        role: 'tutor',
-        content: res.response ?? res.hint ?? res.message ?? JSON.stringify(res),
-        metadata: { intent },
-      })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       setChatError(msg)

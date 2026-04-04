@@ -541,6 +541,24 @@ MISCONCEPTION_LIBRARY: list[Misconception] = [
         concepts_affected=["current electricity", "circuit", "parallel", "resistance"],
         hint_level_to_trigger=1,
     ),
+
+    Misconception(
+        id="displacement_equals_distance",
+        pattern_keywords=[
+            "displacement equals distance", "displacement same as distance",
+            "displacement is the total path", "distance and displacement same",
+            "displacement is total distance travelled",
+        ],
+        pattern_description="Student treats displacement and distance as the same quantity, ignoring direction.",
+        correction_prompt=(
+            "Distance is the total length of the path taken (a scalar). "
+            "Displacement is the straight-line vector from start to finish — "
+            "it depends only on where you begin and end, not how you get there. "
+            "Can you give an example where the distance is large but the displacement is zero?"
+        ),
+        concepts_affected=["kinematics", "motion", "displacement", "velocity"],
+        hint_level_to_trigger=1,
+    ),
 ]
 
 # ── Fast keyword checker ──────────────────────────────────────────────────────

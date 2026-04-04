@@ -10,7 +10,7 @@ import {
   Flame, BookOpen, CheckCircle, X, Menu,
 } from 'lucide-react'
 import { apiGet } from '@/lib/api'
-import { TEST_STUDENT_ID } from '@/lib/constants'
+import { useAuth } from '@/lib/auth'
 import { StudentGenome } from '@/lib/types'
 
 const NAV_ITEMS = [
@@ -29,20 +29,22 @@ function getInitials(name: string): string {
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const { studentId } = useAuth()
   const [genome, setGenome] = useState<StudentGenome | null>(null)
   const [loading, setLoading] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const fetchGenome = useCallback(async () => {
+    if (!studentId) return
     setLoading(true)
     try {
-      setGenome(await apiGet(`/student/${TEST_STUDENT_ID}`))
+      setGenome(await apiGet(`/student/${studentId}`))
     } catch (e) {
       console.error('Sidebar: failed to fetch genome', e)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [studentId])
 
   useEffect(() => { fetchGenome() }, [fetchGenome])
   useEffect(() => { setMobileOpen(false) }, [pathname])

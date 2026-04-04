@@ -353,6 +353,7 @@ class SocraticEngine:
 
         # ── 9. Generate personalised Socratic response ────────────────────────
         logger.info("Generating Socratic response (mentor=%s) …", mentor_mode)
+        _llm_t0 = time.monotonic()
         socratic_response = await self._call_llm(
             SOCRATIC_QUESTION_PROMPT.format(
                 student_name=student_ctx["student_name"],
@@ -372,6 +373,7 @@ class SocraticEngine:
             temperature=0.7,
             system_prompt=active_system_prompt,
         )
+        _response_latency_ms = int((time.monotonic() - _llm_t0) * 1000)
 
         if out_of_scope:
             socratic_response = (
@@ -404,6 +406,36 @@ class SocraticEngine:
         logger.info("Session %s created for student %s (mentor=%s)",
                     session_id, student_id, mentor_mode)
 
+        # ── 11b. Fire Judge LLM as background task (same as get_hint) ─────────
+        # Scores the initial Socratic question for quality. Never blocks response.
+        _max_similarity_start: Optional[float] = None
+        if rag.get("chunks"):
+            _max_similarity_start = max(
+                (float(c.get("similarity_score", 0.0)) for c in rag["chunks"]),
+                default=0.0,
+            )
+        _judge_session_id_start = str(session_id)
+        _judge_question_start   = question
+        _judge_response_start   = socratic_response
+        _judge_sim_start        = _max_similarity_start
+        _judge_lat_start        = _response_latency_ms
+
+        async def _run_judge_start() -> None:
+            try:
+                result = await score_response(_judge_question_start, _judge_response_start)
+                await log_scaffolding_score(
+                    session_id=_judge_session_id_start,
+                    score=result["score"],
+                    rationale=result.get("rationale", ""),
+                    db=self._pool,
+                    retrieval_similarity=_judge_sim_start,
+                    response_latency_ms=_judge_lat_start,
+                )
+            except Exception as exc:
+                logger.warning("Background judge (start_session) failed (non-fatal): %s", exc)
+
+        asyncio.create_task(_run_judge_start())
+
         result = {
             "session_id": str(session_id),
             "analysis": analysis,
@@ -418,10 +450,14 @@ class SocraticEngine:
         # ── 12. Store in semantic cache (background, never blocks response) ────
         # Only cache hint_level=0 Socratic openers. Student-agnostic: the same
         # question will get the same cached opener regardless of who asks.
+        # Strip persona_profile and pedagogy_config — these are student-specific
+        # and must not leak to other students who get a cache hit.
         if _query_embedding:
+            _cache_analysis = {k: v for k, v in analysis.items()
+                               if k not in ("persona_profile", "pedagogy_config")}
             _cache_payload = {
                 "response":               socratic_response,
-                "analysis":               analysis,
+                "analysis":               _cache_analysis,
                 "mentor_mode":            mentor_mode,
                 "concepts_involved":      concept_ids,
                 "retrieved_context_count": rag["chunk_count"],
@@ -610,6 +646,18 @@ class SocraticEngine:
             messages.append({"role": "user", "content": socratic_prompt})
 
             # ── 10. Stream the LLM response ─────────────────────────────────────
+            # Emit the out-of-scope warning as the first token so the user sees
+            # the text immediately — not just the badge shown in metadata.
+            _oos_prefix = ""
+            if out_of_scope:
+                _oos_prefix = (
+                    "⚠️ This question appears to be outside the Physics syllabus "
+                    "(NCERT Class 11 & 12). I'll do my best to help, but for detailed "
+                    "study, refer to the relevant chapter.\n\n"
+                )
+                yield {"token": _oos_prefix, "done": False}
+
+            _llm_t0_stream = time.monotonic()
             stream = await self._client.chat.completions.create(
                 model=_get_model("quality"),
                 max_tokens=1024,
@@ -623,15 +671,13 @@ class SocraticEngine:
                 if delta:
                     accumulated += delta
                     yield {"token": delta, "done": False}
+            _stream_latency_ms = int((time.monotonic() - _llm_t0_stream) * 1000)
 
-            # ── 10b. Out-of-scope prefix + LaTeX sanitizer ───────────────────────
-            if out_of_scope:
-                accumulated = (
-                    "⚠️ This question appears to be outside the Physics syllabus "
-                    "(NCERT Class 11 & 12). I'll do my best to help, but for detailed "
-                    "study, refer to the relevant chapter.\n\n" + accumulated
-                )
-            socratic_response = self._sanitize_latex(accumulated)
+            # ── 10b. LaTeX sanitizer on full accumulated response ────────────────
+            # accumulated contains only LLM tokens; the oos_prefix was yielded
+            # separately. For DB storage, prepend the prefix so the persisted
+            # response is the complete canonical text.
+            socratic_response = self._sanitize_latex(_oos_prefix + accumulated)
 
             # ── 11. Persist session + log event ─────────────────────────────────
             session_id = await self._create_session(
@@ -652,11 +698,43 @@ class SocraticEngine:
                 },
             )
 
+            # ── 11b. Fire Judge LLM as background task ───────────────────────────
+            _max_sim_stream: Optional[float] = None
+            if rag.get("chunks"):
+                _max_sim_stream = max(
+                    (float(c.get("similarity_score", 0.0)) for c in rag["chunks"]),
+                    default=0.0,
+                )
+            _j_sid  = str(session_id)
+            _j_q    = question
+            _j_resp = socratic_response
+            _j_sim  = _max_sim_stream
+            _j_lat  = _stream_latency_ms
+
+            async def _run_judge_stream() -> None:
+                try:
+                    result = await score_response(_j_q, _j_resp)
+                    await log_scaffolding_score(
+                        session_id=_j_sid,
+                        score=result["score"],
+                        rationale=result.get("rationale", ""),
+                        db=self._pool,
+                        retrieval_similarity=_j_sim,
+                        response_latency_ms=_j_lat,
+                    )
+                except Exception as exc:
+                    logger.warning("Background judge (stream) failed (non-fatal): %s", exc)
+
+            asyncio.create_task(_run_judge_stream())
+
             # ── 12. Cache response (background) ─────────────────────────────────
+            # Strip student-specific keys before caching — the cache is student-agnostic.
             if _query_embedding:
+                _stream_cache_analysis = {k: v for k, v in analysis.items()
+                                          if k not in ("persona_profile", "pedagogy_config")}
                 asyncio.create_task(cache_response(_query_embedding, {
                     "response": socratic_response,
-                    "analysis": analysis,
+                    "analysis": _stream_cache_analysis,
                     "mentor_mode": mentor_mode,
                     "concepts_involved": concept_ids,
                     "retrieved_context_count": rag["chunk_count"],
