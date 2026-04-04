@@ -109,7 +109,8 @@ export default function Home() {
   const studyPlan = weakest.slice(0, 3).map((c) => ({
     subtopic: c.subtopic, mastery: c.mastery, problems: 5, time: '15–20 min',
   }))
-  const mentor = genome ? getMentorMode(genome) : null
+  const mentor          = genome ? getMentorMode(genome) : null
+  const personaSummary  = genome?.persona_profile?.persona_summary ?? null
 
   return (
     <AuthGuard>
@@ -149,7 +150,9 @@ export default function Home() {
                   <Sparkles className="h-3 w-3 ml-auto" style={{ color: mentor?.accentColor ?? '#7C3AED', opacity: 0.5 }} />
                 </div>
                 {genome ? (
-                  <p className="text-slate-700 leading-relaxed text-sm">{mentor?.greeting}</p>
+                  <p className="text-slate-700 leading-relaxed text-sm">
+                    {personaSummary ?? mentor?.greeting}
+                  </p>
                 ) : (
                   <div className="h-4 bg-slate-100 rounded-full w-3/4 animate-pulse" />
                 )}

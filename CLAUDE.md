@@ -57,7 +57,8 @@ app/
   api/
     doubt.py          — /doubt/ask, /doubt/hint, /doubt/verify + _genome_update_task
     session.py        — /session/start, /session/end, /session/resume
-    student.py        — /student/{id}, mastery update
+    student.py        — /student/{id} (includes persona_profile), mastery update
+    onboarding.py     — POST /onboarding/submit (GPT-4.1-mini persona builder), GET /onboarding/status
   services/
     doubt/
       engine.py       — SocraticEngine: start_session(), get_hint(), classify_intent()
@@ -85,6 +86,7 @@ scripts/
   migrate_v5_persona.sql    — Adds persona_profile JSONB to student_memory ✅
   migrate_v6_misconceptions.sql — Adds misconception_detected/misconception_id to doubt_blocks + session_events ✅
   migrate_v7_eval.sql           — Adds scaffolding_score, retrieval_similarity, response_latency_ms, hint_was_useful to session_events ✅
+  migrate_v8_onboarding.sql     — Adds onboarding_completed, class_level, physics_prev_marks, study_hours_per_day, exam_date to students ✅
   pedagogy_drift_report.py      — Standalone weekly report: avg scaffolding_score per topic, flags < 1.5
   regression_gate.py            — Pre-deploy gate: scores golden dataset with Judge LLM, exit 1 if pass_rate < 0.90
 
@@ -97,9 +99,12 @@ app/
       semantic_cache.py   — get_cached_response(embedding, threshold=0.92), cache_response(), cosine_similarity()
 
 frontend/web/
-  app/doubt/page.tsx        — Main chat UI, handleSend, handleFullSolution
+  app/doubt/page.tsx        — Main chat UI; unified SSE streaming for all intents; continuation keepalive; streamingMsgId state
   app/admin/page.tsx        — Eval dashboard: adherence rate, retrieval confidence, latency P95, per-topic score bars
-  app/doubt/page.tsx        — SSE streaming for new physics_doubt questions; streamingMsgId state; TypingIndicator hidden when streaming
+  app/onboarding/page.tsx   — 4-step onboarding flow (class level → topic chips → study plan → persona summary card)
+  app/auth/login/page.tsx   — Checks /onboarding/status after login, redirects to /onboarding if needed
+  app/auth/signup/page.tsx  — Always redirects new signups to /onboarding
   components/ChatInput.tsx  — Input + ConfidenceMeter with AnimatePresence swap
   components/ChatMessage.tsx — Message renderer with LaTeX + badge display
+  components/Sidebar.tsx    — Slim desktop nav + mobile panel; LEARNING PROFILE section (level badge, style, weak concepts)
 ```

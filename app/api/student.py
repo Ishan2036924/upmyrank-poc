@@ -136,6 +136,20 @@ async def get_student(
             s_uuid,
         )
 
+        # ── 7. Persona profile from student_memory ────────────────────────────
+        import json as _json
+        persona_profile = None
+        try:
+            mem_row = await pool.fetchrow(
+                "SELECT persona_profile FROM student_memory WHERE student_id = $1",
+                s_uuid,
+            )
+            if mem_row and mem_row["persona_profile"]:
+                raw = mem_row["persona_profile"]
+                persona_profile = _json.loads(raw) if isinstance(raw, str) else dict(raw)
+        except Exception as exc:
+            logger.warning("get_student: persona_profile fetch failed (non-fatal): %s", exc)
+
         return {
             "student_id": str(student["id"]),
             "name": student["name"],
@@ -146,6 +160,7 @@ async def get_student(
             "weakest_concepts": weakest_3,
             "total_sessions": int(session_stats["total"] or 0),
             "resolved_sessions": int(session_stats["resolved_count"] or 0),
+            "persona_profile": persona_profile,
         }
 
     except HTTPException:

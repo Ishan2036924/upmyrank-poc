@@ -32,6 +32,20 @@ export interface TopicMastery {
   concepts: ConceptMastery[]
 }
 
+export interface PersonaProfile {
+  scaffolding_level: 'HIGH' | 'MEDIUM' | 'LOW'
+  preferred_style: 'analogy' | 'formula' | 'example' | 'visual'
+  weak_concepts: string[]
+  strong_concepts: string[]
+  predicted_irt_theta: number
+  study_intensity: 'light' | 'moderate' | 'intense'
+  learning_velocity: 'slow' | 'medium' | 'fast'
+  common_misconceptions: string[]
+  allowed_hint_depth: number
+  interaction_depth_score: number
+  persona_summary: string
+}
+
 export interface StudentGenome {
   student_id: string
   name: string
@@ -42,6 +56,7 @@ export interface StudentGenome {
   weakest_concepts: ConceptMastery[]
   total_sessions: number
   resolved_sessions: number
+  persona_profile?: PersonaProfile | null
 }
 
 export interface ChatMessage {

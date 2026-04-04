@@ -45,7 +45,21 @@ export default function LoginPage() {
       } catch { /* non-fatal */ }
 
       login(data.token, data.student_id, name)
-      router.push('/')
+
+      // Check onboarding status — redirect to /onboarding if not yet done
+      try {
+        const onbRes = await fetch(`${API_URL}/onboarding/status`, {
+          headers: { Authorization: `Bearer ${data.token}` },
+        })
+        if (onbRes.ok) {
+          const onb = await onbRes.json()
+          router.push(onb.onboarding_completed ? '/' : '/onboarding')
+        } else {
+          router.push('/')
+        }
+      } catch {
+        router.push('/')
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       try {

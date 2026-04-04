@@ -38,7 +38,8 @@ export default function SignupPage() {
 
       if (data.token) {
         login(data.token, data.student_id, data.name ?? name)
-        router.push('/')
+        // New signups always go through onboarding
+        router.push('/onboarding')
       } else {
         // Email confirmation required (Supabase default)
         router.push('/auth/login?confirm=1')

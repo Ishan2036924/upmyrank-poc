@@ -7,11 +7,23 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   MessageCircle, Target, Timer, BarChart3,
   LayoutDashboard, Settings, RefreshCw,
-  Flame, BookOpen, CheckCircle, X, Menu,
+  Flame, BookOpen, CheckCircle, X, Menu, Brain,
 } from 'lucide-react'
 import { apiGet } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { StudentGenome } from '@/lib/types'
+
+const SCAFFOLDING_BADGE: Record<string, { label: string; cls: string }> = {
+  HIGH:   { label: 'Beginner',     cls: 'bg-amber-50 border-amber-200 text-amber-700'   },
+  MEDIUM: { label: 'Intermediate', cls: 'bg-blue-50 border-blue-200 text-blue-700'      },
+  LOW:    { label: 'Advanced',     cls: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+}
+const STYLE_ICON: Record<string, string> = {
+  analogy:  '💡',
+  formula:  '📐',
+  example:  '🔍',
+  visual:   '🎨',
+}
 
 const NAV_ITEMS = [
   { label: 'Dashboard',   icon: LayoutDashboard, href: '/' },
@@ -150,6 +162,37 @@ export default function Sidebar() {
           )
         })}
       </nav>
+      {/* ── Learning Profile ──────────────────────────────────────────────── */}
+      {genome?.persona_profile && (() => {
+        const p = genome.persona_profile!
+        const badge = SCAFFOLDING_BADGE[p.scaffolding_level] ?? { label: p.scaffolding_level, cls: 'bg-slate-100 border-slate-200 text-slate-600' }
+        const styleIcon = STYLE_ICON[p.preferred_style] ?? '📚'
+        const weakConcepts = (p.weak_concepts ?? []).slice(0, 2)
+        return (
+          <div className="flex-shrink-0 border-t border-slate-100 px-4 py-4">
+            <div className="flex items-center gap-1.5 mb-3">
+              <Brain className="h-3 w-3 text-slate-400" />
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Learning Profile</span>
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold ${badge.cls}`}>
+                {badge.label}
+              </span>
+              <span className="text-xs text-slate-500">{styleIcon} {p.preferred_style}</span>
+            </div>
+            {weakConcepts.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {weakConcepts.map((c) => (
+                  <span key={c} className="px-2 py-0.5 rounded-full bg-rose-50 border border-rose-100 text-[10px] text-rose-600 font-medium">
+                    {c.replace(/_/g, ' ')}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       <div className="flex-shrink-0 border-t border-slate-100 px-3 py-4">
         <Link
           href="/settings"
