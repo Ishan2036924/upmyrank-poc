@@ -764,45 +764,62 @@ async def ask_doubt_stream(
         )
 
     if intent == "continuation" and active_block:
-        try:
-            hint_result = await engine.get_hint(
-                session_id=str(active_block["doubt_session_id"]),
-                student_response=question,
-            )
-            # Mirror the non-streaming path: update block + fire genome_update on resolution
-            _mc_id_stream = hint_result.get("misconception_id")
-            await pool.execute(
-                """
-                UPDATE doubt_blocks
-                SET hint_level             = $1,
-                    student_confidence     = COALESCE($3, student_confidence),
-                    misconception_detected = CASE WHEN $4 IS NOT NULL THEN TRUE ELSE misconception_detected END,
-                    misconception_id       = COALESCE($4, misconception_id)
-                WHERE doubt_block_id = $2
-                """,
-                hint_result.get("hint_level", active_block["hint_level"]),
-                active_block["doubt_block_id"],
-                body.student_confidence,
-                _mc_id_stream,
-            )
-            if hint_result.get("resolved"):
-                await _close_doubt_block(pool, engine, str(active_block["doubt_block_id"]), solved=True)
-                asyncio.create_task(_genome_update_task(
-                    pool,
-                    str(active_block["doubt_session_id"]),
-                    give_up_flag=False,
-                    mistake_tag=None,
-                    student_confidence=body.student_confidence,
-                    misconception_id=active_block.get("misconception_id") or _mc_id_stream,
-                ))
-            return StreamingResponse(
-                _single_event({"intent": "continuation",
-                                "doubt_block_id": str(active_block["doubt_block_id"]),
-                                **hint_result}),
-                media_type="text/event-stream",
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        # Capture for closure
+        _active_block   = active_block
+        _question       = question
+        _student_conf   = body.student_confidence
+        _doubt_sess_id  = str(active_block["doubt_session_id"])
+        _doubt_block_id = str(active_block["doubt_block_id"])
+
+        async def _continuation_stream():
+            # ── Send keepalive immediately so Render's proxy doesn't cut the
+            # connection while engine.get_hint() (2-3 LLM calls) is running.
+            yield f"data: {_json.dumps({'token': '', 'done': False, 'thinking': True})}\n\n"
+
+            try:
+                hint_result = await engine.get_hint(
+                    session_id=_doubt_sess_id,
+                    student_response=_question,
+                )
+                _mc_id = hint_result.get("misconception_id")
+                await pool.execute(
+                    """
+                    UPDATE doubt_blocks
+                    SET hint_level             = $1,
+                        student_confidence     = COALESCE($3, student_confidence),
+                        misconception_detected = CASE WHEN $4 IS NOT NULL THEN TRUE ELSE misconception_detected END,
+                        misconception_id       = COALESCE($4, misconception_id)
+                    WHERE doubt_block_id = $2
+                    """,
+                    hint_result.get("hint_level", _active_block["hint_level"]),
+                    _active_block["doubt_block_id"],
+                    _student_conf,
+                    _mc_id,
+                )
+                if hint_result.get("resolved"):
+                    await _close_doubt_block(pool, engine, _doubt_block_id, solved=True)
+                    asyncio.create_task(_genome_update_task(
+                        pool,
+                        _doubt_sess_id,
+                        give_up_flag=False,
+                        mistake_tag=None,
+                        student_confidence=_student_conf,
+                        misconception_id=_active_block.get("misconception_id") or _mc_id,
+                    ))
+                payload = {
+                    "intent":         "continuation",
+                    "session_id":     _doubt_sess_id,   # explicit — don't rely on hint_result
+                    "doubt_block_id": _doubt_block_id,
+                    **hint_result,
+                }
+                yield f"data: {_json.dumps({'token': '', 'done': True, **payload})}\n\n"
+            except ValueError as exc:
+                yield f"data: {_json.dumps({'error': str(exc), 'done': True})}\n\n"
+            except Exception as exc:
+                logger.exception("_continuation_stream failed: %s", exc)
+                yield f"data: {_json.dumps({'error': str(exc), 'done': True})}\n\n"
+
+        return StreamingResponse(_continuation_stream(), media_type="text/event-stream")
 
     # ── Close any existing block + build memory context ───────────────────────
     if active_block and body.study_session_id:

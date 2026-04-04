@@ -373,17 +373,19 @@ function DoubtPageInner() {
       // This eliminates the double-request bug where the non-streaming call would run
       // the full pipeline (analysis + RAG + LLM + DB write) and then be discarded.
 
-      const streamId  = nanoid()
+      // Hoist streamId so the outer catch can remove the placeholder on error
+      let streamId: string | null = null
       const wasBlockSolved = currentBlockSolved
       const wasBlockId     = currentBlockId
 
-      setStreamingMsgId(streamId)
-      setMessages((prev) => [
-        ...prev,
-        { id: streamId, role: 'tutor', content: '', isStreaming: true },
-      ])
-
       try {
+        streamId = nanoid()
+        setStreamingMsgId(streamId)
+        setMessages((prev) => [
+          ...prev,
+          { id: streamId!, role: 'tutor', content: '', isStreaming: true },
+        ])
+
         const token = typeof window !== 'undefined' ? localStorage.getItem('umr_token') : null
         const headers: Record<string, string> = { 'Content-Type': 'application/json' }
         if (token) headers['Authorization'] = `Bearer ${token}`
@@ -543,6 +545,10 @@ function DoubtPageInner() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       setChatError(msg)
+      // Remove the incomplete streaming placeholder (keeps the chat clean on error)
+      if (streamId) {
+        setMessages((prev) => prev.filter((m) => m.id !== streamId))
+      }
     } finally {
       setIsLoading(false)
     }
