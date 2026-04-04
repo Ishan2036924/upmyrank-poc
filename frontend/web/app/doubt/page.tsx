@@ -17,7 +17,7 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import ChatErrorFallback from '@/components/ChatErrorFallback'
 import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { ChatMessage as ChatMessageType, ResumeResponse, DoubtBlock } from '@/lib/types'
+import { ChatMessage as ChatMessageType, ResumeResponse, DoubtBlock, VerificationResult } from '@/lib/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const LS_SESSION_ID  = 'upmyrank_study_session_id'
@@ -492,7 +492,7 @@ function DoubtPageInner() {
                             isStreaming: false,
                             metadata: {
                               hint_level:       chunk.hint_level as number | undefined,
-                              verification:     chunk.verification as ChatMessageType['metadata'],
+                              verification:     chunk.verification as VerificationResult | undefined,
                               is_full_solution: Boolean(chunk.is_full_solution),
                               is_forced_attempt: Boolean(chunk.is_forced_attempt),
                               mentor_mode:      chunk.mentor_mode as string | undefined,
