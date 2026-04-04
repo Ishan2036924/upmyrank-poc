@@ -8,8 +8,9 @@ import Sidebar from '@/components/Sidebar'
 import MathText from '@/components/MathText'
 import PostMortem from '@/components/PostMortem'
 import { apiPost } from '@/lib/api'
-import { TEST_STUDENT_ID } from '@/lib/constants'
 import { Problem, SubmitResult } from '@/lib/types'
+import AuthGuard from '@/components/AuthGuard'
+import { useAuth } from '@/lib/auth'
 
 type Phase = 'setup' | 'test' | 'done'
 
@@ -30,6 +31,7 @@ const DIFFICULTY_OPTIONS = [
 const MCQ_LABELS = ['A', 'B', 'C', 'D']
 
 export default function MockPage() {
+  const { studentId } = useAuth()
   const [phase, setPhase] = useState<Phase>('setup')
   const [numQuestions, setNumQuestions] = useState(10)
   const [topic, setTopic] = useState('All')
@@ -108,7 +110,7 @@ export default function MockPage() {
         result = await apiPost('/mock/submit', {
           problem_id: currentProblem.problem_id,
           answer: answerText,
-          student_id: TEST_STUDENT_ID,
+          student_id: studentId,
         })
       }
     } catch (e) {
@@ -135,6 +137,7 @@ export default function MockPage() {
   // ── Phase: done ──────────────────────────────────────────────────────────────
   if (phase === 'done') {
     return (
+      <AuthGuard>
       <div className="flex h-screen">
         <Sidebar />
         <div className="md:ml-[80px] flex-1 overflow-y-auto">
@@ -145,12 +148,14 @@ export default function MockPage() {
           />
         </div>
       </div>
+      </AuthGuard>
     )
   }
 
   // ── Phase: test ──────────────────────────────────────────────────────────────
   if (phase === 'test') {
     return (
+      <AuthGuard>
       <div className="flex h-screen">
         <Sidebar />
         <div className="md:ml-[80px] flex-1 flex overflow-hidden">
@@ -323,11 +328,13 @@ export default function MockPage() {
           </div>
         </div>
       </div>
+      </AuthGuard>
     )
   }
 
   // ── Phase: setup ──────────────────────────────────────────────────────────────
   return (
+    <AuthGuard>
     <div className="flex h-screen">
       <Sidebar />
       <div className="md:ml-[80px] flex-1 overflow-y-auto">
@@ -438,5 +445,6 @@ export default function MockPage() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   )
 }

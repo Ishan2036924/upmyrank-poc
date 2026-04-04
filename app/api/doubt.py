@@ -11,8 +11,15 @@ import logging
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
-from pydantic import BaseModel, field_validator
+import json as _json
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, field_validator, model_validator
+
+from app.middleware.auth import get_current_student_id
+
+from app.services.memory.context import build_context_bundle, format_context_for_prompt
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/doubt", tags=["doubt"])
@@ -21,18 +28,26 @@ router = APIRouter(prefix="/doubt", tags=["doubt"])
 # ── request / response models ─────────────────────────────────────────────────
 
 class AskRequest(BaseModel):
-    question: str
-    student_id: str
+    question: Optional[str] = None
+    image_url: Optional[str] = None    # Supabase Storage public URL for an image
+    student_id: Optional[str] = None   # Ignored when auth header present; kept for legacy clients
     subject: str = "Physics"
     study_session_id: Optional[str] = None
     topic_lock: Optional[str] = None   # When set, skips intent classification and pins the topic
+    student_confidence: Optional[str] = None  # low / medium / high — captured at forced attempt
 
     @field_validator("question")
     @classmethod
-    def question_not_empty(cls, v: str) -> str:
-        if not v.strip():
+    def question_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
             raise ValueError("question must not be empty or whitespace")
-        return v.strip()
+        return v.strip() if v else None
+
+    @model_validator(mode="after")
+    def at_least_question_or_image(self) -> "AskRequest":
+        if not self.question and not self.image_url:
+            raise ValueError("at least one of question or image_url must be provided")
+        return self
 
 
 class HintRequest(BaseModel):
@@ -57,7 +72,8 @@ async def _get_active_doubt_block(pool, study_session_id: str) -> Optional[dict]
     try:
         row = await pool.fetchrow(
             """
-            SELECT doubt_block_id, doubt_session_id, topic, hint_level, solved
+            SELECT doubt_block_id, doubt_session_id, topic, hint_level, solved,
+                   misconception_id
             FROM doubt_blocks
             WHERE study_session_id = $1
               AND ended_at IS NULL
@@ -81,18 +97,21 @@ async def _create_doubt_block(
     student_id: str,
     doubt_session_id: uuid.UUID,
     topic: str,
+    student_confidence: Optional[str] = None,
 ) -> str:
     """Create a new doubt block and increment the study session's doubt_count."""
     block = await pool.fetchrow(
         """
-        INSERT INTO doubt_blocks (study_session_id, student_id, doubt_session_id, topic)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO doubt_blocks
+            (study_session_id, student_id, doubt_session_id, topic, student_confidence)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING doubt_block_id
         """,
         uuid.UUID(study_session_id),
         uuid.UUID(student_id),
         doubt_session_id,
         topic,
+        student_confidence,
     )
 
     await pool.execute(
@@ -139,6 +158,8 @@ async def _genome_update_task(
     give_up_flag: bool = False,
     mistake_tag: Optional[str] = None,
     session_type: str = "doubt",
+    student_confidence: Optional[str] = None,  # low / medium / high
+    misconception_id: Optional[str] = None,    # ID from misconceptions.py if detected
 ) -> None:
     """
     Terminal-state background task — fires ONLY when a doubt block closes.
@@ -196,14 +217,40 @@ async def _genome_update_task(
         else:
             performance = _HINT_PERF_MAP.get(min(hint_level, 3), 0.2)
 
+        # ── Confidence modifier (misconception signal) ────────────────────────
+        # Applies to the signed deviation from neutral (0.5) so the modifier
+        # amplifies or shrinks the effect without breaking the [0, 1] range.
+        error_type_override: Optional[str] = None
+        if student_confidence:
+            delta = performance - 0.5
+            if student_confidence == "high" and not resolved:
+                # High confidence + wrong → misconception, 1.5× penalty
+                performance = max(0.0, min(1.0, 0.5 + delta * 1.5))
+                error_type_override = "misconception"
+            elif student_confidence == "high" and resolved:
+                # High confidence + correct → strong understanding, 1.3× boost
+                performance = max(0.0, min(1.0, 0.5 + delta * 1.3))
+            elif student_confidence == "low" and resolved:
+                # Low confidence + correct → lucky guess, 0.7× boost
+                performance = max(0.0, min(1.0, 0.5 + delta * 0.7))
+
+        # ── Misconception penalty (applied before mastery EMA) ───────────────
+        # When a misconception was detected AND the student did not solve:
+        # apply 1.5× penalty (same signal weight as high-confidence + wrong).
+        effective_mistake_tag = mistake_tag
+        if misconception_id and not resolved and not give_up_flag:
+            delta = performance - 0.5
+            performance = max(0.0, min(1.0, 0.5 + delta * 1.5))
+            effective_mistake_tag = effective_mistake_tag or "misconception"
+
         # ── 1. INSERT telemetry into session_events ──────────────────────────
         await pool.execute(
             """
             INSERT INTO session_events
                 (session_id, event_type, student_id, session_type,
                  time_to_solve_seconds, max_hint_level_used,
-                 mistake_forensics_tag, give_up_flag, payload)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+                 mistake_forensics_tag, give_up_flag, misconception_detected, payload)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
             """,
             session_uuid,
             "session_terminal",
@@ -211,9 +258,10 @@ async def _genome_update_task(
             session_type,
             time_seconds,
             min(hint_level, 3),
-            mistake_tag,
+            effective_mistake_tag,
             give_up_flag,
-            json.dumps({"resolved": resolved, "topic": topic}),
+            bool(misconception_id),
+            json.dumps({"resolved": resolved, "topic": topic, "misconception_id": misconception_id}),
         )
 
         # ── 2. UPSERT concept_mastery (EMA α=0.7) ────────────────────────────
@@ -251,6 +299,77 @@ async def _genome_update_task(
                         "Mastery update failed for concept=%s: %s", concept_id, exc,
                     )
 
+        # ── 3. Update error fingerprint + forgetting rate per concept ─────────
+        effective_error_type = error_type_override or (
+            "misconception" if misconception_id else mistake_tag
+        )
+        if concept_ids and effective_error_type:
+            from app.services.memory.context import (
+                update_error_fingerprint,
+                update_forgetting_rate,
+            )
+            import datetime
+            for concept_id in concept_ids:
+                try:
+                    await update_error_fingerprint(
+                        student_id=str(student_uuid),
+                        concept_id=concept_id,
+                        error_type=effective_error_type,
+                        was_correct=resolved and not give_up_flag,
+                        db=pool,
+                    )
+                except Exception as fp_exc:
+                    logger.warning("update_error_fingerprint failed for %s: %s", concept_id, fp_exc)
+
+                try:
+                    # days_since_last_review: derive from time_seconds if available
+                    days = max(1, (time_seconds or 0) // 86400)
+                    await update_forgetting_rate(
+                        student_id=str(student_uuid),
+                        concept_id=concept_id,
+                        days_since_last_review=days,
+                        performance=performance,
+                        db=pool,
+                    )
+                except Exception as fr_exc:
+                    logger.warning("update_forgetting_rate failed for %s: %s", concept_id, fr_exc)
+
+        # ── 4. Update persona profile ─────────────────────────────────────────
+        try:
+            from app.services.memory.context import (
+                get_persona_profile,
+                update_persona_profile,
+                infer_scaffolding_level,
+                get_sessions_count,
+            )
+            current_profile = await get_persona_profile(str(student_uuid), pool)
+            depth_score = float(current_profile.get("interaction_depth_score", 0.0))
+            if resolved and hint_level <= 1:
+                new_depth = min(1.0, depth_score + 0.05)
+            else:
+                new_depth = max(0.0, depth_score - 0.02)
+            await update_persona_profile(
+                str(student_uuid), {"interaction_depth_score": new_depth}, pool
+            )
+
+            # Add misconception to persona common_misconceptions (no duplicates)
+            if misconception_id and not resolved:
+                current_profile = await get_persona_profile(str(student_uuid), pool)
+                existing = current_profile.get("common_misconceptions", [])
+                if misconception_id not in existing:
+                    await update_persona_profile(
+                        str(student_uuid),
+                        {"common_misconceptions": existing + [misconception_id]},
+                        pool,
+                    )
+
+            # Re-infer scaffolding level every 5 sessions
+            sessions_count = await get_sessions_count(str(student_uuid), pool)
+            if sessions_count > 0 and sessions_count % 5 == 0:
+                await infer_scaffolding_level(str(student_uuid), pool)
+        except Exception as persona_exc:
+            logger.warning("Persona update failed (non-fatal): %s", persona_exc)
+
         logger.info(
             "Genome updated: session=%s student=%s concepts=%d perf=%.2f give_up=%s",
             doubt_session_id, student_uuid, len(concept_ids), performance, give_up_flag,
@@ -263,7 +382,12 @@ async def _genome_update_task(
 # ── endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/ask")
-async def ask_doubt(body: AskRequest, request: Request, background_tasks: BackgroundTasks):
+async def ask_doubt(
+    body: AskRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    current_student_id: str = Depends(get_current_student_id),
+):
     """
     Intent-gated doubt handler.
 
@@ -274,6 +398,19 @@ async def ask_doubt(body: AskRequest, request: Request, background_tasks: Backgr
     """
     engine = request.app.state.socratic_engine
     pool = request.app.state.db_pool
+
+    # ── Vision AI: extract question from image if no text question ────────────
+    question = body.question
+    if not question and body.image_url:
+        try:
+            question = await engine.extract_question_from_image(body.image_url)
+            logger.info("Vision AI: extracted question from image (%d chars)", len(question))
+        except Exception as exc:
+            logger.error("Vision AI extraction failed: %s", exc)
+            raise HTTPException(
+                status_code=422, detail=f"Could not extract question from image: {exc}"
+            ) from exc
+    # question is guaranteed non-empty at this point (model_validator ensures one is present)
 
     # ── 1. Check for active doubt block ───────────────────────────────────────
     active_block = None
@@ -301,12 +438,12 @@ async def ask_doubt(body: AskRequest, request: Request, background_tasks: Backgr
         intent = "physics_doubt"
         logger.info("topic_lock=%r → bypassing intent classifier, forcing physics_doubt", body.topic_lock)
     else:
-        intent = await engine.classify_intent(body.question, has_active_block)
+        intent = await engine.classify_intent(question, has_active_block)
         logger.info("Intent classified: %s (active_block=%s)", intent, has_active_block)
 
     # ── 3. Non-physics intents → immediate response, NO DB writes ─────────────
     if intent in ("greeting", "meta", "emotional", "out_of_scope"):
-        result = await engine.handle_non_physics_intent(intent, body.question)
+        result = await engine.handle_non_physics_intent(intent, question)
         return result
 
     # ── 3b. Recap — summarise completed doubt blocks in this session ───────────
@@ -355,14 +492,24 @@ async def ask_doubt(body: AskRequest, request: Request, background_tasks: Backgr
         try:
             hint_result = await engine.get_hint(
                 session_id=str(active_block["doubt_session_id"]),
-                student_response=body.question,
+                student_response=question,
             )
 
-            # Update block hint_level
+            # Update block hint_level + store confidence + misconception if detected
+            _mc_id_ask = hint_result.get("misconception_id")
             await pool.execute(
-                "UPDATE doubt_blocks SET hint_level = $1 WHERE doubt_block_id = $2",
+                """
+                UPDATE doubt_blocks
+                SET hint_level            = $1,
+                    student_confidence    = COALESCE($3, student_confidence),
+                    misconception_detected = CASE WHEN $4 THEN TRUE ELSE misconception_detected END,
+                    misconception_id      = COALESCE($4, misconception_id)
+                WHERE doubt_block_id = $2
+                """,
                 hint_result.get("hint_level", active_block["hint_level"]),
                 active_block["doubt_block_id"],
+                body.student_confidence,
+                _mc_id_ask,
             )
 
             # If resolved, close the block + schedule genome update
@@ -376,6 +523,8 @@ async def ask_doubt(body: AskRequest, request: Request, background_tasks: Backgr
                     str(active_block["doubt_session_id"]),
                     give_up_flag=False,
                     mistake_tag=None,
+                    student_confidence=body.student_confidence,
+                    misconception_id=active_block.get("misconception_id") or _mc_id_ask,
                 )
 
             return {
@@ -396,13 +545,22 @@ async def ask_doubt(body: AskRequest, request: Request, background_tasks: Backgr
             pool, engine, str(active_block["doubt_block_id"]), solved=False,
         )
 
+    # Build memory context bundle for this student (never blocks on failure)
+    try:
+        bundle = await build_context_bundle(current_student_id, pool)
+        student_context = format_context_for_prompt(bundle)
+    except Exception as exc:
+        logger.warning("build_context_bundle failed (non-fatal): %s", exc)
+        student_context = ""
+
     try:
         result = await engine.start_session(
-            question=body.question,
-            student_id=body.student_id,
+            question=question,
+            student_id=current_student_id,
             subject=body.subject,
             study_session_id=body.study_session_id,
             locked_topic=body.topic_lock,
+            student_context=student_context,
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -417,9 +575,10 @@ async def ask_doubt(body: AskRequest, request: Request, background_tasks: Backgr
         doubt_block_id = await _create_doubt_block(
             pool,
             body.study_session_id,
-            body.student_id,
+            current_student_id,
             uuid.UUID(result["session_id"]),
             topic,
+            student_confidence=body.student_confidence,
         )
 
     # Get current doubt count
@@ -442,7 +601,12 @@ async def ask_doubt(body: AskRequest, request: Request, background_tasks: Backgr
 
 
 @router.post("/hint")
-async def get_hint(body: HintRequest, request: Request, background_tasks: BackgroundTasks):
+async def get_hint(
+    body: HintRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    _: str = Depends(get_current_student_id),
+):
     """
     Request the next progressive hint for an existing doubt session.
 
@@ -473,10 +637,18 @@ async def get_hint(body: HintRequest, request: Request, background_tasks: Backgr
     if body.study_session_id:
         block = await _get_active_doubt_block(pool, body.study_session_id)
         if block:
+            _mc_id_hint = result.get("misconception_id")
             await pool.execute(
-                "UPDATE doubt_blocks SET hint_level = $1 WHERE doubt_block_id = $2",
+                """
+                UPDATE doubt_blocks
+                SET hint_level             = $1,
+                    misconception_detected = CASE WHEN $3 THEN TRUE ELSE misconception_detected END,
+                    misconception_id       = COALESCE($3, misconception_id)
+                WHERE doubt_block_id = $2
+                """,
                 result.get("hint_level", block["hint_level"]),
                 block["doubt_block_id"],
+                _mc_id_hint,
             )
             if result.get("resolved"):
                 await _close_doubt_block(
@@ -489,14 +661,152 @@ async def get_hint(body: HintRequest, request: Request, background_tasks: Backgr
                     body.session_id,
                     body.give_up_flag,
                     body.mistake_tag,
+                    misconception_id=block.get("misconception_id") or _mc_id_hint,
                 )
             result["doubt_block_id"] = str(block["doubt_block_id"])
 
     return result
 
 
+@router.post("/ask/stream")
+async def ask_doubt_stream(
+    body: AskRequest,
+    request: Request,
+    current_student_id: str = Depends(get_current_student_id),
+):
+    """
+    Streaming variant of POST /doubt/ask.
+
+    Returns text/event-stream (SSE). Each event is a JSON line:
+        data: {"token": "...", "done": false}\\n\\n
+        data: {"token": "", "done": true, "session_id": "...", ...}\\n\\n
+        data: {"error": "...", "done": true}\\n\\n
+
+    Only new physics_doubt sessions are streamed.
+    Continuation + non-physics intents fall back to a single non-streamed event.
+    Hint levels 1+ are NOT supported via this endpoint — use /doubt/hint as normal.
+    """
+    engine = request.app.state.socratic_engine
+    pool   = request.app.state.db_pool
+
+    # ── Vision AI ─────────────────────────────────────────────────────────────
+    question = body.question
+    if not question and body.image_url:
+        try:
+            question = await engine.extract_question_from_image(body.image_url)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"Vision AI failed: {exc}") from exc
+
+    # ── Check active block / classify intent ──────────────────────────────────
+    active_block = None
+    if body.study_session_id:
+        active_block = await _get_active_doubt_block(pool, body.study_session_id)
+    has_active_block = active_block is not None and not active_block.get("solved", False)
+
+    if has_active_block and active_block.get("hint_level", 0) >= 3:
+        intent = "continuation"
+    elif body.topic_lock:
+        intent = "physics_doubt"
+    else:
+        intent = await engine.classify_intent(question, has_active_block)
+
+    # ── Non-streaming path: non-physics / continuation ─────────────────────
+    # These are cheap (no LLM or fast LLM) — return as a single SSE event.
+    async def _single_event(payload: dict):
+        data = _json.dumps({"token": "", "done": True, **payload})
+        yield f"data: {data}\n\n"
+
+    if intent in ("greeting", "meta", "emotional", "out_of_scope"):
+        result = await engine.handle_non_physics_intent(intent, question)
+        return StreamingResponse(
+            _single_event({"response": result["response"], "intent": intent, "session_id": None}),
+            media_type="text/event-stream",
+        )
+
+    if intent == "continuation" and active_block:
+        try:
+            hint_result = await engine.get_hint(
+                session_id=str(active_block["doubt_session_id"]),
+                student_response=question,
+            )
+            return StreamingResponse(
+                _single_event({"intent": "continuation",
+                                "doubt_block_id": str(active_block["doubt_block_id"]),
+                                **hint_result}),
+                media_type="text/event-stream",
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    # ── Close any existing block + build memory context ───────────────────────
+    if active_block and body.study_session_id:
+        await _close_doubt_block(pool, engine, str(active_block["doubt_block_id"]), solved=False)
+
+    try:
+        bundle = await build_context_bundle(current_student_id, pool)
+        student_context = format_context_for_prompt(bundle)
+    except Exception:
+        student_context = ""
+
+    # ── Streaming generator ───────────────────────────────────────────────────
+    async def event_stream():
+        try:
+            session_id        = None
+            doubt_block_id    = None
+            final_metadata    = {}
+
+            async for chunk in engine.start_session_stream(
+                question=question,
+                student_id=current_student_id,
+                subject=body.subject,
+                study_session_id=body.study_session_id,
+                locked_topic=body.topic_lock,
+                student_context=student_context,
+            ):
+                if chunk.get("error"):
+                    yield f"data: {_json.dumps({'error': chunk['error'], 'done': True})}\n\n"
+                    return
+
+                if chunk.get("done"):
+                    # Persist doubt block then emit final event
+                    session_id = chunk.get("session_id")
+                    analysis   = chunk.get("analysis", {})
+                    if body.study_session_id and session_id:
+                        topic = analysis.get("topic", "Physics")
+                        doubt_block_id = await _create_doubt_block(
+                            pool,
+                            body.study_session_id,
+                            current_student_id,
+                            uuid.UUID(session_id),
+                            topic,
+                            student_confidence=body.student_confidence,
+                        )
+                    final_metadata = {
+                        "intent":           "physics_doubt",
+                        "doubt_block_id":   doubt_block_id,
+                        "doubt_block_topic": chunk.get("analysis", {}).get("topic", "Physics"),
+                        "session_id":       session_id,
+                        "mentor_mode":      chunk.get("mentor_mode"),
+                        "out_of_scope":     chunk.get("out_of_scope", False),
+                        "cache_hit":        chunk.get("cache_hit", False),
+                    }
+                    yield f"data: {_json.dumps({'token': '', 'done': True, **final_metadata})}\n\n"
+                else:
+                    yield f"data: {_json.dumps({'token': chunk.get('token', ''), 'done': False})}\n\n"
+
+        except Exception as exc:
+            logger.exception("ask_doubt_stream: event_stream failed: %s", exc)
+            yield f"data: {_json.dumps({'error': str(exc), 'done': True})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @router.post("/verify")
-async def verify_solution(body: VerifyRequest, request: Request):
+async def verify_solution(
+    body: VerifyRequest,
+    request: Request,
+    _: str = Depends(get_current_student_id),
+):
     """
     Run the two-layer verification pipeline on an arbitrary question + solution.
     """

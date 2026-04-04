@@ -12,8 +12,11 @@ import ConfidenceMeter, { ConfidenceLevel } from '@/components/ConfidenceMeter'
 import QuickActions from '@/components/QuickActions'
 import SessionHeader from '@/components/SessionHeader'
 import TypingIndicator from '@/components/TypingIndicator'
+import AuthGuard from '@/components/AuthGuard'
+import ErrorBoundary from '@/components/ErrorBoundary'
+import ChatErrorFallback from '@/components/ChatErrorFallback'
 import { apiPost } from '@/lib/api'
-import { TEST_STUDENT_ID } from '@/lib/constants'
+import { useAuth } from '@/lib/auth'
 import { ChatMessage as ChatMessageType, ResumeResponse, DoubtBlock } from '@/lib/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -96,6 +99,8 @@ function rebuildMessages(blocks: DoubtBlock[]): ChatMessageType[] {
 // ── Page component ────────────────────────────────────────────────────────────
 
 function DoubtPageInner() {
+  const { studentId } = useAuth()
+
   // Read topic lock from URL query param (?topic=...)
   const searchParams = useSearchParams()
   const topicLock = searchParams.get('topic') ?? null
@@ -110,6 +115,8 @@ function DoubtPageInner() {
   const [currentBlockId,    setCurrentBlockId]    = useState<string | null>(null)
   const [currentBlockSolved, setCurrentBlockSolved] = useState(false)
   const [isLoading,         setIsLoading]         = useState(false)
+  const [chatError,         setChatError]         = useState<string | null>(null)
+  const [streamingMsgId,    setStreamingMsgId]    = useState<string | null>(null)
 
   // Current block metadata (for top-bar display + mastery update)
   const [sessionId,  setSessionId]  = useState<string | null>(null) // doubt_session_id
@@ -119,10 +126,12 @@ function DoubtPageInner() {
   // ── Confidence meter intercept ─────────────────────────────────────────────
   const [showConfidenceMeter, setShowConfidenceMeter] = useState(false)
   const [pendingAnswer,       setPendingAnswer]       = useState<string | null>(null)
+  const [pendingImageUrl,     setPendingImageUrl]     = useState<string | null>(null)
 
   const bottomRef       = useRef<HTMLDivElement>(null)
   const inputRef        = useRef<HTMLTextAreaElement>(null)
   const studySessionRef = useRef<string | null>(null)
+  const lastSendRef     = useRef<{ text: string; imageUrl?: string } | null>(null)
 
   // Keep ref in sync so sendBeacon closure is always fresh
   useEffect(() => { studySessionRef.current = studySessionId }, [studySessionId])
@@ -132,7 +141,7 @@ function DoubtPageInner() {
     let cancelled = false
 
     async function startFresh() {
-      const res = await apiPost('/session/start', { student_id: TEST_STUDENT_ID })
+      const res = await apiPost('/session/start', { student_id: studentId })
       if (cancelled) return
       const startedAt = res.started_at ?? new Date().toISOString()
       saveSession(res.study_session_id, startedAt)
@@ -237,25 +246,34 @@ function DoubtPageInner() {
 
   // ── Confidence meter: called once user picks a level ─────────────────────
   const handleConfidenceSelect = async (level: ConfidenceLevel) => {
-    const text = pendingAnswer
+    const text     = pendingAnswer
+    const imageUrl = pendingImageUrl
     setPendingAnswer(null)
+    setPendingImageUrl(null)
     setShowConfidenceMeter(false)
-    if (!text) return
+    if (!text && !imageUrl) return
 
     // Add student message with confidence badge
     addMessage({
       role: 'student',
-      content: text,
-      metadata: { confidence: level, doubt_block_id: currentBlockId ?? undefined },
+      content: text ?? '',
+      metadata: {
+        confidence:    level,
+        doubt_block_id: currentBlockId ?? undefined,
+        image_url:     imageUrl ?? undefined,
+      },
     })
     setIsLoading(true)
+    setChatError(null)
 
     try {
       const res = await apiPost('/doubt/ask', {
-        question:         text,
-        student_id:       TEST_STUDENT_ID,
-        subject:          'Physics',
-        study_session_id: studySessionId ?? undefined,
+        question:           text || undefined,
+        image_url:          imageUrl || undefined,
+        student_id:         studentId,
+        subject:            'Physics',
+        study_session_id:   studySessionId ?? undefined,
+        student_confidence: level,
         ...(topicLock ? { topic_lock: topicLock } : {}),
       })
 
@@ -283,15 +301,19 @@ function DoubtPageInner() {
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      addMessage({ role: 'tutor', content: `⚠️ Error: ${msg}` })
+      setChatError(msg)
     } finally {
       setIsLoading(false)
     }
   }
 
   // ── Primary send handler ───────────────────────────────────────────────────
-  const handleSend = async (text: string) => {
+  const handleSend = async (text: string, imageUrl?: string) => {
     if (isLoading) return
+
+    // Record last send for error retry
+    lastSendRef.current = { text, imageUrl }
+    setChatError(null)
 
     const jumpToFull = GIVE_UP_RE.test(text)
 
@@ -300,6 +322,7 @@ function DoubtPageInner() {
     // the student's submission to capture their confidence level before sending.
     if (forcedAttemptActive && !jumpToFull) {
       setPendingAnswer(text)
+      setPendingImageUrl(imageUrl ?? null)
       setShowConfidenceMeter(true)
       return
     }
@@ -308,7 +331,10 @@ function DoubtPageInner() {
     addMessage({
       role: 'student',
       content: text,
-      metadata: { doubt_block_id: currentBlockId ?? undefined },
+      metadata: {
+        doubt_block_id: currentBlockId ?? undefined,
+        image_url:      imageUrl ?? undefined,
+      },
     })
     setIsLoading(true)
 
@@ -343,8 +369,9 @@ function DoubtPageInner() {
 
       // All other messages → /doubt/ask (intent-gated on backend)
       const res = await apiPost('/doubt/ask', {
-        question:         text,
-        student_id:       TEST_STUDENT_ID,
+        question:         text || undefined,
+        image_url:        imageUrl || undefined,
+        student_id:       studentId,
         subject:          'Physics',
         study_session_id: studySessionId ?? undefined,
         doubt_block_id:   currentBlockId ?? undefined,
@@ -359,13 +386,9 @@ function DoubtPageInner() {
         return
       }
 
-      // ── New physics_doubt ──────────────────────────────────────────────────
+      // ── New physics_doubt — SSE streaming ──────────────────────────────────
       if (intent === 'physics_doubt') {
-        const newBlockId  = res.doubt_block_id as string | null | undefined
-        const newTopic    = (res.doubt_block_topic ?? res.analysis?.topic ?? 'Physics') as string
-
-        //  Insert divider ONLY when transitioning from a solved block
-        //  (first question: !currentBlockId → no divider)
+        // Divider on transition from solved block
         if (currentBlockSolved && currentBlockId) {
           addMessage({
             role: 'divider',
@@ -379,25 +402,113 @@ function DoubtPageInner() {
           })
         }
 
-        // Update block state
-        if (res.session_id)   setSessionId(res.session_id)
-        setCurrentBlockId(newBlockId ?? null)
+        // Insert a placeholder streaming message immediately so the user sees the cursor
+        const streamId = nanoid()
+        setStreamingMsgId(streamId)
+        setMessages((prev) => [
+          ...prev,
+          { id: streamId, role: 'tutor', content: '', isStreaming: true },
+        ])
+
+        // Reset block state
         setCurrentBlockSolved(false)
         setDoubtCount((c) => c + 1)
-        setAnalysis(res.analysis ?? null)
-        if (res.mentor_mode) setMentorMode(res.mentor_mode)
 
-        addMessage({
-          role: 'tutor',
-          content: res.response ?? res.message ?? JSON.stringify(res),
-          metadata: {
-            analysis:       res.analysis,
-            out_of_scope:   res.out_of_scope ?? false,
-            mentor_mode:    res.mentor_mode ?? undefined,
-            intent,
-            doubt_block_id: newBlockId ?? undefined,
-          },
-        })
+        try {
+          const token = typeof window !== 'undefined' ? localStorage.getItem('umr_token') : null
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+          if (token) headers['Authorization'] = `Bearer ${token}`
+
+          const fetchRes = await fetch(`${API_URL}/doubt/ask/stream`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              question:         text || undefined,
+              image_url:        imageUrl || undefined,
+              student_id:       studentId,
+              subject:          'Physics',
+              study_session_id: studySessionId ?? undefined,
+              doubt_block_id:   currentBlockId ?? undefined,
+              ...(topicLock ? { topic_lock: topicLock } : {}),
+            }),
+          })
+
+          if (!fetchRes.ok || !fetchRes.body) {
+            throw new Error(await fetchRes.text().catch(() => 'Stream connection failed'))
+          }
+
+          const reader = fetchRes.body.getReader()
+          const decoder = new TextDecoder()
+          let buffer = ''
+          let finalMeta: Record<string, unknown> = {}
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() ?? ''
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue
+              try {
+                const chunk = JSON.parse(line.slice(6)) as Record<string, unknown>
+
+                if (chunk.error) {
+                  setChatError(chunk.error as string)
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === streamId
+                        ? { ...m, content: '⚠️ ' + (chunk.error as string), isStreaming: false }
+                        : m,
+                    ),
+                  )
+                  return
+                }
+
+                if (chunk.done) {
+                  finalMeta = chunk
+                  // Finalize the streaming message with metadata
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === streamId
+                        ? {
+                            ...m,
+                            isStreaming: false,
+                            metadata: {
+                              analysis:       finalMeta.analysis as Record<string, unknown> | undefined,
+                              out_of_scope:   Boolean(finalMeta.out_of_scope),
+                              mentor_mode:    finalMeta.mentor_mode as string | undefined,
+                              intent:         'physics_doubt',
+                              doubt_block_id: finalMeta.doubt_block_id as string | undefined,
+                            },
+                          }
+                        : m,
+                    ),
+                  )
+                  // Update block state from metadata
+                  if (finalMeta.session_id)   setSessionId(finalMeta.session_id as string)
+                  if (finalMeta.doubt_block_id) setCurrentBlockId(finalMeta.doubt_block_id as string)
+                  if (finalMeta.analysis)     setAnalysis(finalMeta.analysis as Record<string, unknown>)
+                  if (finalMeta.mentor_mode)  setMentorMode(finalMeta.mentor_mode as string)
+                } else if (chunk.token) {
+                  // Append token to the streaming message
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === streamId
+                        ? { ...m, content: m.content + (chunk.token as string) }
+                        : m,
+                    ),
+                  )
+                }
+              } catch {
+                // Malformed SSE line — skip
+              }
+            }
+          }
+        } finally {
+          setStreamingMsgId(null)
+        }
         return
       }
 
@@ -431,7 +542,7 @@ function DoubtPageInner() {
       })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      addMessage({ role: 'tutor', content: `⚠️ Error: ${msg}` })
+      setChatError(msg)
     } finally {
       setIsLoading(false)
     }
@@ -512,7 +623,7 @@ function DoubtPageInner() {
         (analysis as { concepts_tested?: string[] } | null)?.concepts_tested ?? []
       await Promise.allSettled(
         concepts.map((cid) =>
-          apiPost(`/student/${TEST_STUDENT_ID}/update-mastery`, {
+          apiPost(`/student/${studentId}/update-mastery`, {
             concept_id:        cid,
             performance_score: 1.0,
           }),
@@ -653,23 +764,46 @@ function DoubtPageInner() {
               </div>
             )}
 
-            {/* Message list */}
-            <AnimatePresence initial={false}>
-              {messages.map((msg) => (
-                <ChatMessage
-                  key={msg.id}
-                  message={msg}
-                  dimmed={
-                    msg.role !== 'divider' &&
-                    !!currentBlockId &&
-                    !!msg.metadata?.doubt_block_id &&
-                    msg.metadata.doubt_block_id !== currentBlockId
-                  }
+            {/* Message list — wrapped in ErrorBoundary for render errors */}
+            <ErrorBoundary
+              fallback={
+                <ChatErrorFallback
+                  error="Something went wrong displaying messages."
+                  onRetry={() => window.location.reload()}
                 />
-              ))}
-            </AnimatePresence>
+              }
+            >
+              <AnimatePresence initial={false}>
+                {messages.map((msg) => (
+                  <ChatMessage
+                    key={msg.id}
+                    message={msg}
+                    isStreaming={msg.id === streamingMsgId || msg.isStreaming === true}
+                    dimmed={
+                      msg.role !== 'divider' &&
+                      !!currentBlockId &&
+                      !!msg.metadata?.doubt_block_id &&
+                      msg.metadata.doubt_block_id !== currentBlockId
+                    }
+                  />
+                ))}
+              </AnimatePresence>
+            </ErrorBoundary>
 
-            {isLoading && <TypingIndicator />}
+            {isLoading && !streamingMsgId && <TypingIndicator />}
+
+            {/* API error — retry UI */}
+            {chatError && !isLoading && (
+              <ChatErrorFallback
+                error={chatError}
+                onRetry={() => {
+                  setChatError(null)
+                  if (lastSendRef.current) {
+                    handleSend(lastSendRef.current.text, lastSendRef.current.imageUrl)
+                  }
+                }}
+              />
+            )}
 
             {/* Quick actions */}
             {showQuickActions && (
@@ -721,7 +855,7 @@ function DoubtPageInner() {
               >
                 <ChatInput
                   ref={inputRef}
-                  onSend={handleSend}
+                  onSend={(text, imageUrl) => handleSend(text, imageUrl)}
                   disabled={isLoading}
                   placeholder={
                     forcedAttemptActive
@@ -788,8 +922,10 @@ function DoubtPageInner() {
 
 export default function DoubtPage() {
   return (
-    <Suspense>
-      <DoubtPageInner />
-    </Suspense>
+    <AuthGuard>
+      <Suspense>
+        <DoubtPageInner />
+      </Suspense>
+    </AuthGuard>
   )
 }

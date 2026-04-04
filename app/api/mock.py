@@ -11,10 +11,11 @@ import random
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.config import settings
+from app.middleware.auth import get_current_student_id
 from app.services.mastery import update_concept_mastery
 
 logger = logging.getLogger(__name__)
@@ -108,7 +109,11 @@ async def _generate_mcq_options(
 # ── Endpoints ────────────────────────────────────────────────────────────────────
 
 @router.post("/generate")
-async def generate_mock(body: GenerateRequest, request: Request):
+async def generate_mock(
+    body: GenerateRequest,
+    request: Request,
+    _: str = Depends(get_current_student_id),
+):
     """
     Pick a random problem from the DB, generate 4 MCQ options via LLM,
     cache the correct option letter server-side, and return the 4 option
@@ -197,7 +202,11 @@ async def generate_mock(body: GenerateRequest, request: Request):
 
 
 @router.post("/submit")
-async def submit_answer(body: SubmitRequest, request: Request):
+async def submit_answer(
+    body: SubmitRequest,
+    request: Request,
+    _: str = Depends(get_current_student_id),
+):
     """
     Verify a student's MCQ answer by comparing the submitted letter (A/B/C/D)
     against the cached correct option. Updates concept mastery accordingly.

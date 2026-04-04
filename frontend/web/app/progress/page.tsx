@@ -13,8 +13,9 @@ import {
 } from 'recharts'
 import Sidebar from '@/components/Sidebar'
 import { apiGet } from '@/lib/api'
-import { TEST_STUDENT_ID } from '@/lib/constants'
 import { StudentGenome, ConceptMastery } from '@/lib/types'
+import AuthGuard from '@/components/AuthGuard'
+import { useAuth } from '@/lib/auth'
 
 // ── Stagger animation variants ────────────────────────────────────────────────
 
@@ -104,13 +105,14 @@ function TrajectoryTooltip({ active, payload, label }: {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  const { studentId } = useAuth()
   const [genome, setGenome] = useState<StudentGenome | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchData = async () => {
     setLoading(true)
     try {
-      setGenome(await apiGet(`/student/${TEST_STUDENT_ID}`))
+      setGenome(await apiGet(`/student/${studentId}`))
     } catch (e) {
       console.error(e)
     } finally {
@@ -168,6 +170,7 @@ export default function AnalyticsPage() {
   const masteryAccentBg    = overallPct >= 70 ? 'rgba(34,197,94,0.12)' : overallPct >= 40 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)'
 
   return (
+    <AuthGuard>
     <div className="flex h-screen">
       <Sidebar />
       <div className="md:ml-[80px] flex-1 overflow-y-auto">
@@ -414,5 +417,6 @@ export default function AnalyticsPage() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   )
 }

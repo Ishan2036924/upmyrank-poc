@@ -356,10 +356,18 @@ def main() -> None:
     print(f"      Inserted {total_chunks} chunks, {total_problems} problems")
 
     # ── 6. Rebuild HNSW indexes ──────────────────────────────────────────────
-    print("\n[6/6] Rebuilding HNSW indexes (this may take a minute)...")
+    print("\n[6/6] Rebuilding vector indexes (this may take a minute)...")
     conn.autocommit = True
-    cur.execute("REINDEX INDEX idx_knowledge_chunks_embedding_hnsw;")
-    cur.execute("REINDEX INDEX idx_problems_embedding_hnsw;")
+    cur.execute("DROP INDEX IF EXISTS idx_knowledge_chunks_embedding_hnsw;")
+    cur.execute(
+        "CREATE INDEX idx_knowledge_chunks_embedding_hnsw "
+        "ON knowledge_chunks USING hnsw (embedding vector_cosine_ops);"
+    )
+    cur.execute("DROP INDEX IF EXISTS idx_problems_embedding_hnsw;")
+    cur.execute(
+        "CREATE INDEX idx_problems_embedding_hnsw "
+        "ON problems USING hnsw (embedding vector_cosine_ops);"
+    )
     conn.autocommit = False
     print("      Done.")
 

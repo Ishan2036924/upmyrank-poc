@@ -261,7 +261,55 @@ Full engine audit was run and all identified bugs were fixed in the same session
 - **`jump_to_full` is only honoured at `current_level >= 3`.** Below that, it is silently overridden to `False` — never remove this gate.
 - **Intent classification is bypassed at forced-attempt stage** (active block `hint_level >= 3`). Any student response — emotional, off-topic, or otherwise — routes to full solution. Never add intent classification back at this stage.
 
+### 15. Policy Engine + Student Persona Profile (Phase 2) ✅ COMPLETE
+
+- **`scripts/migrate_v5_persona.sql`** — adds `persona_profile JSONB` to `student_memory`. ⚠️ NOT YET APPLIED TO DB (requires migrate_v4 first).
+- **`app/services/policy/engine.py`** — `PedagogyConfig` dataclass + `select_pedagogy(persona_profile, topic, hint_level) → PedagogyConfig`. Logic table: HIGH → 2 concepts, analogies, encouraging; MEDIUM → 3 concepts, formula style, neutral; LOW → 5 concepts, application style, direct. Overrides: hint_level=0 always conceptual; hint_level≥3 always check_in=False.
+- **`app/services/memory/context.py`** — 4 new functions: `get_persona_profile()` (default profile if null), `update_persona_profile()` (merge, not replace), `infer_scaffolding_level()` (avg mastery → HIGH/MEDIUM/LOW), `get_sessions_count()`.
+- **`app/services/doubt/prompts.py`** — `CUSTOMIZATION_PROMPT` (global invariants), `PERSONALIZATION_PROMPT` (template), `build_system_prompt(personalization_block)`, `render_personalization(pedagogy_config)`. `TUTOR_SYSTEM_PROMPT` left untouched.
+- **`app/services/doubt/engine.py`** — `start_session()` calls `get_persona_profile()` + `select_pedagogy()`, builds personalized system prompt via `build_system_prompt()`. `get_hint()` re-fetches persona from DB (avoids stale), rebuilds system prompt per hint level, appends max_concepts constraint for non-LOW students. Level 3 still uses `SYSTEM_PROMPT_FORCED_ATTEMPT` — rule untouched.
+- **`app/api/doubt.py` — `_genome_update_task`** — updates `interaction_depth_score` (+0.05 if solved at hint ≤1, -0.02 otherwise). Re-infers scaffolding level every 5 sessions.
+
+⚠️ Run `migrate_v5_persona.sql` to activate persona_profile column.
+
+### 17. Judge LLM + Golden Dataset (Phase 4) ✅ COMPLETE
+
+- **`scripts/migrate_v7_eval.sql`** — adds `scaffolding_score INTEGER`, `retrieval_similarity FLOAT`, `response_latency_ms INTEGER`, `hint_was_useful BOOLEAN` to `session_events`. ✅ Applied.
+- **`data/golden_dataset.json`** — 50 triplets (id, topic, context_chunk, student_question, ideal_socratic_response, hint_level=0, misconception_addressed). 5 entries × 10 topics: Kinematics, Laws of Motion, Work-Energy, Circular Motion, Rotational Dynamics, Gravitation, Electrostatics, Current Electricity, Waves, Thermodynamics.
+- **`app/services/eval/judge.py`** — `score_response(question, response) → {score: 0|1|2, rationale}`. Uses `gpt-4.1-mini` at `temp=0`. Returns `{score: -1, rationale: "judge_failed"}` on any error. Never raises.
+- **`app/services/eval/logger.py`** — `log_scaffolding_score(session_id, score, rationale, db, retrieval_similarity, response_latency_ms)`. UPDATEs most recent `hint_requested`/`solution_revealed` event for the session. Never raises.
+- **`app/services/doubt/engine.py`** — `get_hint()`: latency timer wraps LLM call (`time.monotonic()`). Max cosine similarity extracted from `rag["chunks"]`. Low similarity (< 0.5) logs a warning. After `_log_event`, fires `asyncio.create_task(_run_judge())` for hint_level < 3 — never blocks student response.
+- **`scripts/pedagogy_drift_report.py`** — standalone async script. Queries last N days (default 7) of `session_events` with `scaffolding_score IS NOT NULL`, groups by topic, prints table. Flags topics avg < 1.5. Exit code 1 if any flagged. Run: `python scripts/pedagogy_drift_report.py [--days N]`.
+
+---
+
+### 16. Misconception Detection (Phase 3) ✅ COMPLETE
+
+- **`scripts/migrate_v6_misconceptions.sql`** — adds `misconception_detected BOOLEAN`, `misconception_id VARCHAR(100)` to `doubt_blocks`; `misconception_detected BOOLEAN` to `session_events`. ✅ Applied.
+- **`app/services/doubt/misconceptions.py`** — `Misconception` dataclass + 30-entry `MISCONCEPTION_LIBRARY` covering 8 topic areas (Circular Motion, Newton's Laws, Work & Energy, Rotational Dynamics, Electrostatics, Current Electricity, Waves, Thermodynamics). `check_for_misconception(response, topic)` — pure keyword matching, no LLM, < 1 ms.
+- **`engine.py get_hint()`** — check fires after student response appended to history, before hint level increment. If matched and `hint_level < 3`: returns `correction_prompt` directly, no LLM call, no level increment, persists updated conversation history. Returns `is_misconception_correction=True, misconception_id=...`.
+- **`_genome_update_task`** — `misconception_id: Optional[str]` param. When present + not resolved: 1.5× mastery penalty, `error_type="misconception"` fingerprint, `misconception_id` added to `persona_profile.common_misconceptions` (no duplicates). Session events `misconception_detected` populated.
+- **Frontend** — `🧠 Misconception Detected` amber badge in `ChatMessage.tsx`.
+
+---
+
 ## Pending / Next Steps
+
+### Student Memory System (PLANNED — NOT STARTED)
+3-layer memory with fixed ~300 token cost on every session start. Full build plan saved to Claude memory (`project_student_memory_plan.md`).
+
+**Layers:**
+1. **Redis hot context** — `hot:{student_id}` key, last 2 session summaries, 48hr TTL
+2. **Postgres compressed profile** — `student_memory` table, one row per student, rewritten every 5 sessions by GPT-4o-mini
+3. **Error fingerprints** — `error_fingerprint JSONB` on `concept_mastery`, decay × 0.7 on correct, +0.3 on wrong, prune < 0.1
+
+**Files to create:** `scripts/migrate_v4_memory.sql`, `app/services/memory/context.py`, `app/services/memory/summarizer.py`
+**Files to modify:** `app/services/doubt/prompts.py` (add `{student_context}` slot), `app/api/doubt.py` (wire bundle + blocking summarizer on session end)
+
+**Key design decisions:**
+- `summarize_session()` must be a **blocking call** on `/session/end` — not fire-and-forget (lesson from async race condition bug)
+- Hard cap at 350 tokens via tiktoken — context never grows unbounded
+- Redis read-first, Postgres fallback on cache miss
 
 ### Vision AI — Image-to-Doubt (IN PROGRESS)
 **Goal:** Let students photograph a textbook problem or handwritten question and submit it as an image instead of typed text.

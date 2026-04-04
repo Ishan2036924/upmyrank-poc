@@ -8,6 +8,7 @@ import { ChatMessage as ChatMessageType } from '@/lib/types'
 interface Props {
   message: ChatMessageType
   dimmed?: boolean
+  isStreaming?: boolean
 }
 
 const MENTOR_MODE_META: Record<string, { icon: string; label: string; cls: string }> = {
@@ -26,8 +27,9 @@ const HINT_LABELS: Record<number, { label: string; cls: string; icon: string }> 
 // Ease-out expo — feels premium, snappy
 const EASE_OUT_EXPO: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
-export default function ChatMessage({ message, dimmed = false }: Props) {
+export default function ChatMessage({ message, dimmed = false, isStreaming = false }: Props) {
   const { role, content, metadata } = message
+  const streaming = isStreaming || message.isStreaming === true
 
   // ── Divider ───────────────────────────────────────────────────────────────
   if (role === 'divider') {
@@ -54,13 +56,14 @@ export default function ChatMessage({ message, dimmed = false }: Props) {
     )
   }
 
-  const isStudent      = role === 'student'
-  const isHint         = metadata?.hint_level != null
-  const isFull         = metadata?.is_full_solution
-  const isForcedAttempt = metadata?.is_forced_attempt
-  const isOutOfScope   = metadata?.out_of_scope
-  const mentorMeta     = metadata?.mentor_mode ? MENTOR_MODE_META[metadata.mentor_mode] : null
-  const hintMeta       = isHint && !isFull && metadata?.hint_level != null
+  const isStudent             = role === 'student'
+  const isHint                = metadata?.hint_level != null
+  const isFull                = metadata?.is_full_solution
+  const isForcedAttempt       = metadata?.is_forced_attempt
+  const isOutOfScope          = metadata?.out_of_scope
+  const isMisconception       = metadata?.is_misconception_correction === true
+  const mentorMeta            = metadata?.mentor_mode ? MENTOR_MODE_META[metadata.mentor_mode] : null
+  const hintMeta              = isHint && !isFull && !isMisconception && metadata?.hint_level != null
     ? HINT_LABELS[metadata.hint_level!]
     : null
 
@@ -81,7 +84,7 @@ export default function ChatMessage({ message, dimmed = false }: Props) {
       <div className={`max-w-[76%] ${isStudent ? '' : 'flex-1'}`}>
 
         {/* Badges — AI only */}
-        {!isStudent && (mentorMeta || hintMeta || isFull || isForcedAttempt || isOutOfScope) && (
+        {!isStudent && (mentorMeta || hintMeta || isFull || isForcedAttempt || isOutOfScope || isMisconception) && (
           <div className="flex flex-wrap gap-1.5 mb-2">
             {mentorMeta && (
               <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${mentorMeta.cls}`}>
@@ -110,6 +113,11 @@ export default function ChatMessage({ message, dimmed = false }: Props) {
                 ⚠ Outside syllabus
               </span>
             )}
+            {isMisconception && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium px-2.5 py-0.5">
+                🧠 Misconception Detected
+              </span>
+            )}
           </div>
         )}
 
@@ -117,7 +125,18 @@ export default function ChatMessage({ message, dimmed = false }: Props) {
         {isStudent ? (
           /* Student — dark pill */
           <div className="bg-slate-900 text-white rounded-3xl rounded-br-md px-5 py-3.5 text-sm leading-relaxed shadow-[0_4px_20px_rgb(15,23,42,0.18)]">
-            <MathText>{content}</MathText>
+            {/* Image thumbnail — above text, if this was a vision AI submission */}
+            {metadata?.image_url && (
+              <div className="mb-3 -mx-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={metadata.image_url}
+                  alt="Submitted image"
+                  className="max-h-[200px] rounded-2xl object-contain w-full"
+                />
+              </div>
+            )}
+            {content && <MathText>{content}</MathText>}
             {metadata?.confidence && (
               <div className="mt-2.5 pt-2.5 border-t border-white/10 flex items-center gap-1.5">
                 <span className="text-[11px] text-white/50 leading-none">
@@ -133,8 +152,16 @@ export default function ChatMessage({ message, dimmed = false }: Props) {
         ) : (
           /* AI — frameless, clean body text */
           <div className={`text-slate-800 text-sm leading-relaxed px-1 ${isForcedAttempt && !isFull ? 'border-l-2 border-orange-300 pl-4' : ''}`}>
-            <MathText>{content}</MathText>
-            {metadata?.verification && (
+            {streaming ? (
+              /* During streaming: plain text + blinking cursor, no KaTeX */
+              <span className="whitespace-pre-wrap">
+                {content}
+                <span className="inline-block w-[2px] h-[1em] bg-slate-600 ml-0.5 animate-pulse align-middle" />
+              </span>
+            ) : (
+              <MathText>{content}</MathText>
+            )}
+            {!streaming && metadata?.verification && (
               <div className="mt-3">
                 <VerificationBadge verification={metadata.verification} />
               </div>

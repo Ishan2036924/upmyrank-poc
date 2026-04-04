@@ -1,0 +1,452 @@
+[
+  {
+    "id": "gd_001",
+    "topic": "Kinematics",
+    "context_chunk": "In projectile motion, the horizontal component of velocity remains constant throughout the flight because no horizontal force acts on the projectile. The vertical component changes uniformly due to gravity.",
+    "student_question": "A ball is thrown horizontally from a cliff. Which component of velocity increases as it falls?",
+    "ideal_socratic_response": "Imagine you throw a ball off a roof while also dropping another ball straight down at the same time — which one hits the ground first, and what does that tell you about what gravity is actually doing to the ball you threw?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_002",
+    "topic": "Kinematics",
+    "context_chunk": "For uniformly accelerated motion, the velocity-time graph is a straight line. The slope of this line gives acceleration, and the area under the graph gives displacement.",
+    "student_question": "How do I find displacement from a velocity-time graph?",
+    "ideal_socratic_response": "If you drove at 60 km/h for exactly 2 hours, how would you calculate how far you travelled — and can you see that same calculation hiding somewhere in the shape of the graph?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_003",
+    "topic": "Kinematics",
+    "context_chunk": "Relative velocity is the velocity of one object as observed from another moving object. If two objects move in the same direction, relative velocity is the difference of their speeds.",
+    "student_question": "Two trains move in the same direction at 60 m/s and 40 m/s. What is the velocity of the first train as seen from the second?",
+    "ideal_socratic_response": "If you're sitting in a car going 40 m/s and you see another car going 60 m/s in the same direction — from your seat, does that car appear to be moving fast or slow, and in which direction?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_004",
+    "topic": "Kinematics",
+    "context_chunk": "The equations of motion for uniform acceleration are: v = u + at, s = ut + ½at², and v² = u² + 2as. These apply only when acceleration is constant.",
+    "student_question": "A car starts from rest and accelerates at 2 m/s². How far does it travel in 5 seconds?",
+    "ideal_socratic_response": "Before picking an equation, can you tell me two things you already know about the car at the start — its initial speed and its acceleration — and what exactly the question is asking you to find?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_005",
+    "topic": "Kinematics",
+    "context_chunk": "Distance is the total path length covered, while displacement is the shortest straight-line distance between start and end points. Distance is always positive; displacement can be negative.",
+    "student_question": "A person walks 3 km east then 4 km north. What is the displacement?",
+    "ideal_socratic_response": "If you walked east then north and then tried to go home as the crow flies — would you go back the same path you came, or could you take a shortcut, and how long would that shortcut be?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_006",
+    "topic": "Laws of Motion",
+    "context_chunk": "Newton's second law states that the net force on an object equals its mass times acceleration: F = ma. The acceleration is always in the direction of the net force.",
+    "student_question": "A 5 kg box is pushed with 20 N but friction acts with 10 N. What is the acceleration?",
+    "ideal_socratic_response": "Before calculating anything — when two forces act on the box in opposite directions, what single quantity determines how fast the box actually speeds up?",
+    "hint_level": 0,
+    "misconception_addressed": "action_reaction_same_object"
+  },
+  {
+    "id": "gd_007",
+    "topic": "Laws of Motion",
+    "context_chunk": "A free body diagram shows all forces acting on a single object. You must include every contact force and every field force, with correct directions.",
+    "student_question": "How do I draw a free body diagram for a book resting on a table?",
+    "ideal_socratic_response": "If the book is just sitting still, what does Newton's first law tell you must be true about the forces on it — and can you list every object that is actually touching the book right now?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_008",
+    "topic": "Laws of Motion",
+    "context_chunk": "In an Atwood machine, two masses hang over a pulley. The heavier mass accelerates downward, the lighter one upward. The net force is the difference in weights.",
+    "student_question": "In an Atwood machine with masses 3 kg and 5 kg, which direction does the system accelerate?",
+    "ideal_socratic_response": "Think of two children on a see-saw — if one is heavier, which side goes down, and what is it about the weights that creates a tendency to move in that direction?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_009",
+    "topic": "Laws of Motion",
+    "context_chunk": "Static friction acts on a stationary object to prevent motion. It adjusts from zero up to a maximum value μₛN. Kinetic friction is constant at μₖN once sliding begins.",
+    "student_question": "Why does it take more force to start sliding a heavy box than to keep it sliding?",
+    "ideal_socratic_response": "Have you ever noticed it takes a hard push to get a heavy piece of furniture moving but then it feels easier to keep going — what do you think changes about the surface interaction once the object starts sliding?",
+    "hint_level": 0,
+    "misconception_addressed": "friction_opposes_motion_direction"
+  },
+  {
+    "id": "gd_010",
+    "topic": "Laws of Motion",
+    "context_chunk": "A pseudo force (or fictitious force) appears in a non-inertial reference frame. Its magnitude is ma₀ directed opposite to the acceleration of the frame.",
+    "student_question": "Why do passengers feel pushed backward when a bus accelerates forward?",
+    "ideal_socratic_response": "From outside the bus, is there actually a force pushing the passenger backward, or is the seat pushing them forward — and what does Newton's first law say happens to a body when no net force acts on it?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_011",
+    "topic": "Work-Energy",
+    "context_chunk": "The work-energy theorem states that the net work done on an object equals the change in its kinetic energy: W_net = ΔKE = ½mv² - ½mu².",
+    "student_question": "A 2 kg ball moving at 3 m/s is brought to rest by friction. How much work did friction do?",
+    "ideal_socratic_response": "When friction stops the ball, where did the ball's kinetic energy go — and what sign would you expect for the work done by a force that slows something down?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_012",
+    "topic": "Work-Energy",
+    "context_chunk": "A conservative force is one where the work done is independent of path and depends only on start and end points. Examples: gravity, spring force. Non-conservative: friction.",
+    "student_question": "Why does friction not have a potential energy associated with it?",
+    "ideal_socratic_response": "If you slide a book across a rough table and back to where it started, is the work done by friction zero for the round trip — and what would need to be true about a force for us to be able to store and recover its work as potential energy?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_013",
+    "topic": "Work-Energy",
+    "context_chunk": "In an elastic collision, both kinetic energy and momentum are conserved. In an inelastic collision, only momentum is conserved; kinetic energy is lost.",
+    "student_question": "Two identical balls collide head-on elastically. What happens to their velocities after the collision?",
+    "ideal_socratic_response": "Think of two identical billiard balls — when one hits a stationary one dead-on, you've probably seen what happens in a game of pool. What do you observe, and can you explain it in terms of what 'elastic' means?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_014",
+    "topic": "Work-Energy",
+    "context_chunk": "Power is the rate of doing work: P = W/t = Fv. It is measured in watts (W). A machine with higher power does the same work in less time.",
+    "student_question": "Two cranes lift the same load to the same height. Crane A takes 10 s, Crane B takes 20 s. Which crane is more powerful?",
+    "ideal_socratic_response": "If you and a friend both carry the same groceries up to the same floor, but you sprint and they walk — did you both do the same amount of work, and does that mean you both exerted the same power?",
+    "hint_level": 0,
+    "misconception_addressed": "power_energy_confusion"
+  },
+  {
+    "id": "gd_015",
+    "topic": "Work-Energy",
+    "context_chunk": "Gravitational potential energy is stored energy due to an object's position: PE = mgh, measured from a chosen reference level. It increases with height above the reference.",
+    "student_question": "A ball is dropped from 10 m. What is its kinetic energy just before hitting the ground?",
+    "ideal_socratic_response": "At the top, the ball is stationary — so all its energy is one type. Just before hitting the ground, it's moving — so where did that energy come from, and is any energy lost along the way if we ignore air resistance?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_016",
+    "topic": "Circular Motion",
+    "context_chunk": "An object moving in a circle at constant speed has centripetal acceleration directed toward the centre: a = v²/r. The centripetal force is provided by an existing force such as tension, gravity, or normal force.",
+    "student_question": "What provides the centripetal force when a car goes around a banked curve?",
+    "ideal_socratic_response": "When you're in a car turning on a flat road, what force stops you from sliding outward — and on a banked road, which part of the normal force from the road is now pointing toward the centre of the curve?",
+    "hint_level": 0,
+    "misconception_addressed": "centripetal_outward_force"
+  },
+  {
+    "id": "gd_017",
+    "topic": "Circular Motion",
+    "context_chunk": "For a conical pendulum, a mass on a string moves in a horizontal circle. The tension in the string has a vertical component balancing weight and a horizontal component providing centripetal force.",
+    "student_question": "Why does the string of a conical pendulum make an angle with the vertical?",
+    "ideal_socratic_response": "Imagine holding a ball on a string and spinning it so it moves in a horizontal circle — for the ball to move in that circle, there must be a net inward force. Can you identify which component of the string tension provides that inward pull?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_018",
+    "topic": "Circular Motion",
+    "context_chunk": "At the top of a vertical circular loop, the minimum speed requires that gravity alone provides centripetal force: mg = mv²/r, giving v_min = √(gr).",
+    "student_question": "What is the minimum speed needed at the top of a loop-the-loop so the car doesn't fall?",
+    "ideal_socratic_response": "At the very top of the loop, what two forces act on the car, and in which direction must their resultant point for the car to keep moving in a circle — what happens to the normal force right at the minimum speed condition?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_019",
+    "topic": "Circular Motion",
+    "context_chunk": "Angular velocity ω is the rate of change of angle: ω = Δθ/Δt. Linear speed v and angular velocity are related by v = ωr.",
+    "student_question": "Two points on a spinning wheel — one near the centre and one at the rim — which has greater speed?",
+    "ideal_socratic_response": "Both points complete one full rotation in the same time — so which point travels a greater distance in that same time, and what does that tell you about their speeds?",
+    "hint_level": 0,
+    "misconception_addressed": "centripetal_accel_is_velocity"
+  },
+  {
+    "id": "gd_020",
+    "topic": "Circular Motion",
+    "context_chunk": "An object moving in a circle is always accelerating toward the centre even when its speed is constant, because the direction of velocity is continuously changing.",
+    "student_question": "If a satellite moves at constant speed in a circular orbit, is it accelerating?",
+    "ideal_socratic_response": "Think about what acceleration really measures — is it only about speed changing, or can something be accelerating even while moving at constant speed? What is changing about the satellite's motion at every instant?",
+    "hint_level": 0,
+    "misconception_addressed": "circular_constant_speed_no_accel"
+  },
+  {
+    "id": "gd_021",
+    "topic": "Rotational Dynamics",
+    "context_chunk": "Torque is the rotational equivalent of force: τ = r × F = rF sin θ. A larger moment arm or larger force produces more torque about an axis.",
+    "student_question": "Why is it easier to open a door by pushing near the edge than near the hinge?",
+    "ideal_socratic_response": "Think about a see-saw — if you want to lift a heavy person on one side, would you sit close to the pivot or far from it, and what property of rotational motion does that distance control?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_022",
+    "topic": "Rotational Dynamics",
+    "context_chunk": "The moment of inertia I = Σmr² measures how mass is distributed relative to the rotation axis. A hollow cylinder has greater I than a solid cylinder of the same mass and radius.",
+    "student_question": "Why does a hollow cylinder roll slower down a slope than a solid cylinder of the same mass?",
+    "ideal_socratic_response": "Imagine spinning a bicycle wheel versus a solid disc of the same mass — which is harder to spin up to the same speed, and what is it about where the mass is located that makes the difference?",
+    "hint_level": 0,
+    "misconception_addressed": "moment_of_inertia_is_mass"
+  },
+  {
+    "id": "gd_023",
+    "topic": "Rotational Dynamics",
+    "context_chunk": "For an object rolling without slipping, the contact point has zero velocity relative to the ground. The rolling condition relates linear and angular velocity: v = ωR.",
+    "student_question": "A cylinder rolls without slipping. What is the velocity of the topmost point?",
+    "ideal_socratic_response": "Think of a wheel rolling on the ground — the bottom touches the ground and doesn't slip, so its speed relative to the ground is zero. The centre moves at speed v. What does that tell you about the speed of the very top point?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_024",
+    "topic": "Rotational Dynamics",
+    "context_chunk": "Angular momentum L = Iω is conserved when no external torque acts on the system. A spinning skater pulls in their arms to spin faster, conserving angular momentum.",
+    "student_question": "Why does a spinning ice skater speed up when she pulls her arms in?",
+    "ideal_socratic_response": "If L = Iω must stay constant when no torque acts, what happens to ω when the skater pulls her arms in and reduces I — can you think of another example from everyday life where this same principle applies?",
+    "hint_level": 0,
+    "misconception_addressed": "angular_momentum_always_conserved"
+  },
+  {
+    "id": "gd_025",
+    "topic": "Rotational Dynamics",
+    "context_chunk": "The parallel axis theorem states: I = I_cm + Md², where I_cm is the moment of inertia about the centre of mass and d is the distance to the new axis.",
+    "student_question": "A rod rotates about one end. How do I find its moment of inertia?",
+    "ideal_socratic_response": "You know the moment of inertia of the rod about its centre — can you first identify where the centre of mass of the rod is, and then think about what the parallel axis theorem adds when you shift the axis to one end?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_026",
+    "topic": "Gravitation",
+    "context_chunk": "Escape velocity is the minimum speed needed to escape a planet's gravitational field: v_esc = √(2GM/R). It depends on the planet's mass and radius, not on the object's mass.",
+    "student_question": "Why does escape velocity not depend on the mass of the rocket?",
+    "ideal_socratic_response": "When you throw a ball upward, both the heavier and lighter ball need to reach the same height to escape gravity — think about how the energy required and the kinetic energy available both scale with mass, and what happens when you divide them.",
+    "hint_level": 0,
+    "misconception_addressed": "heavier_objects_fall_faster"
+  },
+  {
+    "id": "gd_027",
+    "topic": "Gravitation",
+    "context_chunk": "For a satellite in circular orbit, gravitational force provides centripetal force: GMm/r² = mv²/r. Orbital speed decreases with altitude: v = √(GM/r).",
+    "student_question": "Why does a satellite in a higher orbit move slower than one in a lower orbit?",
+    "ideal_socratic_response": "Think about what is providing the centripetal force for the satellite's circular path — as the orbit gets bigger, how does the gravitational pull change, and what does that mean for the speed needed to stay in orbit?",
+    "hint_level": 0,
+    "misconception_addressed": "gravity_zero_in_orbit"
+  },
+  {
+    "id": "gd_028",
+    "topic": "Gravitation",
+    "context_chunk": "Kepler's third law states that the square of the orbital period is proportional to the cube of the semi-major axis: T² ∝ r³.",
+    "student_question": "Mars is farther from the Sun than Earth. Is its year longer or shorter than Earth's?",
+    "ideal_socratic_response": "Before using any formula, think qualitatively — if a planet is farther away, it travels a longer path AND moves more slowly in its orbit. Both of those effects influence the time it takes to complete one trip around the Sun. Which way do both effects push the period?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_029",
+    "topic": "Gravitation",
+    "context_chunk": "Gravitational acceleration g decreases with altitude above Earth's surface as g' = g(R/(R+h))². At twice the Earth's radius from the centre, g is one-quarter of its surface value.",
+    "student_question": "An astronaut at height h above Earth's surface — is g zero for them?",
+    "ideal_socratic_response": "We just said satellites orbit because gravity provides centripetal force — so can g be zero in orbit? What does the formula g' = GM/(R+h)² tell you about how g varies with distance, and does it ever truly reach zero?",
+    "hint_level": 0,
+    "misconception_addressed": "gravity_zero_in_orbit"
+  },
+  {
+    "id": "gd_030",
+    "topic": "Gravitation",
+    "context_chunk": "Gravitational potential energy of a system of two masses is U = -GMm/r. The negative sign indicates a bound system; work must be done to separate the masses.",
+    "student_question": "Why is gravitational potential energy negative?",
+    "ideal_socratic_response": "We set the zero of gravitational PE at infinity — two masses infinitely far apart. If we then bring them together, does gravity do positive or negative work on them, and what does that tell you about whether the PE at a closer distance is higher or lower than zero?",
+    "hint_level": 0,
+    "misconception_addressed": "potential_energy_sign_confusion"
+  },
+  {
+    "id": "gd_031",
+    "topic": "Electrostatics",
+    "context_chunk": "Coulomb's law gives the force between two point charges: F = kq₁q₂/r². Like charges repel, unlike charges attract. The force is along the line joining the charges.",
+    "student_question": "Two positive charges are placed 1 m apart. What happens to the force if the distance is halved?",
+    "ideal_socratic_response": "Coulomb's law has r² in the denominator — if you halve the distance, by what factor does r² change, and how does multiplying or dividing the denominator affect the size of the fraction?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_032",
+    "topic": "Electrostatics",
+    "context_chunk": "The electric field is the force per unit positive test charge: E = F/q₀. Field lines point away from positive charges and toward negative charges.",
+    "student_question": "Which way do electric field lines point around a negative charge?",
+    "ideal_socratic_response": "Electric field is defined as the force on a positive test charge — if you placed a small positive charge near this negative charge, which direction would it be pushed or pulled, and what does that tell you about the field direction?",
+    "hint_level": 0,
+    "misconception_addressed": "efield_direction_negative_charge"
+  },
+  {
+    "id": "gd_033",
+    "topic": "Electrostatics",
+    "context_chunk": "Gauss's law states that the total electric flux through a closed surface equals the enclosed charge divided by ε₀: Φ = Q_enc/ε₀. The choice of Gaussian surface is key.",
+    "student_question": "How do I use Gauss's law to find the electric field inside a uniformly charged sphere?",
+    "ideal_socratic_response": "Before writing any equation, think about what symmetry this charge distribution has — and what shape of imaginary closed surface would let you exploit that symmetry so that E is constant and perpendicular everywhere on the surface?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_034",
+    "topic": "Electrostatics",
+    "context_chunk": "The capacitance of a parallel-plate capacitor is C = ε₀A/d. Inserting a dielectric increases capacitance by factor κ (relative permittivity).",
+    "student_question": "Why does inserting a dielectric increase the capacitance of a capacitor?",
+    "ideal_socratic_response": "Think about what happens to the molecules inside the dielectric material when you place it in an electric field — if those molecules align and partially oppose the field, how does that affect the voltage across the plates for the same stored charge?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_035",
+    "topic": "Electrostatics",
+    "context_chunk": "Electric potential V at a point is work done per unit positive charge to bring it from infinity: V = kQ/r. Potential is a scalar; electric field is a vector.",
+    "student_question": "Two equal positive charges are placed at the two ends of a rod. What is the electric potential at the midpoint?",
+    "ideal_socratic_response": "Electric potential is a scalar — unlike electric field, it has no direction. What does that mean about how you combine the potentials from each charge at the midpoint — do you add them as vectors or simply as numbers?",
+    "hint_level": 0,
+    "misconception_addressed": "electric_potential_equals_PE"
+  },
+  {
+    "id": "gd_036",
+    "topic": "Current Electricity",
+    "context_chunk": "Ohm's law states V = IR for a conductor at constant temperature. Resistance depends on resistivity, length, and cross-sectional area: R = ρL/A.",
+    "student_question": "A wire is stretched to twice its length. How does its resistance change?",
+    "ideal_socratic_response": "When you stretch the wire, two things change at once — think about what happens to the length and to the thickness (cross-sectional area) when the total volume of wire stays the same. How does each change affect R = ρL/A?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_037",
+    "topic": "Current Electricity",
+    "context_chunk": "Kirchhoff's current law (KCL): at any junction, the sum of currents entering equals the sum leaving. Kirchhoff's voltage law (KVL): the sum of voltage changes around any closed loop is zero.",
+    "student_question": "How do I apply KVL to find the current in a complex circuit with two batteries?",
+    "ideal_socratic_response": "Before writing any equations, can you trace a closed loop in your circuit and tell me — as you walk around that loop, what sign do you assign to a battery you cross from minus to plus, versus one you cross from plus to minus?",
+    "hint_level": 0,
+    "misconception_addressed": "kvl_sign_convention_error"
+  },
+  {
+    "id": "gd_038",
+    "topic": "Current Electricity",
+    "context_chunk": "In a Wheatstone bridge at balance, no current flows through the galvanometer. The balance condition is P/Q = R/S, where P, Q, R, S are the four resistances.",
+    "student_question": "What condition must hold for a Wheatstone bridge to be balanced?",
+    "ideal_socratic_response": "At balance, the galvanometer reads zero — meaning both ends of the galvanometer are at the same potential. Can you write an expression for the potential at each of those two junction points and set them equal to each other?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_039",
+    "topic": "Current Electricity",
+    "context_chunk": "A real cell has internal resistance r. Terminal voltage V = ε - Ir when delivering current I. The terminal voltage is less than the EMF because some voltage is dropped internally.",
+    "student_question": "Why does the terminal voltage of a battery drop when a large current is drawn?",
+    "ideal_socratic_response": "Think of the battery like a water pump with a narrow pipe inside it — even if the pump is strong, what happens to the pressure available at the outlet if the pipe inside causes a large pressure drop?",
+    "hint_level": 0,
+    "misconception_addressed": "internal_resistance_adds_voltage"
+  },
+  {
+    "id": "gd_040",
+    "topic": "Current Electricity",
+    "context_chunk": "Power dissipated in a resistor is P = I²R = V²/R = IV. The energy dissipated appears as heat. For maximum power transfer, the load resistance must equal the source's internal resistance.",
+    "student_question": "Which dissipates more power: a 100 Ω or a 200 Ω resistor connected to the same 10 V supply?",
+    "ideal_socratic_response": "Both resistors are connected to the same voltage — can you write down the power formula that uses voltage and resistance directly, and then think about what happens to P as R gets larger?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_041",
+    "topic": "Waves",
+    "context_chunk": "The principle of superposition states that when two waves overlap, the resultant displacement is the algebraic sum of individual displacements. This leads to constructive and destructive interference.",
+    "student_question": "Two waves of the same frequency and amplitude travel in the same direction. Under what condition do they reinforce each other?",
+    "ideal_socratic_response": "Think of two people pushing a swing — if both push at exactly the right moment (in step with each other), does the swing go higher? What does 'in step' translate to in terms of the phase difference between two waves?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_042",
+    "topic": "Waves",
+    "context_chunk": "In a standing wave, nodes are points of zero displacement and antinodes are points of maximum displacement. Adjacent nodes are separated by half a wavelength.",
+    "student_question": "A string fixed at both ends vibrates in its second harmonic. How many nodes does it have?",
+    "ideal_socratic_response": "The string is fixed at both ends so it can't move there — those points must be nodes. Now the second harmonic has one extra loop compared to the fundamental. Can you sketch what that looks like and count all the points that never move?",
+    "hint_level": 0,
+    "misconception_addressed": "node_maximum_displacement"
+  },
+  {
+    "id": "gd_043",
+    "topic": "Waves",
+    "context_chunk": "The Doppler effect causes an apparent change in frequency when the source or observer moves. When approaching, frequency appears higher; when receding, lower.",
+    "student_question": "An ambulance siren sounds higher in pitch as it approaches you. Why?",
+    "ideal_socratic_response": "Imagine the siren emits one sound wave crest every second — if the ambulance is moving toward you, does each successive crest start from a closer position to you than the last one, and how does that affect the distance between crests reaching your ear?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_044",
+    "topic": "Waves",
+    "context_chunk": "Resonance occurs when the frequency of a driving force matches the natural frequency of a system, leading to large amplitude oscillations.",
+    "student_question": "Why do soldiers break step when marching across a bridge?",
+    "ideal_socratic_response": "Have you ever pushed a swing and noticed that small pushes at the right rhythm can make it swing very high? What would happen to a bridge if the marching frequency happened to match the bridge's own natural frequency of vibration?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_045",
+    "topic": "Waves",
+    "context_chunk": "Sound intensity I = P/A decreases with distance as I ∝ 1/r² for a point source (inverse square law). Intensity level in decibels: β = 10 log(I/I₀).",
+    "student_question": "If you double the distance from a loudspeaker, what happens to the sound intensity?",
+    "ideal_socratic_response": "Think of the sound energy spreading out in all directions like an expanding balloon — the same total power must be spread over a larger surface area as you move farther away. How does the surface area of a sphere change when you double its radius?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_046",
+    "topic": "Thermodynamics",
+    "context_chunk": "The first law of thermodynamics is ΔU = Q - W, where ΔU is change in internal energy, Q is heat added to the system, and W is work done by the system.",
+    "student_question": "In an isothermal expansion of an ideal gas, does the internal energy change?",
+    "ideal_socratic_response": "For an ideal gas, internal energy depends only on temperature — so if the temperature is constant during an isothermal process, what can you conclude about ΔU, and then what must Q equal from the first law?",
+    "hint_level": 0,
+    "misconception_addressed": "isothermal_means_no_heat"
+  },
+  {
+    "id": "gd_047",
+    "topic": "Thermodynamics",
+    "context_chunk": "In an adiabatic process, no heat is exchanged with the surroundings (Q = 0). The gas still does work; this work comes at the expense of internal energy, so temperature changes.",
+    "student_question": "Why does air get hot when a bicycle tyre pump is used rapidly?",
+    "ideal_socratic_response": "When you compress air quickly, there's no time for heat to escape — so the process is nearly adiabatic. If Q = 0 but the gas is compressed (work done on it), what does the first law say must happen to the internal energy and therefore the temperature?",
+    "hint_level": 0,
+    "misconception_addressed": "isothermal_means_no_heat"
+  },
+  {
+    "id": "gd_048",
+    "topic": "Thermodynamics",
+    "context_chunk": "The Carnot efficiency η = 1 - T_cold/T_hot gives the maximum possible efficiency of any heat engine operating between two temperatures. No real engine can exceed Carnot efficiency.",
+    "student_question": "Can a heat engine ever be 100% efficient?",
+    "ideal_socratic_response": "The Carnot formula says η = 1 - T_cold/T_hot — for efficiency to reach 1, what would T_cold need to be? Is that temperature physically achievable, and what does the third law of thermodynamics say about it?",
+    "hint_level": 0,
+    "misconception_addressed": "entropy_always_increases_subsystem"
+  },
+  {
+    "id": "gd_049",
+    "topic": "Thermodynamics",
+    "context_chunk": "The ideal gas law PV = nRT connects pressure, volume, amount, and temperature. For a fixed amount of gas, any two of these variables can change while the others adjust.",
+    "student_question": "A sealed gas cylinder is left in the sun. The pressure increases. Why?",
+    "ideal_socratic_response": "Imagine the gas molecules as tiny balls bouncing off the cylinder walls — if the temperature rises, what happens to the average speed of those balls, and how does that change the force they exert each time they hit the wall?",
+    "hint_level": 0,
+    "misconception_addressed": null
+  },
+  {
+    "id": "gd_050",
+    "topic": "Thermodynamics",
+    "context_chunk": "When a gas expands, it does positive work on its surroundings: W = PΔV for constant pressure. When compressed, work is done on the gas (negative W from the gas's perspective).",
+    "student_question": "In a compression stroke of an engine, is the work done by the gas positive or negative?",
+    "ideal_socratic_response": "Think about what's happening physically — the piston is pushing inward, compressing the gas. From the gas's point of view, is its volume increasing or decreasing, and what sign does that give to W = PΔV?",
+    "hint_level": 0,
+    "misconception_addressed": "work_sign_by_vs_on_gas"
+  }
+]

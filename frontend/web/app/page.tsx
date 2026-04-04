@@ -6,8 +6,9 @@ import { motion } from 'framer-motion'
 import { MessageCircle, Target, Timer, BarChart3, ChevronRight, Sparkles } from 'lucide-react'
 import Sidebar from '@/components/Sidebar'
 import { apiGet } from '@/lib/api'
-import { TEST_STUDENT_ID } from '@/lib/constants'
 import { StudentGenome } from '@/lib/types'
+import AuthGuard from '@/components/AuthGuard'
+import { useAuth } from '@/lib/auth'
 
 // ── Animation variants ────────────────────────────────────────────────────────
 
@@ -97,10 +98,11 @@ const ACTION_CARDS = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const { studentId } = useAuth()
   const [genome, setGenome] = useState<StudentGenome | null>(null)
 
   useEffect(() => {
-    apiGet(`/student/${TEST_STUDENT_ID}`).then(setGenome).catch(console.error)
+    apiGet(`/student/${studentId}`).then(setGenome).catch(console.error)
   }, [])
 
   const weakest   = genome?.weakest_concepts ?? []
@@ -110,6 +112,7 @@ export default function Home() {
   const mentor = genome ? getMentorMode(genome) : null
 
   return (
+    <AuthGuard>
     <div className="flex h-full">
       <Sidebar />
       <main className="md:ml-[80px] flex-1 overflow-y-auto">
@@ -249,5 +252,6 @@ export default function Home() {
         </div>
       </main>
     </div>
+    </AuthGuard>
   )
 }

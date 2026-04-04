@@ -24,6 +24,7 @@ import json
 import logging
 import random
 import re
+import time
 import uuid
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional
 
@@ -49,7 +50,15 @@ from app.services.doubt.prompts import (
     STUDENT_RESPONSE_ANALYSIS_PROMPT,
     SYSTEM_PROMPT_FORCED_ATTEMPT,
     TUTOR_SYSTEM_PROMPT,
+    build_system_prompt,
+    render_personalization,
 )
+from app.services.memory.context import get_persona_profile
+from app.services.policy.engine import select_pedagogy
+from app.services.doubt.misconceptions import check_for_misconception
+from app.services.eval.judge import score_response
+from app.services.eval.logger import log_scaffolding_score
+from app.services.cache.semantic_cache import cache_response, get_cached_response
 from app.services.mastery import update_concept_mastery
 from app.services.rag.retriever import Retriever
 
@@ -125,6 +134,49 @@ class SocraticEngine:
 
     # ── public API ────────────────────────────────────────────────────────────
 
+    async def extract_question_from_image(self, image_url: str) -> str:
+        """
+        Vision AI — extract the physics question text from an image URL.
+
+        Uses GPT-4o (not gpt-4o-mini) with vision capability.
+        Returns the extracted question as plain text with LaTeX where appropriate.
+        Raises RuntimeError on failure.
+        """
+        try:
+            resp = await asyncio.wait_for(
+                self._client.chat.completions.create(
+                    model="gpt-4o",  # vision requires full GPT-4o, not mini
+                    max_tokens=500,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": image_url, "detail": "high"},
+                                },
+                                {
+                                    "type": "text",
+                                    "text": (
+                                        "Extract the physics question(s) from this image. "
+                                        "Return only the question text. "
+                                        "Represent mathematical expressions in LaTeX using $...$ for inline "
+                                        "and $$...$$ for block equations. "
+                                        "If multiple questions appear, include all of them separated by newlines."
+                                    ),
+                                },
+                            ],
+                        }
+                    ],
+                ),
+                timeout=10.0,
+            )
+            return resp.choices[0].message.content.strip()
+        except asyncio.TimeoutError as exc:
+            raise RuntimeError("Vision AI timed out (10s)") from exc
+        except Exception as exc:
+            raise RuntimeError(f"Vision AI failed: {exc}") from exc
+
     async def start_session(
         self,
         question: str,
@@ -132,6 +184,7 @@ class SocraticEngine:
         subject: str = "Physics",
         study_session_id: Optional[str] = None,
         locked_topic: Optional[str] = None,
+        student_context: str = "",
     ) -> dict:
         """
         Start a new doubt-resolution session and return the Socratic response.
@@ -151,6 +204,62 @@ class SocraticEngine:
         )
         if student_row is None:
             raise ValueError(f"Student not found: {student_id}")
+
+        # ── 0b. Semantic cache lookup (hint_level=0 only) ─────────────────────
+        # Compute query embedding once — reused for cache AND skips LLM if hit.
+        # Cache is student-agnostic: same question → same Socratic opener.
+        # Never cache: only first Socratic question (not follow-up hints).
+        _query_embedding: list = []
+        try:
+            loop = asyncio.get_running_loop()
+            _query_embedding = await loop.run_in_executor(
+                None, self._retriever._embed.embed_single, question
+            )
+            cached = await get_cached_response(_query_embedding)
+            if cached is not None:
+                # Cache hit — re-create a session record so the student's genome
+                # pipeline still fires normally, but skip the expensive RAG + LLM.
+                logger.info(
+                    "Semantic cache HIT for student=%s — skipping RAG + LLM", student_id
+                )
+                # We still need a session_id — create a lightweight session row.
+                cached_response_text = cached.get("response", "")
+                cached_analysis      = cached.get("analysis", {})
+                cached_mentor_mode   = cached.get("mentor_mode", "COACH")
+                cached_concept_ids   = cached.get("concepts_involved", [])
+
+                cached_session_id = await self._create_session(
+                    student_id=student_id,
+                    question=question,
+                    subject=subject,
+                    analysis=cached_analysis,
+                    socratic_response=cached_response_text,
+                    concept_ids=cached_concept_ids,
+                )
+                await self._log_event(
+                    session_id=cached_session_id,
+                    event_type="question_asked",
+                    payload={
+                        "question":    question,
+                        "concept_ids": cached_concept_ids,
+                        "mentor_mode": cached_mentor_mode,
+                        "cache_hit":   True,
+                    },
+                )
+                return {
+                    "session_id":              str(cached_session_id),
+                    "analysis":                cached_analysis,
+                    "response":                cached_response_text,
+                    "mentor_mode":             cached_mentor_mode,
+                    "concepts_involved":       cached_concept_ids,
+                    "retrieved_context_count": cached.get("retrieved_context_count", 0),
+                    "out_of_scope":            cached.get("out_of_scope", False),
+                    "cache_hit":               True,
+                }
+        except Exception as cache_exc:
+            logger.warning(
+                "Semantic cache lookup failed (non-fatal): %s", cache_exc
+            )
 
         # ── 1. Get rich student context ───────────────────────────────────────
         logger.info("Loading student context for %s …", student_id)
@@ -228,7 +337,21 @@ class SocraticEngine:
         if study_session_id:
             session_memory = await self.get_session_memory(study_session_id)
 
-        # ── 8. Generate personalised Socratic response ────────────────────────
+        # ── 8. Policy engine — select pedagogy for this student + topic ──────────
+        try:
+            import dataclasses
+            persona_profile = await get_persona_profile(student_id, self._pool)
+            pedagogy_config = select_pedagogy(persona_profile, analysis.get("topic", ""), hint_level=0)
+            personalization_block = render_personalization(pedagogy_config)
+            active_system_prompt = build_system_prompt(personalization_block)
+            # Store in analysis for reference (persona_profile re-fetched in get_hint)
+            analysis["persona_profile"] = persona_profile
+            analysis["pedagogy_config"] = dataclasses.asdict(pedagogy_config)
+        except Exception as exc:
+            logger.warning("Policy engine failed (non-fatal), using default prompt: %s", exc)
+            active_system_prompt = TUTOR_SYSTEM_PROMPT
+
+        # ── 9. Generate personalised Socratic response ────────────────────────
         logger.info("Generating Socratic response (mentor=%s) …", mentor_mode)
         socratic_response = await self._call_llm(
             SOCRATIC_QUESTION_PROMPT.format(
@@ -243,10 +366,11 @@ class SocraticEngine:
                 analysis=json.dumps(analysis, indent=2),
                 context=rag["context_text"],
                 session_memory=session_memory,
+                student_context=student_context,
             ),
             max_tokens=1024,
             temperature=0.7,
-            system_prompt=TUTOR_SYSTEM_PROMPT,
+            system_prompt=active_system_prompt,
         )
 
         if out_of_scope:
@@ -256,7 +380,7 @@ class SocraticEngine:
                 "study, refer to the relevant chapter.\n\n" + socratic_response
             )
 
-        # ── 9. Persist doubt_session ──────────────────────────────────────────
+        # ── 10. Persist doubt_session ─────────────────────────────────────────
         session_id = await self._create_session(
             student_id=student_id,
             question=question,
@@ -266,7 +390,7 @@ class SocraticEngine:
             concept_ids=concept_ids,
         )
 
-        # ── 10. Log session event ─────────────────────────────────────────────
+        # ── 11. Log session event ─────────────────────────────────────────────
         await self._log_event(
             session_id=session_id,
             event_type="question_asked",
@@ -279,7 +403,8 @@ class SocraticEngine:
 
         logger.info("Session %s created for student %s (mentor=%s)",
                     session_id, student_id, mentor_mode)
-        return {
+
+        result = {
             "session_id": str(session_id),
             "analysis": analysis,
             "response": socratic_response,
@@ -287,7 +412,274 @@ class SocraticEngine:
             "concepts_involved": concept_ids,
             "retrieved_context_count": rag["chunk_count"],
             "out_of_scope": out_of_scope,
+            "cache_hit": False,
         }
+
+        # ── 12. Store in semantic cache (background, never blocks response) ────
+        # Only cache hint_level=0 Socratic openers. Student-agnostic: the same
+        # question will get the same cached opener regardless of who asks.
+        if _query_embedding:
+            _cache_payload = {
+                "response":               socratic_response,
+                "analysis":               analysis,
+                "mentor_mode":            mentor_mode,
+                "concepts_involved":      concept_ids,
+                "retrieved_context_count": rag["chunk_count"],
+                "out_of_scope":           out_of_scope,
+            }
+            asyncio.create_task(cache_response(_query_embedding, _cache_payload))
+
+        return result
+
+    async def start_session_stream(
+        self,
+        question: str,
+        student_id: str,
+        subject: str = "Physics",
+        study_session_id: Optional[str] = None,
+        locked_topic: Optional[str] = None,
+        student_context: str = "",
+    ):
+        """
+        Streaming variant of start_session().
+
+        Yields SSE-formatted dicts:
+            {"token": str, "done": False}             — each LLM token
+            {"token": "", "done": True, **metadata}   — final event with session_id etc.
+            {"error": str, "done": True}              — on any fatal error
+
+        The LaTeX sanitizer cannot run token-by-token; it runs on the full
+        accumulated response and is noted in the final metadata event.
+
+        Background tasks (genome update, session log) fire as normal after
+        the stream completes.
+
+        Cache semantics are identical to start_session():
+        - Cache is checked before the LLM; a hit is returned as a single
+          non-streaming response (all tokens at once, done=True immediately).
+        - A cache miss results in a streamed response that is stored after.
+        """
+        try:
+            # ── 0. Validate student ─────────────────────────────────────────────
+            try:
+                student_uuid = uuid.UUID(student_id)
+            except ValueError as exc:
+                yield {"error": f"Invalid student ID: {student_id}", "done": True}
+                return
+
+            student_row = await self._pool.fetchrow(
+                "SELECT id FROM students WHERE id = $1", student_uuid
+            )
+            if student_row is None:
+                yield {"error": f"Student not found: {student_id}", "done": True}
+                return
+
+            # ── 0b. Semantic cache check ────────────────────────────────────────
+            _query_embedding: list = []
+            try:
+                loop = asyncio.get_running_loop()
+                _query_embedding = await loop.run_in_executor(
+                    None, self._retriever._embed.embed_single, question
+                )
+                cached = await get_cached_response(_query_embedding)
+                if cached is not None:
+                    cached_text = cached.get("response", "")
+                    cached_analysis = cached.get("analysis", {})
+                    cached_mentor_mode = cached.get("mentor_mode", "COACH")
+                    cached_concept_ids = cached.get("concepts_involved", [])
+                    logger.info(
+                        "Semantic cache HIT (stream) for student=%s", student_id
+                    )
+                    cached_session_id = await self._create_session(
+                        student_id=student_id,
+                        question=question,
+                        subject=subject,
+                        analysis=cached_analysis,
+                        socratic_response=cached_text,
+                        concept_ids=cached_concept_ids,
+                    )
+                    await self._log_event(
+                        session_id=cached_session_id,
+                        event_type="question_asked",
+                        payload={"question": question, "cache_hit": True},
+                    )
+                    # Yield full response in one token then done
+                    yield {"token": cached_text, "done": False}
+                    yield {
+                        "token": "",
+                        "done": True,
+                        "session_id": str(cached_session_id),
+                        "analysis": cached_analysis,
+                        "mentor_mode": cached_mentor_mode,
+                        "concepts_involved": cached_concept_ids,
+                        "out_of_scope": cached.get("out_of_scope", False),
+                        "cache_hit": True,
+                    }
+                    return
+            except Exception as cache_exc:
+                logger.warning("Stream cache lookup failed (non-fatal): %s", cache_exc)
+
+            # ── 1. Student context + mentor mode ────────────────────────────────
+            student_ctx = await self._get_student_context(student_id)
+            mentor_mode = self._detect_mentor_mode(student_ctx)
+
+            # ── 2. Problem analysis ─────────────────────────────────────────────
+            if locked_topic:
+                analysis = {
+                    "subject": subject, "topic": locked_topic,
+                    "subtopic": locked_topic, "concepts_required": [],
+                    "difficulty": 5, "problem_type": "conceptual",
+                    "key_insight": "", "common_misconceptions": [],
+                    "brief_analysis": question,
+                }
+            else:
+                analysis_raw = await self._call_llm(
+                    PROBLEM_ANALYSIS_PROMPT.format(
+                        question=question,
+                        overall_mastery=student_ctx["overall_mastery"],
+                        concept_mastery_details=student_ctx["weak_areas"],
+                        recent_errors=student_ctx["recent_errors"],
+                        session_count=student_ctx["session_count"],
+                    ),
+                    max_tokens=600, temperature=0.1, model_tier="cheap",
+                )
+                try:
+                    analysis = _parse_json_response(analysis_raw)
+                except (ValueError, json.JSONDecodeError):
+                    analysis = {
+                        "subject": subject, "topic": "Physics", "subtopic": "General",
+                        "concepts_required": [], "difficulty": 5,
+                        "problem_type": "conceptual", "key_insight": "",
+                        "common_misconceptions": [], "brief_analysis": question,
+                    }
+
+            analysis["mentor_mode"] = mentor_mode
+
+            # ── 3+4. RAG + concept IDs ──────────────────────────────────────────
+            analysis_topic = analysis.get("topic", "")
+            rag, concept_ids = await asyncio.gather(
+                get_rag_context(self._retriever, question, subject, analysis_topic),
+                self._retriever.get_related_concepts(question),
+            )
+
+            # ── 5. Scope check ──────────────────────────────────────────────────
+            out_of_scope = not await self._is_in_scope(question=question, analysis=analysis)
+            analysis["out_of_scope"] = out_of_scope
+
+            # ── 6+7. Genome injection + session memory ──────────────────────────
+            genome_injection = await get_student_mastery_str(
+                self._pool, student_id, analysis_topic,
+            )
+            session_memory = "(no prior context in this session)"
+            if study_session_id:
+                session_memory = await self.get_session_memory(study_session_id)
+
+            # ── 8. Policy engine ────────────────────────────────────────────────
+            try:
+                import dataclasses
+                persona_profile = await get_persona_profile(student_id, self._pool)
+                pedagogy_config = select_pedagogy(
+                    persona_profile, analysis.get("topic", ""), hint_level=0
+                )
+                personalization_block = render_personalization(pedagogy_config)
+                active_system_prompt = build_system_prompt(personalization_block)
+                analysis["persona_profile"] = persona_profile
+                analysis["pedagogy_config"] = dataclasses.asdict(pedagogy_config)
+            except Exception as exc:
+                logger.warning("Policy engine (stream) failed (non-fatal): %s", exc)
+                active_system_prompt = TUTOR_SYSTEM_PROMPT
+
+            # ── 9. Build messages for streaming LLM call ─────────────────────
+            socratic_prompt = SOCRATIC_QUESTION_PROMPT.format(
+                student_name=student_ctx["student_name"],
+                overall_mastery=student_ctx["overall_mastery"],
+                genome_injection=genome_injection,
+                weak_areas=student_ctx["weak_areas"],
+                recent_errors=student_ctx["recent_errors"],
+                session_count=student_ctx["session_count"],
+                mentor_mode=mentor_mode,
+                question=question,
+                analysis=json.dumps(analysis, indent=2),
+                context=rag["context_text"],
+                session_memory=session_memory,
+                student_context=student_context,
+            )
+            messages: List[dict] = []
+            if active_system_prompt:
+                messages.append({"role": "system", "content": active_system_prompt})
+            messages.append({"role": "user", "content": socratic_prompt})
+
+            # ── 10. Stream the LLM response ─────────────────────────────────────
+            stream = await self._client.chat.completions.create(
+                model=_get_model("quality"),
+                max_tokens=1024,
+                temperature=0.7,
+                messages=messages,
+                stream=True,
+            )
+            accumulated = ""
+            async for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                if delta:
+                    accumulated += delta
+                    yield {"token": delta, "done": False}
+
+            # ── 10b. Out-of-scope prefix + LaTeX sanitizer ───────────────────────
+            if out_of_scope:
+                accumulated = (
+                    "⚠️ This question appears to be outside the Physics syllabus "
+                    "(NCERT Class 11 & 12). I'll do my best to help, but for detailed "
+                    "study, refer to the relevant chapter.\n\n" + accumulated
+                )
+            socratic_response = self._sanitize_latex(accumulated)
+
+            # ── 11. Persist session + log event ─────────────────────────────────
+            session_id = await self._create_session(
+                student_id=student_id,
+                question=question,
+                subject=subject,
+                analysis=analysis,
+                socratic_response=socratic_response,
+                concept_ids=concept_ids,
+            )
+            await self._log_event(
+                session_id=session_id,
+                event_type="question_asked",
+                payload={
+                    "question": question,
+                    "concept_ids": concept_ids,
+                    "mentor_mode": mentor_mode,
+                },
+            )
+
+            # ── 12. Cache response (background) ─────────────────────────────────
+            if _query_embedding:
+                asyncio.create_task(cache_response(_query_embedding, {
+                    "response": socratic_response,
+                    "analysis": analysis,
+                    "mentor_mode": mentor_mode,
+                    "concepts_involved": concept_ids,
+                    "retrieved_context_count": rag["chunk_count"],
+                    "out_of_scope": out_of_scope,
+                }))
+
+            # ── Final metadata event ─────────────────────────────────────────────
+            yield {
+                "token": "",
+                "done": True,
+                "session_id": str(session_id),
+                "analysis": analysis,
+                "mentor_mode": mentor_mode,
+                "concepts_involved": concept_ids,
+                "retrieved_context_count": rag["chunk_count"],
+                "out_of_scope": out_of_scope,
+                "cache_hit": False,
+                "sanitized_response": socratic_response,
+            }
+
+        except Exception as exc:
+            logger.error("start_session_stream failed: %s", exc)
+            yield {"error": str(exc), "done": True}
 
     async def get_hint(
         self,
@@ -366,6 +758,50 @@ class SocraticEngine:
         if student_response and student_response.strip():
             history.append({"role": "student", "content": student_response})
 
+        # ── 3b. Misconception check ───────────────────────────────────────────
+        # Run before hint level is incremented. Never fires at hint_level >= 3
+        # (forced-attempt stage takes full priority). Pure keyword matching — no LLM.
+        if student_response and student_response.strip() and current_level < 3:
+            _topic = stored_analysis.get("topic", "")
+            _mc = check_for_misconception(student_response, _topic)
+            if _mc is not None:
+                logger.info(
+                    "Misconception detected: id=%s session=%s", _mc.id, session_id
+                )
+                correction = self._sanitize_latex(_mc.correction_prompt)
+                history.append({"role": "tutor", "content": correction})
+                # Persist conversation with correction — keep current_level unchanged
+                await self._pool.execute(
+                    """
+                    UPDATE doubt_sessions
+                    SET conversation_history = $1::jsonb,
+                        analysis             = $2::jsonb
+                    WHERE id = $3
+                    """,
+                    json.dumps(history),
+                    json.dumps(stored_analysis),
+                    uuid.UUID(session_id),
+                )
+                await self._log_event(
+                    session_id=uuid.UUID(session_id),
+                    event_type="misconception_detected",
+                    payload={"misconception_id": _mc.id, "hint_level": current_level},
+                )
+                return {
+                    "session_id": session_id,
+                    "hint_level": current_level,
+                    "hint": correction,
+                    "response": correction,
+                    "is_full_solution": False,
+                    "is_forced_attempt": False,
+                    "is_misconception_correction": True,
+                    "misconception_id": _mc.id,
+                    "resolved": False,
+                    "verification": None,
+                    "mentor_mode": mentor_mode,
+                    "response_analysis": response_analysis,
+                }
+
         # ── 4. Determine new hint level ───────────────────────────────────────
         # Progressive disclosure gate: jump_to_full is ONLY honoured if the
         # student has already reached hint level 3 (forced attempt).  If they
@@ -424,6 +860,19 @@ class SocraticEngine:
                 get_student_mastery_str(self._pool, str(session_student_id), analysis_topic),
             )
 
+        # Extract max cosine similarity from retrieved chunks (None at level 3)
+        _max_similarity: Optional[float] = None
+        if new_level != 3 and rag.get("chunks"):
+            _max_similarity = max(
+                (float(c.get("similarity_score", 0.0)) for c in rag["chunks"]),
+                default=0.0,
+            )
+            if _max_similarity < 0.5:
+                logger.warning(
+                    "Low retrieval confidence: similarity=%.3f for query: %.50s",
+                    _max_similarity, problem_text,
+                )
+
         # ── 7. Format conversation and student response for prompts ───────────
         conversation_text = self._format_conversation(history)
         student_response_text = (student_response or "").strip() or "(no response provided)"
@@ -461,33 +910,62 @@ class SocraticEngine:
                 context=rag["context_text"],
             )
 
-        # ── 9. Generate hint via LLM ──────────────────────────────────────────
+        # ── 9. Policy engine — re-fetch persona + rebuild system prompt ───────
+        # Re-fetch persona_profile directly from DB (never read from stored_analysis
+        # to avoid stale data if infer_scaffolding_level ran since session start).
+        hint_active_system_prompt = SYSTEM_PROMPT_FORCED_ATTEMPT  # default for level 3
+        hint_pedagogy_config = None
+        if new_level != 3:
+            try:
+                import dataclasses
+                hint_persona_profile = await get_persona_profile(str(session_student_id), self._pool)
+                hint_pedagogy_config = select_pedagogy(
+                    hint_persona_profile,
+                    stored_analysis.get("topic", ""),
+                    hint_level=new_level,
+                )
+                hint_personalization_block = render_personalization(hint_pedagogy_config)
+                hint_active_system_prompt = build_system_prompt(hint_personalization_block)
+            except Exception as exc:
+                logger.warning("Policy engine in get_hint failed (non-fatal): %s", exc)
+                hint_active_system_prompt = TUTOR_SYSTEM_PROMPT
+
+        # Append max_concepts constraint for HIGH/MEDIUM scaffolding (not LOW = max 5)
+        if hint_pedagogy_config is not None and hint_pedagogy_config.max_concepts < 5:
+            prompt += (
+                f"\n\nRESPONSE CONSTRAINT: Cover at most "
+                f"{hint_pedagogy_config.max_concepts} concept(s) in this response."
+            )
+
+        # ── 10. Generate hint via LLM ─────────────────────────────────────────
         # Hint level 3 uses SYSTEM_PROMPT_FORCED_ATTEMPT (stripped proctor persona)
         # instead of TUTOR_SYSTEM_PROMPT to prevent persona override.
-        active_system_prompt = SYSTEM_PROMPT_FORCED_ATTEMPT if new_level == 3 else TUTOR_SYSTEM_PROMPT
+        active_system_prompt = hint_active_system_prompt
         logger.info(
             "Generating hint level %d for session %s (full=%s, mentor=%s, system=%s)",
             new_level, session_id, is_full_solution, mentor_mode,
             "FORCED_ATTEMPT" if new_level == 3 else "TUTOR",
         )
+        _llm_t0 = time.monotonic()
         hint_response = await self._call_llm(
             prompt,
             max_tokens=256 if new_level == 3 else (2048 if is_full_solution else 1024),
             temperature=0.3 if new_level == 3 else 0.5,
             system_prompt=active_system_prompt,
         )
+        _response_latency_ms = int((time.monotonic() - _llm_t0) * 1000)
 
-        # ── 9b. "Nice Try" prefix — intercepted early jump_to_full ────────────
+        # ── 10b. "Nice Try" prefix — intercepted early jump_to_full ─────────────
         if nice_try_intercepted:
             hint_response = (
                 "Nice try, but I'm not going to just give you the answer! "
                 "Let's work through this step-by-step.\n\n" + hint_response
             )
 
-        # ── 9c. LaTeX post-processing sanitizer ───────────────────────────────
+        # ── 10c. LaTeX post-processing sanitizer ──────────────────────────────
         hint_response = self._sanitize_latex(hint_response)
 
-        # ── 10. Verify full solution ───────────────────────────────────────────
+        # ── 11. Verify full solution ───────────────────────────────────────────
         verification_result: Optional[dict] = None
         if is_full_solution and self._verifier is not None:
             try:
@@ -551,6 +1029,33 @@ class SocraticEngine:
                 "verification": verification_result,
             },
         )
+
+        # ── 15. Fire Judge LLM as background task (never blocks student response) ──
+        # Scores Socratic quality 0/1/2 and writes back to session_events.
+        # Skipped at hint_level 3 (forced attempt) — no Socratic content to score.
+        if new_level < 3:
+            _judge_pool = self._pool
+            _judge_session_id = session_id
+            _judge_question = problem_text
+            _judge_response = hint_response
+            _judge_similarity = _max_similarity
+            _judge_latency = _response_latency_ms
+
+            async def _run_judge() -> None:
+                try:
+                    result = await score_response(_judge_question, _judge_response)
+                    await log_scaffolding_score(
+                        session_id=_judge_session_id,
+                        score=result["score"],
+                        rationale=result.get("rationale", ""),
+                        db=_judge_pool,
+                        retrieval_similarity=_judge_similarity,
+                        response_latency_ms=_judge_latency,
+                    )
+                except Exception as exc:
+                    logger.warning("Background judge task failed (non-fatal): %s", exc)
+
+            asyncio.create_task(_run_judge())
 
         logger.info("Hint level %d delivered for session %s", new_level, session_id)
         return {

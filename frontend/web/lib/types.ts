@@ -48,6 +48,7 @@ export interface ChatMessage {
   id: string
   role: 'student' | 'tutor' | 'divider'
   content: string
+  isStreaming?: boolean   // true while SSE tokens are still arriving
   metadata?: {
     hint_level?: number
     analysis?: Record<string, unknown>
@@ -62,6 +63,9 @@ export interface ChatMessage {
     doubt_block_solved?: boolean
     is_forced_attempt?: boolean
     confidence?: 'low' | 'medium' | 'high'
+    image_url?: string   // Supabase Storage URL for images submitted via Vision AI
+    is_misconception_correction?: boolean
+    misconception_id?: string
   }
 }
 

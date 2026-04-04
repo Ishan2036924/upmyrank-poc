@@ -11,9 +11,10 @@ import uuid
 from collections import defaultdict
 from typing import Dict, List
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from app.middleware.auth import get_current_student_id
 from app.services.mastery import update_concept_mastery
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,11 @@ def _parse_student_uuid(student_id: str) -> uuid.UUID:
 # ── endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/{student_id}")
-async def get_student(student_id: str, request: Request):
+async def get_student(
+    student_id: str,
+    request: Request,
+    _: str = Depends(get_current_student_id),
+):
     """
     Return the full knowledge genome for a student.
 
@@ -155,6 +160,7 @@ async def update_mastery(
     student_id: str,
     body: MasteryUpdateRequest,
     request: Request,
+    _: str = Depends(get_current_student_id),
 ):
     """
     Update a student's mastery for one concept.

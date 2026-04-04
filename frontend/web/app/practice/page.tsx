@@ -8,8 +8,9 @@ import Sidebar from '@/components/Sidebar'
 import MathText from '@/components/MathText'
 import VerificationBadge from '@/components/VerificationBadge'
 import { apiGet, apiPost } from '@/lib/api'
-import { TEST_STUDENT_ID } from '@/lib/constants'
 import { Problem, SubmitResult, StudentGenome } from '@/lib/types'
+import AuthGuard from '@/components/AuthGuard'
+import { useAuth } from '@/lib/auth'
 
 const TOTAL_QUESTIONS = 5
 
@@ -20,6 +21,7 @@ interface QuestionResult {
 }
 
 export default function PracticePage() {
+  const { studentId } = useAuth()
   const [weakTopic, setWeakTopic] = useState<string>('')
   const [question, setQuestion] = useState<Problem | null>(null)
   const [answer, setAnswer] = useState('')
@@ -32,7 +34,7 @@ export default function PracticePage() {
   const [showAnswer, setShowAnswer] = useState(false)
 
   useEffect(() => {
-    apiGet(`/student/${TEST_STUDENT_ID}`)
+    apiGet(`/student/${studentId}`)
       .then((g: StudentGenome) => {
         const weakest = g.weakest_concepts[0]
         setWeakTopic(weakest?.subtopic ?? 'General')
@@ -65,7 +67,7 @@ export default function PracticePage() {
       const res: SubmitResult = await apiPost('/mock/submit', {
         problem_id: question.problem_id,
         answer: answer.trim(),
-        student_id: TEST_STUDENT_ID,
+        student_id: studentId,
       })
       setResult(res)
       setHistory((h) => [...h, { problem: question, result: res, answer }])
@@ -100,6 +102,7 @@ export default function PracticePage() {
 
   if (showSummary) {
     return (
+      <AuthGuard>
       <div className="flex h-screen">
         <Sidebar />
         <div className="md:ml-[80px] flex-1 overflow-y-auto">
@@ -160,10 +163,12 @@ export default function PracticePage() {
           </div>
         </div>
       </div>
+      </AuthGuard>
     )
   }
 
   return (
+    <AuthGuard>
     <div className="flex h-screen">
       <Sidebar />
       <div className="md:ml-[80px] flex-1 overflow-y-auto">
@@ -304,5 +309,6 @@ export default function PracticePage() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   )
 }

@@ -12,14 +12,19 @@ knowledge_chunks only has subject + chapter.
 import logging
 from collections import defaultdict
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
+
+from app.middleware.auth import get_current_student_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/taxonomy", tags=["taxonomy"])
 
 
 @router.get("")
-async def get_taxonomy(request: Request):
+async def get_taxonomy(
+    request: Request,
+    _: str = Depends(get_current_student_id),
+):
     """
     Return the full syllabus hierarchy as nested JSON:
 

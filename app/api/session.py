@@ -11,8 +11,16 @@ import logging
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+
+from app.middleware.auth import get_current_student_id
+
+from app.services.memory.summarizer import (
+    maybe_compress_profile,
+    summarize_session,
+    update_hot_context,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/session", tags=["session"])
@@ -35,12 +43,16 @@ class ResumeRequest(BaseModel):
 # ── endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/start")
-async def start_session(body: StartRequest, request: Request):
+async def start_session(
+    body: StartRequest,
+    request: Request,
+    current_student_id: str = Depends(get_current_student_id),
+):
     """Create a new study session for a student."""
     pool = request.app.state.db_pool
 
     try:
-        student_uuid = uuid.UUID(body.student_id)
+        student_uuid = uuid.UUID(current_student_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid student ID") from exc
 
@@ -65,7 +77,11 @@ async def start_session(body: StartRequest, request: Request):
 
 
 @router.post("/end")
-async def end_session(body: EndRequest, request: Request):
+async def end_session(
+    body: EndRequest,
+    request: Request,
+    _: str = Depends(get_current_student_id),
+):
     """End a study session — close open doubt blocks, fire summarizer."""
     pool = request.app.state.db_pool
     engine = request.app.state.socratic_engine
@@ -74,6 +90,16 @@ async def end_session(body: EndRequest, request: Request):
         session_uuid = uuid.UUID(body.study_session_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid session ID") from exc
+
+    # Fetch student_id (needed for memory update below)
+    session_row = await pool.fetchrow(
+        "SELECT student_id FROM study_sessions WHERE study_session_id = $1",
+        session_uuid,
+    )
+    if session_row is None:
+        raise HTTPException(status_code=404, detail="Session not found or already ended")
+
+    student_id = str(session_row["student_id"])
 
     # Mark session ended
     result = await pool.execute(
@@ -105,11 +131,30 @@ async def end_session(body: EndRequest, request: Request):
             engine.summarize_doubt_block(str(block["doubt_block_id"]))
         )
 
+    # ── Memory update: blocking summarize, then background compress ───────────
+    try:
+        summary = await summarize_session(body.study_session_id, pool)
+    except Exception as exc:
+        logger.error("summarize_session failed at session end: %s", exc)
+        summary = None
+
+    if summary:
+        try:
+            await update_hot_context(student_id, summary)
+        except Exception as exc:
+            logger.warning("update_hot_context failed (non-fatal): %s", exc)
+
+    asyncio.create_task(maybe_compress_profile(student_id, pool))
+
     return {"status": "ended", "study_session_id": body.study_session_id}
 
 
 @router.post("/resume")
-async def resume_session(body: ResumeRequest, request: Request):
+async def resume_session(
+    body: ResumeRequest,
+    request: Request,
+    _: str = Depends(get_current_student_id),
+):
     """Resume an existing study session — return full state for frontend hydration."""
     pool = request.app.state.db_pool
 
