@@ -2,15 +2,12 @@
 
 import { forwardRef, useState, useRef, KeyboardEvent } from 'react'
 import { Send, ImagePlus, X } from 'lucide-react'
-import { getSupabase } from '@/lib/supabase'
 
 interface Props {
   onSend: (text: string, imageUrl?: string) => void
   disabled?: boolean
   placeholder?: string
 }
-
-const BUCKET = 'doubt-images'
 
 const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
   function ChatInput({ onSend, disabled, placeholder }, forwardedRef) {
@@ -34,25 +31,19 @@ const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
 
       if (imageFile) {
         try {
-          const sb = getSupabase()
-          if (!sb) {
-            setUploadError('Image upload is not configured. Please contact support.')
-            setUploading(false)
-            return
-          }
-          const ext = imageFile.name.split('.').pop() ?? 'jpg'
-          const path = `${crypto.randomUUID()}.${ext}`
-          const { error } = await sb.storage
-            .from(BUCKET)
-            .upload(path, imageFile, { contentType: imageFile.type, upsert: false })
-
-          if (error) throw error
-
-          const { data: urlData } = sb.storage.from(BUCKET).getPublicUrl(path)
-          imageUrl = urlData.publicUrl
+          imageUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = (e) => {
+              const result = e.target?.result
+              if (typeof result === 'string') resolve(result)
+              else reject(new Error('Failed to read image'))
+            }
+            reader.onerror = () => reject(new Error('Failed to read image'))
+            reader.readAsDataURL(imageFile)
+          })
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err)
-          setUploadError(`Image upload failed: ${msg}`)
+          setUploadError(`Image read failed: ${msg}`)
           setUploading(false)
           return
         }

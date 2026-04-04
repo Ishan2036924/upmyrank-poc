@@ -27,8 +27,8 @@ router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 class OnboardingSubmitRequest(BaseModel):
     class_level: str                            # "11th" | "12th" | "dropper"
     physics_prev_marks: Optional[int] = None   # 0–100, nullable if 11th
-    easy_topics: List[str] = Field(default_factory=list, max_length=5)
-    hard_topics: List[str] = Field(default_factory=list, max_length=5)
+    easy_topics: List[str] = Field(default_factory=list, max_length=15)
+    hard_topics: List[str] = Field(default_factory=list, max_length=15)
     study_hours_per_day: float = Field(ge=0.5, le=16.0)
     exam_type: str                              # "JEE_MAINS" | "JEE_ADVANCED" | "NEET"
     exam_date: Optional[str] = None            # ISO date string "YYYY-MM-DD"
