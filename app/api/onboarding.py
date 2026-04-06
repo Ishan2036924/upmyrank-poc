@@ -162,7 +162,7 @@ async def submit_onboarding(
     persist to student_memory, mark onboarding_completed = TRUE.
     """
     pool          = request.app.state.db_pool
-    openai_client = request.app.state.socratic_engine._openai
+    openai_client = request.app.state.socratic_engine._client
 
     if body.class_level not in ("11th", "12th", "dropper"):
         raise HTTPException(status_code=400, detail="class_level must be 11th, 12th, or dropper")
