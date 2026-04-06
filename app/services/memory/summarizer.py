@@ -168,7 +168,7 @@ async def maybe_compress_profile(
     openai_client: Optional[openai.AsyncOpenAI] = None,
 ) -> None:
     """
-    Rewrite the student's compressed_profile every 5 sessions.
+    Rewrite the student's compressed_profile AND persona_profile every 5 sessions.
 
     BACKGROUND task — never block session end on this.
     Silently skips if not enough data or any failure occurs.
@@ -180,7 +180,10 @@ async def maybe_compress_profile(
 
     try:
         mem_row = await db.fetchrow(
-            "SELECT sessions_since_compress, compressed_profile FROM student_memory WHERE student_id = $1",
+            """
+            SELECT sessions_since_compress, compressed_profile, persona_profile
+            FROM student_memory WHERE student_id = $1
+            """,
             student_uuid,
         )
 
@@ -198,6 +201,7 @@ async def maybe_compress_profile(
 
         sessions_since = (mem_row["sessions_since_compress"] or 0) + 1
         existing_profile = mem_row["compressed_profile"] or ""
+        existing_persona = mem_row["persona_profile"] or {}
 
         # Always increment the counter
         await db.execute(
@@ -255,17 +259,84 @@ async def maybe_compress_profile(
         )
         new_profile = resp.choices[0].message.content.strip()
 
+        # ── Second call: rewrite persona_profile ──────────────────────────────
+        # Fetch top 10 concepts by mastery for evidence
+        concept_rows = await db.fetch(
+            """
+            SELECT c.subtopic, cm.mastery_score
+            FROM concept_mastery cm
+            JOIN concepts c ON c.id = cm.concept_id
+            WHERE cm.student_id = $1
+            ORDER BY cm.mastery_score DESC
+            LIMIT 10
+            """,
+            student_uuid,
+        )
+        mastery_lines = "\n".join(
+            f"- {r['subtopic'] or r['concept_id']}: {round(float(r['mastery_score']) * 100)}%"
+            for r in concept_rows
+        ) or "No mastery data yet."
+
+        # Stringify existing persona for prompt
+        import json as _json
+        if isinstance(existing_persona, str):
+            try:
+                existing_persona = _json.loads(existing_persona)
+            except Exception:
+                existing_persona = {}
+        persona_summary = existing_persona.get("persona_summary", "") if isinstance(existing_persona, dict) else ""
+
+        persona_resp = await asyncio.wait_for(
+            client.chat.completions.create(
+                model=settings.model_cheap,
+                max_tokens=200,
+                temperature=0.3,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are updating a Physics tutor's understanding of a student. "
+                            "Write 3-4 sentences only. Be specific. Use evidence from the sessions. "
+                            "Do not repeat the old profile if the data contradicts it."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Current persona:\n{persona_summary or 'No persona yet.'}\n\n"
+                            f"Last 10 session summaries:\n{summaries_text}\n\n"
+                            f"Current mastery (top concepts):\n{mastery_lines}\n\n"
+                            "Rewrite the persona in 3-4 sentences covering:\n"
+                            "1. Current ability level (beginner / developing / confident / advanced)\n"
+                            "2. How they respond to Socratic questioning (need heavy hints / engage well / solve independently)\n"
+                            "3. Emotional pattern (anxious under pressure / steady / impatient / motivated)\n"
+                            "4. What teaching style works best for them now"
+                        ),
+                    },
+                ],
+            ),
+            timeout=5.0,
+        )
+        new_persona_summary = persona_resp.choices[0].message.content.strip()
+
+        # Merge into existing persona_profile dict (preserve structured keys like scaffolding_level)
+        if not isinstance(existing_persona, dict):
+            existing_persona = {}
+        updated_persona = {**existing_persona, "persona_summary": new_persona_summary}
+
         await db.execute(
             """
             UPDATE student_memory
-            SET compressed_profile      = $1,
-                sessions_since_compress = 0,
-                profile_last_updated    = NOW()
-            WHERE student_id = $2
+            SET compressed_profile         = $1,
+                sessions_since_compress    = 0,
+                profile_last_updated       = NOW(),
+                persona_profile            = $2::jsonb,
+                persona_profile_updated_at = NOW()
+            WHERE student_id = $3
             """,
-            new_profile, student_uuid,
+            new_profile, _json.dumps(updated_persona), student_uuid,
         )
-        logger.info("Compressed profile updated for student %s", student_id)
+        logger.info("Compressed profile + persona updated for student %s", student_id)
 
     except asyncio.TimeoutError:
         logger.error("maybe_compress_profile: LLM timeout for student %s", student_id)

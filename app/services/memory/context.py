@@ -91,15 +91,43 @@ async def build_context_bundle(student_id: str, db: asyncpg.Pool) -> dict:
     # ── Layer 1: Redis hot context ─────────────────────────────────────────────
     hot_context = await _get_hot_context(student_id)
 
-    # ── Layer 2: Postgres compressed profile ──────────────────────────────────
+    # ── Layer 2: Postgres compressed profile + persona ────────────────────────
     compressed_profile: Optional[str] = None
+    persona_summary: Optional[str] = None
+    persona_sessions_ago: int = 0
     try:
         row = await db.fetchrow(
-            "SELECT compressed_profile FROM student_memory WHERE student_id = $1",
+            """
+            SELECT compressed_profile, persona_profile, persona_profile_updated_at
+            FROM student_memory WHERE student_id = $1
+            """,
             student_uuid,
         )
         if row:
             compressed_profile = row["compressed_profile"]
+
+            # Extract persona_summary text from the persona_profile JSONB
+            raw_persona = row["persona_profile"]
+            if raw_persona:
+                if isinstance(raw_persona, str):
+                    try:
+                        raw_persona = json.loads(raw_persona)
+                    except Exception:
+                        raw_persona = {}
+                if isinstance(raw_persona, dict):
+                    persona_summary = raw_persona.get("persona_summary") or None
+
+            # Count sessions since persona was last updated
+            if row["persona_profile_updated_at"]:
+                count_row = await db.fetchrow(
+                    """
+                    SELECT COUNT(*) AS cnt FROM study_sessions
+                    WHERE student_id = $1 AND started_at > $2
+                    """,
+                    student_uuid,
+                    row["persona_profile_updated_at"],
+                )
+                persona_sessions_ago = int(count_row["cnt"]) if count_row else 0
 
         # Fallback: if no Redis data, try last 2 session summaries from Postgres
         if not hot_context:
@@ -153,9 +181,11 @@ async def build_context_bundle(student_id: str, db: asyncpg.Pool) -> dict:
         logger.warning("build_context_bundle: weak concepts fetch failed: %s", exc)
 
     return {
-        "compressed_profile": compressed_profile,
-        "hot_context":        hot_context,
-        "weak_concepts":      weak_concepts,
+        "compressed_profile":  compressed_profile,
+        "hot_context":         hot_context,
+        "weak_concepts":       weak_concepts,
+        "persona_summary":     persona_summary,
+        "persona_sessions_ago": persona_sessions_ago,
     }
 
 
@@ -166,11 +196,13 @@ def format_context_for_prompt(bundle: dict) -> str:
     Render the context bundle into a ≤350-token string ready for prompt injection.
     Returns "New student — no history yet." for an empty bundle.
     """
-    profile    = bundle.get("compressed_profile") or ""
-    hot        = bundle.get("hot_context") or []
-    weak       = bundle.get("weak_concepts") or []
+    profile            = bundle.get("compressed_profile") or ""
+    hot                = bundle.get("hot_context") or []
+    weak               = bundle.get("weak_concepts") or []
+    persona_summary    = bundle.get("persona_summary") or ""
+    persona_sessions_ago = bundle.get("persona_sessions_ago") or 0
 
-    if not profile and not hot and not weak:
+    if not profile and not hot and not weak and not persona_summary:
         return "New student — no history yet."
 
     parts: list[str] = ["STUDENT CONTEXT:"]
@@ -179,6 +211,13 @@ def format_context_for_prompt(bundle: dict) -> str:
         parts.append(profile)
     else:
         parts.append("Building profile...")
+
+    if persona_summary:
+        freshness = f"updated {persona_sessions_ago} session{'s' if persona_sessions_ago != 1 else ''} ago"
+        parts.append(f"\nSTUDENT PERSONA ({freshness}):")
+        parts.append(persona_summary)
+        if persona_sessions_ago > 15:
+            parts.append("Note: persona may be outdated — treat with lower confidence.")
 
     if hot:
         parts.append("\nRECENT SESSIONS:")
