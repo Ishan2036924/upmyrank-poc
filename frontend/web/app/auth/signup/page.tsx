@@ -37,7 +37,7 @@ export default function SignupPage() {
       const data = await res.json()
 
       if (data.token) {
-        login(data.token, data.student_id, data.name ?? name)
+        login(data.token, data.student_id, data.name ?? name, data.refresh_token)
         // New signups always go through onboarding
         router.push('/onboarding')
       } else {

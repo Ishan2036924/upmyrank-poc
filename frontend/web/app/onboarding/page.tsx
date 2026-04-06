@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, Check } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { apiPost } from '@/lib/api'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -194,20 +193,17 @@ export default function OnboardingPage() {
         exam_type:            examType,
         exam_date:            examDate || null,
       }
-      const res = await fetch(`${API_URL}/onboarding/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) throw new Error(await res.text())
-      const data = await res.json()
+      const data = await apiPost('/onboarding/submit', body) as { persona_profile: Record<string, unknown> }
       setPersonaResult(data.persona_profile)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
-      setSubmitError(msg)
+      // Try to parse the detail from JSON error bodies
+      try {
+        const parsed = JSON.parse(msg)
+        setSubmitError(parsed.detail ?? msg)
+      } catch {
+        setSubmitError(msg)
+      }
     } finally {
       clearInterval(interval)
       setSubmitting(false)

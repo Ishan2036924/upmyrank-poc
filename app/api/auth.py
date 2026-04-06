@@ -98,9 +98,11 @@ async def signup(body: SignupRequest, request: Request):
         logger.error("DB insert for student %s failed: %s", student_id, exc)
         raise HTTPException(status_code=500, detail="Student record creation failed") from exc
 
-    token = response.session.access_token if response.session else None
+    token         = response.session.access_token  if response.session else None
+    refresh_token = response.session.refresh_token if response.session else None
     return {
         "token": token,
+        "refresh_token": refresh_token,
         "student_id": str(student_id),
         "name": body.name,
         "exam_type": body.exam_type,
@@ -125,6 +127,7 @@ async def login(body: LoginRequest):
 
     return {
         "token": response.session.access_token,
+        "refresh_token": response.session.refresh_token,
         "student_id": str(response.user.id),
     }
 
@@ -162,4 +165,30 @@ async def me(request: Request, authorization: str = Header(None)):
         "name": row["name"],
         "exam_type": row["exam_type"],
         "target_year": row["target_year"],
+    }
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post("/refresh")
+async def refresh_token(body: RefreshRequest):
+    """Exchange a Supabase refresh token for a new access token."""
+    try:
+        client = _get_supabase()
+        response = await asyncio.to_thread(
+            client.auth.refresh_session,
+            body.refresh_token,
+        )
+    except Exception as exc:
+        logger.warning("Token refresh failed: %s", exc)
+        raise HTTPException(status_code=401, detail="Session expired. Please log in again.") from exc
+
+    if response.session is None:
+        raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
+
+    return {
+        "token": response.session.access_token,
+        "refresh_token": response.session.refresh_token,
     }

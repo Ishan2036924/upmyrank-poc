@@ -44,7 +44,7 @@ export default function LoginPage() {
         }
       } catch { /* non-fatal */ }
 
-      login(data.token, data.student_id, name)
+      login(data.token, data.student_id, name, data.refresh_token)
 
       // Check onboarding status — redirect to /onboarding if not yet done
       try {
