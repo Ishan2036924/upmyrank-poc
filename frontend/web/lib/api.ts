@@ -54,15 +54,25 @@ async function handleResponse(res: Response, retry: () => Promise<Response>): Pr
   return res.json()
 }
 
+// Retry once after 3s on network errors (Render free tier cold-start)
+async function fetchWithRetry(input: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init)
+  } catch {
+    await new Promise((r) => setTimeout(r, 3000))
+    return fetch(input, init)
+  }
+}
+
 export async function apiPost(endpoint: string, body: unknown) {
-  const res = await fetch(`${API_URL}${endpoint}`, {
+  const res = await fetchWithRetry(`${API_URL}${endpoint}`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify(body),
   })
   return handleResponse(res, async () => {
     const token = getToken()
-    return fetch(`${API_URL}${endpoint}`, {
+    return fetchWithRetry(`${API_URL}${endpoint}`, {
       method: 'POST',
       headers: authHeaders(token ?? undefined),
       body: JSON.stringify(body),
@@ -71,9 +81,9 @@ export async function apiPost(endpoint: string, body: unknown) {
 }
 
 export async function apiGet(endpoint: string) {
-  const res = await fetch(`${API_URL}${endpoint}`, { headers: authHeaders() })
+  const res = await fetchWithRetry(`${API_URL}${endpoint}`, { headers: authHeaders() })
   return handleResponse(res, async () => {
     const token = getToken()
-    return fetch(`${API_URL}${endpoint}`, { headers: authHeaders(token ?? undefined) })
+    return fetchWithRetry(`${API_URL}${endpoint}`, { headers: authHeaders(token ?? undefined) })
   })
 }
