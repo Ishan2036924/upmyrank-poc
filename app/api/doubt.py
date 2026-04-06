@@ -57,6 +57,8 @@ class HintRequest(BaseModel):
     study_session_id: Optional[str] = None
     give_up_flag: bool = False          # set True when student explicitly gives up
     mistake_tag: Optional[str] = None   # e.g. 'sign_error', 'wrong_formula'
+    student_resolved: bool = False      # True when student clicks "Got it!" — triggers genome update
+    student_attempt: Optional[str] = None  # Optional attempt text before full solution
 
 
 class VerifyRequest(BaseModel):
@@ -442,7 +444,7 @@ async def ask_doubt(
         logger.info("Intent classified: %s (active_block=%s)", intent, has_active_block)
 
     # ── 3. Non-physics intents → immediate response, NO DB writes ─────────────
-    if intent in ("greeting", "meta", "emotional", "out_of_scope"):
+    if intent in ("greeting", "meta", "emotional", "out_of_scope", "conversational", "explanation"):
         result = await engine.handle_non_physics_intent(intent, question)
         return result
 
@@ -621,11 +623,19 @@ async def get_hint(
     engine = request.app.state.socratic_engine
     pool = request.app.state.db_pool
 
+    # Log student_attempt if provided (for future misconception analysis)
+    if body.student_attempt:
+        logger.info(
+            "Student attempt before full solution (session=%s): %.200s",
+            body.session_id, body.student_attempt,
+        )
+
     try:
         result = await engine.get_hint(
             session_id=body.session_id,
             student_response=body.student_response,
             jump_to_full=body.jump_to_full_solution,
+            student_resolved=body.student_resolved,
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

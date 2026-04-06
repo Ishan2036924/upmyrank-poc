@@ -173,7 +173,7 @@ export default function AnalyticsPage() {
     <AuthGuard>
     <div className="flex h-screen">
       <Sidebar />
-      <div className="md:ml-[80px] flex-1 overflow-y-auto">
+      <div className="md:ml-[236px] flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto px-6 py-8 pb-24 md:pb-10 space-y-10">
 
           {/* ── Header ─────────────────────────────────────────────────────── */}

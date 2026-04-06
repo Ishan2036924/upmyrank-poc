@@ -152,11 +152,13 @@ Student message: "{message}"
 
 Categories:
 - greeting: casual hellos, hi, hey, what's up
+- conversational: short affirmative/acknowledgement replies ("yes", "ok", "sure", "got it", "thanks", "cool", "alright") that are NOT physics questions
 - meta: questions about the tutor's capabilities, identity, how it works
 - emotional: expressions of stress, frustration, self-doubt, discouragement
 - out_of_scope: questions about non-Physics subjects (chemistry, maths proofs, history, coding, etc.)
 - recap: asking for a summary, review, or list of previous questions/topics covered in this session
 - continuation: a follow-up to an ongoing physics discussion (only if active doubt block is true)
+- explanation: requests to explain/define a concept without solving a problem ("explain capacitance", "what is Newton's law", "define torque", "how does a transformer work")
 - physics_doubt: a new physics question or concept query
 
 Few-shot examples:
@@ -168,9 +170,20 @@ Few-shot examples:
 "what topics have we covered" → recap
 "what have we solved so far" → recap
 "hi" → greeting
+"yes" → conversational
+"ok" → conversational
+"sure" → conversational
+"thanks" → conversational
+"got it" → conversational
 "what can you do" → meta
 "I'm feeling stressed" → emotional
 "explain photosynthesis" → out_of_scope
+"explain electrostatics" → explanation
+"what is Newton's second law" → explanation
+"define torque" → explanation
+"how does a capacitor work" → explanation
+"find the velocity of a ball" → physics_doubt
+"calculate the force" → physics_doubt
 "what is Newton's second law" → physics_doubt
 "yes that makes sense, what about friction?" → continuation
 
@@ -209,6 +222,36 @@ OUT_OF_SCOPE_RESPONSE = (
     "to help with that topic. Please use a dedicated resource for it. "
     "Got a Physics question? That's where I shine! 💡"
 )
+
+CONVERSATIONAL_RESPONSE = (
+    "Ask me a Physics question and I'll guide you through it step by step! 🎓"
+)
+
+# ── Explanation prompt (direct answer, no Socratic questioning) ───────────────
+
+EXPLANATION_PROMPT = """\
+A student asked for a concept explanation:
+
+"{message}"
+
+Provide a clear, direct explanation. Structure it as:
+
+**Concept overview** — 2–3 sentences defining the concept in plain language.
+
+**Physical intuition** — A real-world analogy or visual picture that makes it click.
+
+**Key formula** (if applicable) — Show it in LaTeX. Explain what each variable means.
+
+**Worked example** — One quick concrete example applying the concept.
+
+**JEE/NEET angle** — One sentence: what to watch for in exam questions on this topic.
+
+Rules:
+- Do NOT ask "what do you think?" or any Socratic questions.
+- Do NOT refuse to answer or say "think about it yourself."
+- Do NOT give a full lecture — keep it focused and practical.
+- Use LaTeX for all math (inline $...$ for formulas, display $$...$$ for equations).
+"""
 
 # ── Doubt block summarizer ────────────────────────────────────────────────────
 

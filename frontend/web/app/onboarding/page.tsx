@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, Check } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { apiPost } from '@/lib/api'
+import { apiPost, pingBackend } from '@/lib/api'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -144,6 +144,9 @@ export default function OnboardingPage() {
   const [loadingMsgIdx,   setLoadingMsgIdx]   = useState(0)
   const [personaResult,   setPersonaResult]   = useState<Record<string, unknown> | null>(null)
   const [submitError,     setSubmitError]     = useState<string | null>(null)
+
+  // Wake up Render backend on mount so it's warm by the time the user submits
+  useEffect(() => { pingBackend() }, [])
 
   const go = (n: number) => {
     setDirection(n > step ? 1 : -1)

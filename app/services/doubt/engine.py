@@ -34,8 +34,10 @@ import openai
 from app.config import settings
 from app.services.doubt.context import get_rag_context, get_student_mastery_str
 from app.services.doubt.prompts import (
+    CONVERSATIONAL_RESPONSE,
     DOUBT_BLOCK_SUMMARIZER_PROMPT,
     EMOTIONAL_RESPONSE_PROMPT,
+    EXPLANATION_PROMPT,
     FULL_SOLUTION_PROMPT,
     GREETING_RESPONSES,
     HINT_LEVEL_1_PROMPT,
@@ -66,6 +68,26 @@ if TYPE_CHECKING:
     from app.services.verify.pipeline import VerificationPipeline
 
 logger = logging.getLogger(__name__)
+
+# ── intent pre-filter constants (no LLM cost) ────────────────────────────────
+
+_CONVERSATIONAL_TOKENS: frozenset = frozenset({
+    "yes", "no", "ok", "okay", "sure", "thanks", "thank you",
+    "got it", "cool", "alright", "fine", "yep", "nope", "hmm",
+    "good", "great", "nice", "awesome", "wow", "oh", "ah", "i see",
+    "understood", "makes sense", "got", "k", "noted",
+})
+
+_EXPLANATION_TRIGGERS: tuple = (
+    "explain ", "what is ", "what are ", "define ", "definition of ",
+    "how does ", "how do ", "tell me about ", "describe ", "meaning of ",
+    "what's ", "what was ", "who is ", "what does ", "how is ",
+)
+
+_PROBLEM_SIGNALS: frozenset = frozenset({
+    "find", "calculate", "prove", "derive", "solve",
+    "determine", "compute", "evaluate", "obtain", "show that",
+})
 
 # ── model tier routing ────────────────────────────────────────────────────────
 
@@ -764,6 +786,7 @@ class SocraticEngine:
         session_id: str,
         student_response: Optional[str] = None,
         jump_to_full: bool = False,
+        student_resolved: bool = False,
     ) -> dict:
         """
         Return the next progressive hint for an existing doubt session.
@@ -809,6 +832,34 @@ class SocraticEngine:
             stored_analysis = {}
 
         mentor_mode: str = stored_analysis.get("mentor_mode", "COACH")
+
+        # ── 1b. Student self-resolved — mark session done, skip hint generation ─
+        # Called by "Got it!" button. Triggers genome update without extra hints.
+        if student_resolved:
+            await self._pool.execute(
+                """
+                UPDATE doubt_sessions
+                SET resolved = TRUE, current_hint_level = $2
+                WHERE id = $1
+                """,
+                uuid.UUID(session_id),
+                current_level,
+            )
+            logger.info(
+                "Student self-resolved session %s at hint_level=%d", session_id, current_level
+            )
+            return {
+                "session_id": session_id,
+                "hint_level": current_level,
+                "hint": "🎉 Marked as solved! Great work.",
+                "response": "🎉 Marked as solved! Great work.",
+                "is_full_solution": False,
+                "is_forced_attempt": False,
+                "resolved": True,
+                "verification": None,
+                "mentor_mode": mentor_mode,
+                "response_analysis": {},
+            }
 
         # ── 2. Analyze student response before appending to history ───────────
         # Skip response analysis at the forced-attempt stage (current_level >= 3).
@@ -1156,15 +1207,34 @@ class SocraticEngine:
         message: str,
         has_active_block: bool = False,
     ) -> str:
-        """Classify a student message into one of 7 intents.
+        """Classify a student message into one of 9 intents.
 
         Returns one of: greeting, meta, emotional, out_of_scope,
-        recap, physics_doubt, continuation.
+        recap, physics_doubt, continuation, conversational, explanation.
         """
         _VALID_INTENTS = {
             "greeting", "meta", "emotional",
             "out_of_scope", "physics_doubt", "continuation", "recap",
+            "conversational", "explanation",
         }
+
+        stripped = message.strip().lower()
+
+        # ── Pre-check 1: short conversational tokens (no LLM needed) ──────────
+        if len(stripped) <= 20 and stripped in _CONVERSATIONAL_TOKENS:
+            logger.info("Conversational pre-filter: %r", stripped)
+            return "conversational"
+
+        # ── Pre-check 2: explanation requests (no LLM needed for clear signals)
+        # Only fires when message has an explanation trigger, no problem-solving
+        # signals, and no numerical values (those indicate a problem to solve).
+        if any(stripped.startswith(t) or (" " + t) in (" " + stripped)
+               for t in _EXPLANATION_TRIGGERS):
+            has_numbers = bool(re.search(r'\d', stripped))
+            has_problem_signal = any(s in stripped for s in _PROBLEM_SIGNALS)
+            if not has_numbers and not has_problem_signal:
+                logger.info("Explanation pre-filter: %r", stripped)
+                return "explanation"
 
         prompt = INTENT_CLASSIFIER_PROMPT.format(
             has_active_block=str(has_active_block).lower(),
@@ -1198,6 +1268,8 @@ class SocraticEngine:
         """
         if intent == "greeting":
             response = random.choice(GREETING_RESPONSES)
+        elif intent == "conversational":
+            response = CONVERSATIONAL_RESPONSE
         elif intent == "meta":
             response = META_RESPONSE
         elif intent == "emotional":
@@ -1209,6 +1281,14 @@ class SocraticEngine:
             )
         elif intent == "out_of_scope":
             response = OUT_OF_SCOPE_RESPONSE
+        elif intent == "explanation":
+            response = await self._call_llm(
+                EXPLANATION_PROMPT.format(message=message),
+                max_tokens=600,
+                temperature=0.5,
+                model_tier="quality",
+            )
+            response = self._sanitize_latex(response)
         else:
             response = "I'm here to help with Physics! Ask me anything from NCERT Class 11 or 12."
 

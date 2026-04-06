@@ -127,6 +127,10 @@ function DoubtPageInner() {
   const [pendingAnswer,       setPendingAnswer]       = useState<string | null>(null)
   const [pendingImageUrl,     setPendingImageUrl]     = useState<string | null>(null)
 
+  // ── Full solution attempt gate ─────────────────────────────────────────────
+  const [showAttemptBox, setShowAttemptBox] = useState(false)
+  const [attemptText,    setAttemptText]    = useState('')
+
   const bottomRef       = useRef<HTMLDivElement>(null)
   const inputRef        = useRef<HTMLTextAreaElement>(null)
   const studySessionRef = useRef<string | null>(null)
@@ -429,8 +433,14 @@ function DoubtPageInner() {
             doubt_block_id:    (res.doubt_block_id ?? currentBlockId ?? undefined),
           },
         })
+      } else if (intent === 'conversational') {
+        // Don't start a new session — just prompt them to ask a question
+        addMessage({
+          role: 'tutor',
+          content: res.response ?? 'Ask me a Physics question and I\'ll guide you through it step by step! 🎓',
+        })
       } else {
-        // greeting, meta, emotional, out_of_scope, recap
+        // greeting, meta, emotional, out_of_scope, recap, explanation
         addMessage({ role: 'tutor', content: res.response ?? res.hint ?? JSON.stringify(res) })
       }
     } catch (e: unknown) {
@@ -473,15 +483,32 @@ function DoubtPageInner() {
     }
   }
 
-  // ── Quick action: "Show full solution" ────────────────────────────────────
-  const handleFullSolution = async () => {
+  // ── Quick action: "Show full solution" — gated by attempt box ───────────
+  const handleFullSolution = () => {
     if (!sessionId || isLoading) return
+    setShowAttemptBox(true)
+  }
+
+  const handleAttemptSubmit = async () => {
+    if (!sessionId || isLoading || attemptText.trim().length < 20) return
+    setShowAttemptBox(false)
     setIsLoading(true)
+    const attempt = attemptText.trim()
+    setAttemptText('')
+
+    // Show student's attempt as a message first
+    addMessage({
+      role: 'student',
+      content: attempt,
+      metadata: { doubt_block_id: currentBlockId ?? undefined },
+    })
+
     try {
       const res = await apiPost('/doubt/hint', {
         session_id:            sessionId,
-        student_response:      'Please show me the full solution.',
+        student_response:      attempt,
         jump_to_full_solution: true,
+        student_attempt:       attempt,
         study_session_id:      studySessionId ?? undefined,
       })
       const wasFull = res.is_full_solution ?? false
@@ -489,12 +516,12 @@ function DoubtPageInner() {
         role: 'tutor',
         content: res.hint ?? res.response ?? JSON.stringify(res),
         metadata: {
-          hint_level:       res.hint_level,
-          verification:     res.verification ?? undefined,
-          is_full_solution: wasFull,
+          hint_level:        res.hint_level,
+          verification:      res.verification ?? undefined,
+          is_full_solution:  wasFull,
           is_forced_attempt: res.is_forced_attempt ?? false,
-          mentor_mode:      res.mentor_mode ?? undefined,
-          doubt_block_id:   res.doubt_block_id ?? currentBlockId ?? undefined,
+          mentor_mode:       res.mentor_mode ?? undefined,
+          doubt_block_id:    res.doubt_block_id ?? currentBlockId ?? undefined,
         },
       })
       if (res.mentor_mode) setMentorMode(res.mentor_mode)
@@ -508,20 +535,17 @@ function DoubtPageInner() {
   }
 
   // ── Quick action: "I got it!" ─────────────────────────────────────────────
+  // Calls /doubt/hint with student_resolved=true so genome update fires properly
   const handleGotIt = async () => {
-    if (isLoading) return
-    setCurrentBlockSolved(true)
+    if (isLoading || !sessionId) return
+    setIsLoading(true)
     try {
-      const concepts: string[] =
-        (analysis as { concepts_tested?: string[] } | null)?.concepts_tested ?? []
-      await Promise.allSettled(
-        concepts.map((cid) =>
-          apiPost(`/student/${studentId}/update-mastery`, {
-            concept_id:        cid,
-            performance_score: 1.0,
-          }),
-        ),
-      )
+      await apiPost('/doubt/hint', {
+        session_id:       sessionId,
+        student_resolved: true,
+        study_session_id: studySessionId ?? undefined,
+      })
+      setCurrentBlockSolved(true)
       addMessage({
         role: 'tutor',
         content: '🎉 Great job! Your mastery has been updated. Ready for the next challenge?',
@@ -531,7 +555,10 @@ function DoubtPageInner() {
         },
       })
     } catch {
+      setCurrentBlockSolved(true)
       addMessage({ role: 'tutor', content: '🎉 Nicely done! Keep going.' })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -559,7 +586,7 @@ function DoubtPageInner() {
       <Sidebar />
 
       {/* ── Floating glassmorphic main window ─────────────────────────────── */}
-      <div className="ml-[76px] flex-1 flex gap-3 min-w-0">
+      <div className="ml-[236px] flex-1 flex gap-3 min-w-0">
 
         {/* ── Center chat panel ─────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden min-w-0">
@@ -698,8 +725,54 @@ function DoubtPageInner() {
               />
             )}
 
+            {/* Attempt gate — shown when student clicks "Show full solution" */}
+            <AnimatePresence>
+              {showAttemptBox && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  className="mt-3 mb-3 bg-amber-50/80 border border-amber-200/60 rounded-2xl p-4 backdrop-blur-sm"
+                >
+                  <p className="text-sm font-semibold text-amber-800 mb-1">
+                    Write your attempt first
+                  </p>
+                  <p className="text-xs text-amber-600 mb-3">
+                    Even a partial answer counts — this is how you actually learn. We won't judge.
+                  </p>
+                  <textarea
+                    value={attemptText}
+                    onChange={(e) => setAttemptText(e.target.value)}
+                    placeholder="Write your working or where you're stuck…"
+                    className="w-full text-sm bg-white/80 border border-amber-200 rounded-xl px-4 py-3 text-slate-800 placeholder-slate-400 outline-none resize-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-300"
+                    rows={3}
+                  />
+                  <div className="flex items-center gap-3 mt-3">
+                    <button
+                      onClick={handleAttemptSubmit}
+                      disabled={attemptText.trim().length < 20}
+                      className="flex-1 rounded-xl bg-slate-900 hover:bg-amber-600 text-white text-sm font-semibold py-2.5 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Submit &amp; See Solution
+                      {attemptText.trim().length < 20 && attemptText.length > 0 && (
+                        <span className="text-xs opacity-60 ml-1">
+                          ({20 - attemptText.trim().length} more chars)
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => { setShowAttemptBox(false); setAttemptText('') }}
+                      className="rounded-xl border border-slate-200 bg-white text-sm text-slate-500 px-4 py-2.5 hover:bg-slate-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Quick actions */}
-            {showQuickActions && (
+            {showQuickActions && !showAttemptBox && (
               <motion.div
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}

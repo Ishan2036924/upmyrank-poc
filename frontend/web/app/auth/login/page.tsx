@@ -1,15 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
+import { pingBackend } from '@/lib/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuth()
+
+  useEffect(() => { pingBackend() }, [])
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')

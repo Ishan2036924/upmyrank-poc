@@ -42,7 +42,6 @@ async function handleResponse(res: Response, retry: () => Promise<Response>): Pr
       if (!retried.ok) throw new Error(await retried.text())
       return retried.json()
     }
-    // Refresh failed — redirect to login
     if (typeof window !== 'undefined') {
       localStorage.removeItem(LS_TOKEN)
       localStorage.removeItem(LS_REFRESH_TOKEN)
@@ -54,14 +53,28 @@ async function handleResponse(res: Response, retry: () => Promise<Response>): Pr
   return res.json()
 }
 
-// Retry once after 3s on network errors (Render free tier cold-start)
+// Render free tier cold-starts can take up to 50s.
+// Retry up to 3 times with increasing delays before giving up.
 async function fetchWithRetry(input: string, init: RequestInit): Promise<Response> {
-  try {
-    return await fetch(input, init)
-  } catch {
-    await new Promise((r) => setTimeout(r, 3000))
-    return fetch(input, init)
+  const delays = [5000, 15000, 30000]
+  let lastError: unknown
+  for (let i = 0; i <= delays.length; i++) {
+    try {
+      return await fetch(input, init)
+    } catch (err) {
+      lastError = err
+      if (i < delays.length) {
+        await new Promise((r) => setTimeout(r, delays[i]))
+      }
+    }
   }
+  throw lastError
+}
+
+/** Silently wake up the Render backend. Call on page mount so the server
+ *  is warm by the time the user submits a form. */
+export function pingBackend(): void {
+  fetch(`${API_URL}/health`).catch(() => {/* silent */})
 }
 
 export async function apiPost(endpoint: string, body: unknown) {
