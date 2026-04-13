@@ -5,7 +5,9 @@
 ALWAYS read `MEMORY.md` and `RULES.md` at the start of any new session. `RULES.md` contains hard invariants — violating them creates silent bugs. `MEMORY.md` has the current project state. Whenever you complete a major feature or make an architectural decision, update `MEMORY.md` to reflect the new state.
 
 ## Project Overview
-UpMyRank is an AI-powered JEE/NEET tutoring platform. Core architecture follows the PTB (Python Tutor Bot) educational AI framework: Customization layer (global rules) + Personalization layer (student model) + Golden Dataset (truth control). The LLM is a composer — not the source of knowledge. The system architecture is the product.
+UpMyRank is an AI-powered JEE/NEET tutoring platform covering **Physics, Chemistry, and Maths** (NCERT Class 11 & 12). Core architecture follows the PTB (Python Tutor Bot) educational AI framework: Customization layer (global rules) + Personalization layer (student model) + Golden Dataset (truth control). The LLM is a composer — not the source of knowledge. The system architecture is the product.
+
+**Knowledge base**: 15,069 chunks across Physics (10,505) + Chemistry (3,138) + Maths (1,426) + 20 JEE PYQs. All subjects use the same Socratic engine, agentic RAG, and policy engine. `SUPPORTED_SUBJECTS = ("Physics", "Chemistry", "Maths")` in `prompts.py`.
 
 ## 🧠 Conditional Context
 
@@ -30,7 +32,7 @@ UpMyRank is an AI-powered JEE/NEET tutoring platform. Core architecture follows 
 | LLM | gpt-4.1-mini (Socratic/hints), gpt-4o-mini (classify/summarize), gpt-4o (vision only) |
 | Vector DB | pgvector 0.8.2 on Postgres 16 |
 | Cache / Hot Context | Redis (redis.asyncio) |
-| Embeddings | sentence-transformers (384-dim) |
+| Embeddings | OpenAI text-embedding-3-small (1536-dim) — all tables uniform |
 | Token counting | tiktoken cl100k_base |
 | Frontend | Next.js 14, TypeScript, Tailwind, Framer Motion |
 | ORM | Raw asyncpg (no ORM) |
@@ -50,7 +52,7 @@ See `RULES.md` for the full invariant list. Summary:
 6. **Model routing**: `gpt-4.1-mini` for Socratic/hints, `gpt-4o-mini` for classify/summarize, `gpt-4o` for vision only. Never use `gpt-4o` for text.
 7. **LaTeX sanitizer runs on every LLM response** — never skip `_sanitize_latex()`.
 8. **DB migrations are files** — write to `scripts/migrate_vX_name.sql`, never ad-hoc ALTER TABLE.
-9. **DB migration pattern**: always `docker cp file.sql container:/tmp/` then `psql -f /tmp/file.sql`. Heredoc does not work with `docker exec`.
+9. **DB migration pattern**: always `./scripts/run_migration.sh scripts/migrate_vX_name.sql`. Never Docker, never Supabase CLI (blocked in `.claude/settings.json`).
 
 ## File Map — Key Files to Know
 
@@ -65,8 +67,11 @@ app/
     doubt/
       engine.py       — SocraticEngine: start_session(), get_hint(), classify_intent()
       prompts.py      — All prompt constants (TUTOR_SYSTEM_PROMPT, SYSTEM_PROMPT_FORCED_ATTEMPT, CUSTOMIZATION_PROMPT, PERSONALIZATION_PROMPT, SOCRATIC_QUESTION_PROMPT, HINT_LEVEL_*_PROMPT) + build_system_prompt(), render_personalization()
-      misconceptions.py — 30-entry MISCONCEPTION_LIBRARY + check_for_misconception(response, topic) → Misconception|None
-      retriever.py    — RAG: pgvector similarity search
+      misconceptions.py — 30-entry MISCONCEPTION_LIBRARY (Physics+Chemistry+Maths) + check_for_misconception(response, topic, subject) → Misconception|None
+    rag/
+      agent.py        — AgenticRetriever: MAX_STEPS=3, gpt-4o-mini tool selection, level-3 nuclear gate, subject-aware
+      tools.py        — 4 tool functions + TOOL_SCHEMAS: search_ncert, search_jee_problems, search_concepts, rerank_and_select
+      retriever.py    — RAG: pgvector hybrid similarity search (used internally by tools.py)
       context.py      — RAG context assembly, genome injection
     memory/
       context.py      — build_context_bundle(), format_context_for_prompt(), update_error_fingerprint(), update_forgetting_rate(), get_persona_profile(), update_persona_profile(), infer_scaffolding_level(), get_sessions_count()
@@ -84,11 +89,20 @@ app/
 
 scripts/
   setup_db.sql              — Base schema
-  migrate_v4_memory.sql     — Student Memory System schema (⚠️ NOT YET APPLIED TO DB)
+  migrate_v4_memory.sql     — Student Memory System schema ✅ applied
   migrate_v5_persona.sql    — Adds persona_profile JSONB to student_memory ✅
   migrate_v6_misconceptions.sql — Adds misconception_detected/misconception_id to doubt_blocks + session_events ✅
   migrate_v7_eval.sql           — Adds scaffolding_score, retrieval_similarity, response_latency_ms, hint_was_useful to session_events ✅
   migrate_v8_onboarding.sql     — Adds onboarding_completed, class_level, physics_prev_marks, study_hours_per_day, exam_date to students ✅
+  migrate_v9_persona_staleness.sql — Adds persona_profile_updated_at to student_memory ✅
+  migrate_v10_rls.sql           — RLS enabled on all 10 public tables, 10 policies ✅
+  migrate_v11_jee_problems.sql  — jee_problems table, HNSW index, match_jee_problems(), RLS read-only ✅
+  run_migration.sh              — ⭐ Run ALL migrations with this. Reads DATABASE_URL from .env.
+  ingest_chem_maths.py          — Ingests NCERT Chem+Maths from KadamParth HF dataset; resumable
+  ingest_maths_pdf.py           — Ingests Maths from NCERT PDFs (pdfplumber); resumable; fallback for HF gap
+  ingest_jee_pyq.py             — Ingests JEE PYQs (HF datasets gated → uses seed fallback); resumable
+  data/jee_pyq_seed.json        — 20 verified JEE PYQs (Physics + Chemistry + Maths)
+  data/ncert_maths_seed.json    — 32 NCERT Maths Q&A rows (Class 11+12, all key JEE chapters)
   pedagogy_drift_report.py      — Standalone weekly report: avg scaffolding_score per topic, flags < 1.5
   regression_gate.py            — Pre-deploy gate: scores golden dataset with Judge LLM, exit 1 if pass_rate < 0.90
 

@@ -82,3 +82,27 @@
 **Decision:** All per-student RLS policies use `auth.uid() = student_id` (the actual column name confirmed from schema)
 **Why:** The request's template SQL used `user_id` which doesn't exist. Schema inspection showed `student_id` is the FK on every table. `doubt_blocks` has a direct `student_id` column, no join needed.
 **Note:** FastAPI backend connects as `postgres` superuser (bypasses RLS). Policies only affect direct Supabase client / anon / authenticated role access.
+
+## 2026-04-13 — Agentic RAG over traditional single-pass RAG
+**Decision:** Replace `get_rag_context()` single-pass retrieval with `AgenticRetriever` (native OpenAI function calling, max 3 steps)
+**Why:** Single-pass RAG retrieved fixed-k chunks regardless of question type. Agentic loop lets the LLM decide which tools to call (NCERT chunks vs JEE PYQs vs concept graph) and how many steps are needed for sufficient context. Covers multi-hop questions that a single similarity search misses.
+**Rejected:** LangChain/LangGraph — too many abstraction layers, harder to debug silent failures, unnecessary for a 4-tool loop. Native OpenAI function calling is transparent and maintainable.
+**Note:** Level-3 nuclear gate is double-gated (agent.py + engine.py) so the agentic loop is structurally blocked at forced-attempt stage — cannot leak content through tool results.
+
+## 2026-04-13 — NCERT Maths ingested from official PDFs (not HuggingFace)
+**Decision:** `scripts/ingest_maths_pdf.py` downloads and parses Maths PDFs directly from ncert.nic.in using pdfplumber
+**Why:** KadamParth/Ncert_dataset on HuggingFace contains Physics and Chemistry only — no Mathematics subject. The same HF dataset that worked for Physics/Chemistry has a structural gap for Maths.
+**Rejected:** Using the same HF path for Maths (dataset simply doesn't have it). PyMuPDF was considered but pdfplumber gave cleaner text extraction for NCERT's PDF layout.
+**Note:** Maths chunks (1,426) are lower than Physics (10,505) and Chemistry (3,138) because NCERT Maths PDFs have fewer text-dense chapters. Acceptable for JEE prep coverage. Expand by running ingest_maths_pdf.py with more chapters if needed.
+
+## 2026-04-13 — JEE PYQ seed JSON as primary source (HuggingFace gated)
+**Decision:** `scripts/data/jee_pyq_seed.json` (20 verified problems) is the primary JEE PYQ source, not HuggingFace
+**Why:** All HuggingFace JEE PYQ datasets checked return HTTP 401 (private/gated). No public JEE PYQ dataset found on HF at the time of implementation.
+**Rejected:** HuggingFace datasets (gated, inaccessible without approval), scraping external sites (legal/reliability risk)
+**Revisit if:** A public HF dataset becomes available, or we build a manual curation pipeline to expand the seed to 200+ verified PYQs.
+
+## 2026-04-13 — text-embedding-3-small (1536-dim) confirmed as project standard
+**Decision:** All embeddings use OpenAI `text-embedding-3-small` at 1536 dimensions — this is the confirmed standard across all tables and ingestion scripts.
+**Why:** Earlier documentation referenced `all-MiniLM-L6-v2` (384-dim, sentence-transformers) but the actual implementation in `app/services/rag/embeddings.py` uses OpenAI text-embedding-3-small. The 384-dim model was considered in early POC but never shipped. 1536-dim gives better recall for math-heavy NCERT content.
+**Rejected:** all-MiniLM-L6-v2 (384-dim, free, local) — was in early docs but not in production code. text-embedding-3-large (3072-dim) — cost prohibitive with no recall gain for NCERT chunk sizes.
+**Note:** All pgvector columns are `vector(1536)`. Never insert 384-dim embeddings — schema mismatch will fail silently with wrong similarity scores.

@@ -3,6 +3,44 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-04-13 (cont.)
+**Focus:** Multi-subject expansion audit, NCERT Maths PDF ingestion, critical bug fixes, full E2E verification across Physics/Chemistry/Maths
+**Status:** DONE
+
+**Changed files:**
+- `scripts/ingest_maths_pdf.py` — new script: downloads + ingests 29 NCERT Maths PDFs (Class 11+12) from ncert.nic.in via pdfplumber; 350-token chunks / 50-token overlap; resumable via `.ingest_maths_pdf_progress.json`; URL structure: Class 12 Part 2 uses `lemh2xx`, Stats/Prob use `kest101`/`kesp101`
+- `app/services/doubt/prompts.py` — 8 Physics-only hardcoded strings replaced; `INTENT_CLASSIFIER_PROMPT` gains `{subject}` param + `subject_doubt` replaces `physics_doubt`; `SUPPORTED_SUBJECTS` constant added; `get_subject_context()` + `build_system_prompt()` subject-aware; **critical fix**: `CUSTOMIZATION_PROMPT` line 643 LaTeX braces double-escaped `{{u^2 \\sin 2\\theta}}` / `{{g}}` — was causing silent `KeyError` swallowed by policy engine, every student got unpersonalized fallback
+- `app/services/doubt/engine.py` — `classify_intent()` gains `subject` param; `physics_doubt` normalized to `subject_doubt`; fallback intent updated
+- `app/api/doubt.py` — `subject_must_be_valid` field_validator on `AskRequest`; `classify_intent()` calls pass `subject`; all `physics_doubt` → `subject_doubt`; topic fallback uses `body.subject`
+- `app/api/mock.py` — `_MCQ_PROMPT` parameterised with `{subject}`; `_generate_mcq_options()` accepts `subject`
+- `MEMORY.md`, `CLAUDE.md`, `RULES.md`, `docs/decisions.md`, `docs/bugs.md` — all updated to reflect full project state
+
+**Current system state:**
+- Backend: running on port 8000, fully operational
+- DB knowledge_chunks: Physics=10,505 | Chemistry=3,138 | Maths=1,426 | Total=15,069
+- DB jee_problems: 20 seed PYQs
+- Policy engine: now runs correctly for all 3 subjects (personalized system prompts working)
+- All 3 subjects verified E2E: Physics ✅ Chemistry ✅ Maths ✅
+- All migrations applied through v11
+
+**In progress / half done:**
+Nothing half-done. All changes complete and tested.
+
+**Cliff notes (non-obvious context):**
+- The `build_system_prompt()` silent KeyError was a P0 bug — policy engine was silently catching it for every single request. All students were getting unpersonalized responses. Rule 13 added to RULES.md to prevent recurrence.
+- `physics_doubt` backward-compat alias is kept in `_VALID_INTENTS` in engine.py and normalized immediately to `subject_doubt`. Old clients sending `physics_doubt` still work.
+- NCERT Maths PDF URL structure: Class 12 is split into 2 books — Part 1 (`lemh1xx.pdf`, ch1–6), Part 2 (`lemh2xx.pdf`, ch7–13). Statistics uses `kest101.pdf`, Probability uses `kesp101.pdf`.
+- Maths "outside syllabus" warnings are expected for some questions — agentic loop degrades gracefully to NCERT-only retrieval.
+- Embedding model confirmed: `text-embedding-3-small` 1536-dim. The `all-MiniLM-L6-v2` 384-dim reference in old docs was never in production code.
+
+**Next session — read these files first:**
+Nothing specific — project is in clean state. Run `scripts/regression_gate.py` to confirm ≥90% pass rate with agentic RAG if deploying.
+
+**Next session — start here:**
+Ask the user what to build next. Possible directions: expand JEE PYQ bank (manual curation), add more Maths PDF chapters, build student-facing progress dashboard, or deploy.
+
+---
+
 ## Session 2026-04-13
 **Focus:** Agentic RAG upgrade — Part 1–4 complete: LLM-driven retrieval loop, NCERT Chemistry+Maths KB expansion, JEE PYQ table, subject router
 **Status:** DONE
@@ -86,39 +124,3 @@ Nothing specific needed — project is clean.
 **Next session — start here:**
 Ask the user what to build next.
 
----
-
-## Session 2026-04-07 / 2026-04-08
-**Focus:** Auth refresh, cold-start fix, intent improvements, sidebar redesign, persona evolution, RLS prep
-**Status:** DONE
-
-**Changed files:**
-- `app/api/auth.py` — added /auth/refresh endpoint, refresh_token in login/signup responses
-- `app/api/doubt.py` — student_resolved + student_attempt params on HintRequest
-- `app/api/onboarding.py` — fixed ._openai → ._client, max_length 5→15 for topics
-- `app/services/doubt/engine.py` — conversational/explanation pre-filters, student_resolved early-return path
-- `app/services/doubt/prompts.py` — CONVERSATIONAL_RESPONSE, EXPLANATION_PROMPT, updated classifier examples
-- `app/services/memory/summarizer.py` — maybe_compress_profile now rewrites persona_profile.persona_summary every 5 sessions using mastery data
-- `app/services/memory/context.py` — build_context_bundle fetches persona freshness; format_context_for_prompt renders STUDENT PERSONA block with staleness warning
-- `frontend/web/lib/api.ts` — fetchWithRetry (5s/15s/30s), pingBackend, auto-refresh on 401
-- `frontend/web/lib/auth.tsx` — refreshToken(), LS_REFRESH_TOKEN
-- `frontend/web/components/ChatInput.tsx` — base64 image via FileReader (Supabase storage removed)
-- `frontend/web/components/Sidebar.tsx` — full redesign: 220px wide, student identity, working logout
-- `frontend/web/app/doubt/page.tsx` — attempt box (20-char min), handleGotIt fixed to use /doubt/hint
-- All pages — ml-[80px] → ml-[236px] for new sidebar width
-- `scripts/migrate_v9_persona_staleness.sql` — adds persona_profile_updated_at column (applied)
-
-**Current system state:**
-- Backend: working
-- Frontend: working, sidebar is 220px (pages use ml-[236px] offset)
-- DB: migrate_v9 applied to production
-
-**In progress / half done:**
-Nothing half-done.
-
-**Cliff notes (non-obvious context):**
-- Sidebar is 220px inside m-3 container = 236px total offset for page content
-- Image upload is base64 only — no Supabase Storage, no env vars needed on Vercel
-- handleGotIt must call /doubt/hint with student_resolved=true — NOT /student/{id}/update-mastery. The latter skips _genome_update_task.
-- Conversational pre-filter is case-sensitive frozenset — input must be .lower()'d before lookup
-- EXPLANATION_PROMPT bypasses Socratic engine entirely — no RAG, no intent classification, direct LLM call

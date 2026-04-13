@@ -71,3 +71,26 @@
 **Root cause:** No pre-filter existed for short affirmative tokens. Every non-empty string was passed to the full intent classifier pipeline.
 **Fix:** Added `_CONVERSATIONAL_TOKENS` frozenset in `engine.py`. Messages ≤20 chars matching the set return `CONVERSATIONAL_RESPONSE` immediately without touching the LLM.
 **DO NOT:** Handle this inside the LLM classifier prompt alone. The pre-filter must be code-level for reliability and cost.
+
+## build_system_prompt() silent KeyError — every student got unpersonalized fallback — fixed
+**Symptom:** Every call to `build_system_prompt()` was silently failing. Policy engine logged `"Policy engine failed (non-fatal), using default prompt: 'u^2 \\sin 2\\theta'"`. All students received the `TUTOR_SYSTEM_PROMPT` fallback (no pedagogy personalization, no scaffolding level, no teaching style adaptation).
+**Root cause:** `CUSTOMIZATION_PROMPT` in `prompts.py` (line 643) contained `\\frac{u^2 \\sin 2\\theta}{g}` — a LaTeX example with unescaped `{u^2 \\sin 2\\theta}` and `{g}`. When `build_system_prompt()` called `CUSTOMIZATION_PROMPT.format(subject_context=...)`, Python's `.format()` parsed those braces as named format placeholders and raised `KeyError: 'u^2 \\sin 2\\theta'`. The policy engine's `except Exception` clause silently swallowed the error.
+**Fix:** Escaped to `\\frac{{u^2 \\sin 2\\theta}}{{g}}` in `prompts.py`. Same double-escaping pattern was already applied to `TUTOR_SYSTEM_PROMPT` — `CUSTOMIZATION_PROMPT` had been missed.
+**DO NOT:** Ignore `"Policy engine failed (non-fatal)"` warnings. They indicate every student is getting the unpersonalized fallback. This warning should be treated as a P0 bug.
+**Rule added to RULES.md:** Rule 13 — all LaTeX braces in `.format()`-called prompt templates must be `{{}}` double-escaped.
+
+---
+
+## Known / Deferred Issues
+
+## JEE PYQ bank too small (20 problems) — DEFERRED
+**Symptom:** `search_jee_problems` tool in AgenticRetriever rarely finds a matching PYQ. Agentic loop falls back to NCERT chunks for most questions.
+**Root cause:** `scripts/data/jee_pyq_seed.json` has only 20 problems. All HuggingFace JEE PYQ datasets are private/gated (return 401).
+**Status:** Acceptable for current phase. Agentic loop degrades gracefully to NCERT-only retrieval.
+**Fix when ready:** Manually expand `jee_pyq_seed.json` to 200+ problems per subject, or find a public PYQ source. Re-run `scripts/ingest_jee_pyq.py --reset-progress` to re-ingest.
+
+## Maths knowledge base smaller than Physics/Chemistry — DEFERRED
+**Symptom:** Maths questions occasionally get "outside syllabus" warning in agentic retriever even for standard NCERT topics.
+**Root cause:** Maths has 1,426 chunks vs Physics 10,505 and Chemistry 3,138. NCERT Maths PDFs have sparser text-per-page than Physics/Chemistry chapters.
+**Status:** Acceptable for JEE prep coverage of core chapters. Core topics (Calculus, Algebra, Coordinate Geometry, Vectors) are covered.
+**Fix when ready:** Run `scripts/ingest_maths_pdf.py` with additional chapters, or add more entries to `scripts/data/ncert_maths_seed.json`.

@@ -58,3 +58,14 @@ Never remove or raise this cap. Unbounded context injection will silently inflat
 ## 10. Confidence is a Misconception Signal
 High confidence + wrong answer = `error_type = "misconception"` — not a normal wrong answer.
 Apply 1.5x mastery penalty. Pass `error_type` to `update_error_fingerprint()`. These require different remediation than knowledge gaps.
+
+## 12. Subject Classification Must Degrade Gracefully
+`_classify_subject()` in `engine.py` calls `gpt-4o-mini` at session start to route to Physics/Chemistry/Maths.
+If the LLM call fails for any reason (timeout, API error, bad response), the method must catch the exception and return `"Physics"` as the default — never raise, never crash the session.
+Subject classification failure must be logged as a warning only, not an error.
+
+## 13. LaTeX Braces in Prompt Templates Must Always Be Double-Escaped
+Any string constant in `prompts.py` that contains LaTeX `{...}` syntax AND is called with `.format()` will crash with a `KeyError` swallowed silently by the policy engine — causing every student to get the unpersonalized fallback prompt with no error visible in logs.
+**Rule**: All `{` and `}` in LaTeX examples inside prompt template strings must be written as `{{` and `}}`.
+Example: `\frac{a}{b}` in a format-string → must be written as `\\frac{{a}}{{b}}`.
+Check any new prompt constant that both (a) contains LaTeX braces and (b) is passed to `.format()`. This applies to `TUTOR_SYSTEM_PROMPT`, `CUSTOMIZATION_PROMPT`, and any future prompt constants in the same pattern.

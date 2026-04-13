@@ -14,9 +14,10 @@ Each student doubt creates exactly one `doubt_session` row. The lifecycle is:
 ```
 Student submits question
   → POST /doubt/ask
-    → Intent classification (greeting / meta / emotional / out_of_scope / physics_doubt / continuation)
+    → Intent classification (greeting / meta / emotional / out_of_scope / subject_doubt / continuation)
+    → Subject classification (gpt-4o-mini, routes to Physics/Chemistry/Maths)
     → Problem analysis (GPT, temp=0.1, JSON output)
-    → RAG retrieval (hybrid: vector + keyword, fused via RRF)
+    → Agentic RAG retrieval (AgenticRetriever: up to 3 tool calls, subject-aware)
     → Socratic question generated (personalized to mastery level)
     → doubt_session created in DB (hint_level=0, resolved=false)
     → session_id returned to frontend
@@ -76,16 +77,49 @@ These are non-negotiable constraints baked into `app/services/doubt/prompts.py`.
 
 ### RAG Setup (Supabase / pgvector)
 
-- **Embedding model**: OpenAI `text-embedding-3-small` (1536 dimensions)
+- **Embedding model**: OpenAI `text-embedding-3-small` (1536 dimensions) — confirmed, never all-MiniLM-L6-v2
 - **Vector store**: PostgreSQL 16 + pgvector extension, HNSW index (cosine similarity)
-- **Retrieval**: Hybrid search — vector similarity + ILIKE keyword matching, fused via Reciprocal Rank Fusion (K=60)
-- **Knowledge base**: NCERT PDFs parsed via PyMuPDF, chunked, embedded, stored in `knowledge_chunks`
-- **Search function**: `match_chunks(query_embedding, match_count, filter_subject)`
+- **Retrieval**: Agentic RAG — `AgenticRetriever` runs up to 3 tool calls via gpt-4o-mini function calling; tools: `search_ncert`, `search_jee_problems`, `search_concepts`, `rerank_and_select`
+- **Legacy fallback**: Hybrid search (vector similarity + ILIKE, fused via RRF K=60) still available in `retriever.py` but not called directly — only through agentic loop
+- **Knowledge base**: 15,069 total chunks — Physics 10,505 (HuggingFace KadamParth/Ncert_dataset) + Chemistry 3,138 (same HF dataset) + Maths 1,426 (NCERT PDFs parsed via pdfplumber from ncert.nic.in)
+- **JEE PYQs**: 20 verified seed problems in `jee_problems` table (Physics + Chemistry + Maths)
+- **Search functions**: `match_chunks(query_embedding, match_count, filter_subject)`, `match_jee_problems(query_embedding, match_count, filter_subject)`
 - **Frontend DB client**: `@supabase/supabase-js` (reads student mastery, sessions)
+- **SUPPORTED_SUBJECTS**: `("Physics", "Chemistry", "Maths")` constant in `prompts.py`
 
 ---
 
 ## Completed Features
+
+### 0. Multi-Subject Knowledge Base (Physics + Chemistry + Maths) ✅
+
+| Subject | Chunks | Source |
+|---------|--------|--------|
+| Physics | 10,505 | KadamParth/Ncert_dataset (HuggingFace) |
+| Chemistry | 3,138 | KadamParth/Ncert_dataset (HuggingFace) |
+| Maths | 1,426 | NCERT PDFs parsed via pdfplumber (ncert.nic.in) |
+| **Total** | **15,069** | `knowledge_chunks` table |
+| JEE PYQs | 20 | `jee_pyq_seed.json` (seed), `jee_problems` table |
+
+- Ingestion scripts: `scripts/ingest_chem_maths.py` (Chem+Maths HF), `scripts/ingest_maths_pdf.py` (Maths PDF fallback), `scripts/ingest_jee_pyq.py` (PYQs)
+- All scripts resumable via `.ingest_*_progress.json` files
+- Embedding: OpenAI `text-embedding-3-small` (1536-dim) — all tables uniform
+
+### 0b. RLS — Row-Level Security on All Tables ✅ (`migrate_v10_rls.sql`)
+
+All 10 public tables have `rowsecurity = TRUE`:
+- **Per-student ownership** (`auth.uid() = student_id`): `students`, `study_sessions`, `doubt_sessions`, `doubt_blocks`, `concept_mastery`, `session_events`, `student_memory`
+- **Shared read-only** (any authenticated user): `concepts`, `knowledge_chunks`, `problems`
+- FastAPI backend uses `postgres` superuser — bypasses RLS by design. No backend code changes needed for RLS.
+
+### 0c. Agentic RAG (`app/services/rag/agent.py`, `app/services/rag/tools.py`) ✅
+
+- `AgenticRetriever.run(question, subject, topic, question_type, hint_level)` — up to `MAX_STEPS=3` tool calls
+- LLM: `gpt-4o-mini` for tool selection (cheap, fast)
+- 4 tools: `search_ncert` (pgvector similarity on knowledge_chunks), `search_jee_problems` (jee_problems table), `search_concepts` (concepts table), `rerank_and_select` (dedup + score)
+- Level-3 nuclear gate double-gated: checked in `agent.py` (returns `_EMPTY_CONTEXT` immediately) AND `engine.py` (sets `rag={context_text:"", chunks:[], chunk_count:0}`)
+- Subject router: `_classify_subject()` in `engine.py` runs `gpt-4o-mini` at session start, pre-seeds agentic loop
+- Called in exactly 3 places in `engine.py`: `start_session()`, `start_session_stream()`, `get_hint()` — never add a 4th
 
 ### 1. Socratic AI Engine
 - **File**: `app/services/doubt/engine.py`
@@ -179,6 +213,24 @@ Two rounds of hardening after live test failures:
 
 **Bug fixes applied in same session** — see Known Bugs Fixed table above.
 
+### Multi-Subject Expansion (Physics → Physics + Chemistry + Maths) ✅ (2026-04-13)
+
+Full audit and fix of all Physics-only hardcoded strings across the backend:
+
+- **`prompts.py`**: 8 Physics-only spots replaced with multi-subject variants:
+  - `INTENT_CLASSIFIER_SYSTEM`: now "JEE/NEET tutor covering Physics, Chemistry, and Maths"
+  - `INTENT_CLASSIFIER_PROMPT`: `physics_doubt` → `subject_doubt` (backward-compat alias kept); subject-specific few-shot examples added
+  - `GREETING_RESPONSES`, `META_RESPONSE`, `OUT_OF_SCOPE_RESPONSE`, `CONVERSATIONAL_RESPONSE`: all updated
+  - `TUTOR_SYSTEM_PROMPT` + `CUSTOMIZATION_PROMPT` hard rules: "NCERT Physics" → "NCERT Physics, Chemistry, or Maths"
+  - `SOCRATIC_QUESTION_PROMPT`: Chemistry + Maths probing examples added
+  - `SYSTEM_PROMPT_FORCED_ATTEMPT`: "physics involved" → "subject matter involved"
+  - `SUPPORTED_SUBJECTS = ("Physics", "Chemistry", "Maths")` constant added
+  - `get_subject_context(subject)` and `build_system_prompt(personalization_block, subject)` subject-aware
+- **`engine.py`**: `classify_intent()` now accepts `subject` param; `physics_doubt` normalized to `subject_doubt`; fallback intent is `subject_doubt`
+- **`doubt.py`**: `AskRequest` has `subject_must_be_valid` field_validator; `classify_intent()` passes `subject=body.subject`; all `"intent": "physics_doubt"` → `"intent": "subject_doubt"`; topic fallback uses `body.subject or "General"` not `"Physics"`
+- **`mock.py`**: `_MCQ_PROMPT` now `{subject}`-parameterised; `_generate_mcq_options()` accepts `subject`
+- **Confirmed already multi-subject**: `misconceptions.py` (30 entries, Physics+Chemistry+Maths), `policy/engine.py` (`_SUBJECT_STYLE_OVERRIDES` per subject), `summarizer.py`, `onboarding.py`
+
 ---
 
 ## Database Schema
@@ -206,6 +258,21 @@ Two rounds of hardening after live test failures:
 | next_review_due | TIMESTAMP | SM-2 spaced repetition |
 | error_pattern_array | JSONB | Mistake forensics tags |
 
+### `jee_problems` (JEE PYQ Bank) — added `migrate_v11_jee_problems.sql`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID PK | UUID5 deterministic from source+question |
+| question_text | TEXT | |
+| verified_answer | TEXT | |
+| subject | TEXT | "Physics" / "Chemistry" / "Maths" |
+| topic | TEXT | |
+| difficulty | FLOAT | 0–1 |
+| year | INT | Exam year |
+| embedding | vector(1536) | HNSW cosine index |
+| concepts_tested | TEXT[] | |
+
+RLS: authenticated users read-only. `match_jee_problems()` function available.
+
 ### Other Key Tables
 - **`students`**: id, name, exam_type (JEE/NEET), target_year
 - **`concepts`**: id (text), subject, topic, subtopic, prerequisite_ids[]
@@ -229,14 +296,24 @@ Two rounds of hardening after live test failures:
 | DB Client (backend) | AsyncPG |
 | DB Client (frontend) | @supabase/supabase-js |
 | Database | PostgreSQL 16 + pgvector (HNSW, cosine) |
-| LLM | OpenAI `gpt-4o-mini` (cheap: classification, summarization) / `gpt-4.1-mini` (quality: all Socratic responses, hints, solutions) |
-| Embeddings | OpenAI text-embedding-3-small (1536-dim) |
+| LLM — classification | OpenAI `gpt-4o-mini` — intent detection, subject routing, agentic tool selection, summarization, memory compression |
+| LLM — Socratic | OpenAI `gpt-4.1-mini` — all Socratic responses, hints, full solutions, onboarding persona builder |
+| LLM — vision | OpenAI `gpt-4o` — image-to-doubt feature only. Never for text. |
+| Embeddings | OpenAI `text-embedding-3-small` (1536-dim) — confirmed standard, all tables uniform |
 | Math Verification | SymPy |
-| PDF Parsing | PyMuPDF |
+| PDF Parsing | pdfplumber (Maths PDFs), PyMuPDF (legacy) |
 | Cache | Redis |
 | Deployment | Vercel (frontend), Render (backend), Docker (local) |
 
 ---
+
+## Known Bugs Fixed (2026-04-13 Audit)
+
+| Bug | File | Fix | Status |
+|-----|------|-----|--------|
+| `build_system_prompt()` silent KeyError — every student got unpersonalized fallback prompt | `prompts.py:643` | Double-escaped LaTeX braces in `CUSTOMIZATION_PROMPT`: `{u^2 \\sin 2\\theta}` → `{{u^2 \\sin 2\\theta}}`, `{g}` → `{{g}}`. Same fix previously applied to `TUTOR_SYSTEM_PROMPT` | ✅ |
+
+**Root cause pattern**: Any string constant in `prompts.py` that contains `{...}` for LaTeX and is called with `.format()` will crash with a silent `KeyError` swallowed by the policy engine. All LaTeX braces in prompt templates must be `{{}}` double-escaped.
 
 ## Known Bugs Fixed (2026-03-30 Audit) — ✅ All Implemented
 
@@ -353,7 +430,9 @@ cd frontend/web && npm run dev
 ```
 
 **Postgres connection:**
-- Host: localhost:5432, DB: upmyrank, User: upmyrank, Password: upmyrank
+- **Supabase cloud**: `aws-0-us-west-2.pooler.supabase.com:5432`, project `vgctqmhwezmihhmnwtzm`
+- `DATABASE_URL` in `.env` points to Supabase. Docker postgres container is NOT used.
+- Run any migration: `./scripts/run_migration.sh scripts/migrate_vX_name.sql`
 
 **Environment files:**
 - Backend: `.env` (copy from `.env.example`)
