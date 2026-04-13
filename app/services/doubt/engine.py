@@ -351,10 +351,15 @@ class SocraticEngine:
         analysis["mentor_mode"] = mentor_mode
 
         # ── 3. Subject classification — pre-seeds the agentic loop ──────────────
-        # Runs after problem analysis so analysis_topic is available.
-        # Cheap model (gpt-4o-mini), temp=0.0 — fast and deterministic.
-        logger.info("Classifying subject and topic …")
-        subject_meta = await self._classify_subject(question)
+        # Short-circuit: if subject is already a known SUPPORTED_SUBJECT (e.g.
+        # navigated from TopicTree), skip the gpt-4o-mini classify call entirely.
+        from app.services.doubt.prompts import SUPPORTED_SUBJECTS  # noqa: PLC0415
+        if subject in SUPPORTED_SUBJECTS:
+            logger.info("Subject already known (%s) — skipping _classify_subject", subject)
+            subject_meta = {"subject": subject, "question_type": "conceptual"}
+        else:
+            logger.info("Classifying subject and topic …")
+            subject_meta = await self._classify_subject(question)
         _effective_subject = subject_meta.get("subject", subject)
         _question_type     = subject_meta.get("question_type", "conceptual")
 
@@ -658,7 +663,13 @@ class SocraticEngine:
             analysis["mentor_mode"] = mentor_mode
 
             # ── 3. Subject classification ────────────────────────────────────────
-            stream_subject_meta = await self._classify_subject(question)
+            # Short-circuit: skip gpt-4o-mini call when subject is pre-known
+            from app.services.doubt.prompts import SUPPORTED_SUBJECTS  # noqa: PLC0415
+            if subject in SUPPORTED_SUBJECTS:
+                logger.info("Subject already known (%s) — skipping _classify_subject (stream)", subject)
+                stream_subject_meta = {"subject": subject, "question_type": "conceptual"}
+            else:
+                stream_subject_meta = await self._classify_subject(question)
             _eff_subject_stream = stream_subject_meta.get("subject", subject)
             _qtype_stream       = stream_subject_meta.get("question_type", "conceptual")
 

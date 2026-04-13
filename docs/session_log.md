@@ -3,6 +3,50 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-04-13 (UI Overhaul)
+**Focus:** Full UI overhaul — Topic Tree sidebar, Quick Doubt FAB, mobile responsive layout, subject mastery dashboard
+**Status:** DONE (steps 1–9 complete, step 10 = manual test at breakpoints)
+
+**Changed files:**
+- `frontend/web/lib/syllabus.ts` — NEW: full JEE static syllabus (Physics 20ch, Chemistry 21ch, Maths 21ch), `STATIC_SYLLABUS`, `SYLLABUS_MAP`, `masteryColor()`, `masteryBg()`, `SyllabusChapter/Topic/Subject` interfaces
+- `frontend/web/components/TopicTree.tsx` — NEW: Subject tabs (Phy/Che/Mat), ChapterAccordion with mastery bar, TopicRow with Doubt/Practice/Mock icons, `/taxonomy` + genome concurrent fetch via `Promise.allSettled`, static syllabus fallback
+- `frontend/web/components/QuickDoubtFAB.tsx` — NEW: 56px FAB, "Quick Doubt" label fades after 3s, bottom-sheet textarea (fontSize:16, iOS safe area), navigates to `/doubt?q=<question>`, hidden on /doubt /auth /onboarding
+- `frontend/web/components/Sidebar.tsx` — REWRITE: IdentityCard + TopicTree + footer links; NEW mobile header (hamburger + logo + avatar); Framer Motion drawer; bottom nav bar REMOVED
+- `frontend/web/app/layout.tsx` — added `<QuickDoubtFAB />` globally inside AuthProvider
+- `frontend/web/app/doubt/page.tsx` — `subjectParam`, `chapterParam`, `topicLock`, `quickDoubtQ` URL params; topic-scoped header with subject badge; all `subject: 'Physics'` → `subject: subjectParam`; QuickDoubtQ auto-submit effect; `h-[100dvh]` + `pt-[calc(56px+12px)] md:pt-3`
+- `frontend/web/app/page.tsx` — REWRITE: 3 subject mastery cards (per-subject avg from topic_mastery), exam countdown card (JEE April of target_year), "Continue last session" link, responsive grid (2-col mobile → 3-col desktop)
+- `frontend/web/app/practice/page.tsx` — `h-[100dvh]`, `pb-24` → `pb-4`, `pt-14 md:pt-0`
+- `frontend/web/app/mock/page.tsx` — `h-[100dvh]`, `pt-14 md:pt-0`
+- `frontend/web/app/progress/page.tsx` — `h-[100dvh]`, `pb-24` → `pb-4`, `pt-14 md:pt-0`
+- `frontend/web/app/globals.css` — added `.h-dvh`, `.min-h-dvh`, `.scroll-touch`, `.touch-target` utility classes
+- `frontend/web/components/ChatInput.tsx` — `style={{ fontSize: 16 }}` on textarea (iOS zoom fix)
+- `app/services/doubt/engine.py` — subject short-circuit in both `start_session()` and `start_session_stream()`: skip `_classify_subject()` gpt-4o-mini call when `subject ∈ SUPPORTED_SUBJECTS`
+- `docs/ui_overhaul_plan.md` — status updated, all steps marked complete
+- `docs/decisions.md` — UI Overhaul decision entry added
+
+**Current system state:**
+- TypeScript: `npx tsc --noEmit` → 0 errors after all changes
+- Backend: subject short-circuit saves ~200ms per topic-scoped session start
+- TopicTree: uses `/taxonomy` as primary, falls back to static SYLLABUS_MAP per subject
+- QuickDoubtFAB: globally mounted, hidden on /doubt /auth /onboarding
+
+**In progress / half done:**
+Step 10 (manual breakpoint testing at 360px/390px/768px/1280px) not done — requires browser.
+
+**Cliff notes (non-obvious context):**
+- Subject mastery on dashboard is derived by matching `genome.topic_mastery` keys (subtopic names) against static SYLLABUS_MAP topic names (lowercase normalize). Expect low match rate until students have sessions — cards show 0% for unstarted subjects.
+- `quickDoubtFiredRef` prevents the auto-submit effect from double-firing on re-renders. It fires once when `studySessionId` becomes non-null.
+- Mobile header is `h-14` (56px). All scrollable content areas have `pt-14 md:pt-0` to clear it. The `doubt/page.tsx` uses `pt-[calc(56px+12px)]` because it already has outer `p-3`.
+- The test phase in mock.tsx uses `flex overflow-hidden` (full-screen, no scroll) so it intentionally has NO `pt-14 md:pt-0`.
+
+**Next session — read these files first:**
+Nothing specific — project is clean.
+
+**Next session — start here:**
+Manual test at 360px mobile breakpoint and fix any overflow issues. Then ask user what to build next.
+
+---
+
 ## Session 2026-04-13 (cont.)
 **Focus:** Multi-subject expansion audit, NCERT Maths PDF ingestion, critical bug fixes, full E2E verification across Physics/Chemistry/Maths
 **Status:** DONE

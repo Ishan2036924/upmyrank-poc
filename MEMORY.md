@@ -5,6 +5,23 @@
 
 ---
 
+## 🚧 Next Up — Planned Work
+
+### UI Overhaul: Topic Tree + Quick Doubt + Mobile Responsive
+**Full spec:** `docs/ui_overhaul_plan.md` — read this before starting any frontend work.  
+**Status:** PLANNED, not started. Steps 1–10 all pending.  
+**Summary:** Replace current sidebar with Subject → Chapter → Topic tree. Add floating Quick Doubt FAB. Full mobile-first responsive overhaul at 360px. One backend change: short-circuit `_classify_subject()` in `engine.py` when subject is already known from navigation.
+
+### Render Deployment Fix
+**Status:** PLANNED, not done.  
+In Render dashboard → Settings → Docker Command field → set to:
+```
+uvicorn app.main:app --host 0.0.0.0 --port 10000
+```
+This removes `--reload` from the production container. Root cause: `--reload` spawns a file-watcher that briefly drops the port during reload cycles, causing Render health checks to fail.
+
+---
+
 ## Core Architecture
 
 ### "One Question = One Session" Flow
@@ -367,6 +384,25 @@ Full engine audit was run and all identified bugs were fixed in the same session
 - **`engine.py get_hint()`** — check fires after student response appended to history, before hint level increment. If matched and `hint_level < 3`: returns `correction_prompt` directly, no LLM call, no level increment, persists updated conversation history. Returns `is_misconception_correction=True, misconception_id=...`.
 - **`_genome_update_task`** — `misconception_id: Optional[str]` param. When present + not resolved: 1.5× mastery penalty, `error_type="misconception"` fingerprint, `misconception_id` added to `persona_profile.common_misconceptions` (no duplicates). Session events `misconception_detected` populated.
 - **Frontend** — `🧠 Misconception Detected` amber badge in `ChatMessage.tsx`.
+
+### UI Overhaul — Topic Tree + Quick Doubt FAB + Mobile Responsive ✅ COMPLETE
+
+Full frontend redesign. Desktop sidebar unchanged (220px). Mobile: top header + drawer.
+
+**New files:**
+- `frontend/web/lib/syllabus.ts` — static JEE syllabus (Physics 20ch, Chemistry 21ch, Maths 21ch); `STATIC_SYLLABUS`, `SYLLABUS_MAP`, `masteryColor()`, `masteryBg()`
+- `frontend/web/components/TopicTree.tsx` — Subject tabs, ChapterAccordion with mastery, TopicRow with Doubt/Practice/Mock icons; merges `/taxonomy` with static fallback
+- `frontend/web/components/QuickDoubtFAB.tsx` — 56px FAB, label fades after 3s, bottom-sheet with textarea, navigates to `/doubt?q=<question>`
+
+**Modified files:**
+- `frontend/web/components/Sidebar.tsx` — IdentityCard + TopicTree + footer; mobile header (hamburger/logo/avatar); old bottom nav removed; Framer Motion drawer
+- `frontend/web/app/layout.tsx` — `<QuickDoubtFAB />` globally mounted in AuthProvider
+- `frontend/web/app/doubt/page.tsx` — URL params: `subjectParam`, `chapterParam`, `topicLock`, `quickDoubtQ`; topic-scoped header with subject badge; QuickDoubtQ auto-submit
+- `frontend/web/app/page.tsx` — 3 subject mastery cards (Physics/Chemistry/Maths), exam countdown (target_year), "Continue last session" button
+- `frontend/web/app/practice/page.tsx`, `mock/page.tsx`, `progress/page.tsx` — `h-[100dvh]`, mobile padding fixes
+- `frontend/web/app/globals.css` — `.h-dvh`, `.scroll-touch`, `.touch-target` utilities
+- `frontend/web/components/ChatInput.tsx` — `fontSize: 16` on textarea (iOS zoom fix)
+- `app/services/doubt/engine.py` — subject short-circuit: skip `_classify_subject()` when `subject ∈ SUPPORTED_SUBJECTS`
 
 ---
 

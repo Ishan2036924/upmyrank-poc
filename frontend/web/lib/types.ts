@@ -78,9 +78,13 @@ export interface ChatMessage {
     doubt_block_solved?: boolean
     is_forced_attempt?: boolean
     confidence?: 'low' | 'medium' | 'high'
-    image_url?: string   // Supabase Storage URL for images submitted via Vision AI
+    image_url?: string   // base64 data URL for images submitted via Vision AI
     is_misconception_correction?: boolean
     misconception_id?: string
+    // Topic-scoped session context (set when navigating from TopicTree)
+    subject?: string    // "Physics" | "Chemistry" | "Maths"
+    chapter?: string    // e.g. "Rotational Dynamics"
+    topic?: string      // e.g. "Moment of Inertia"
   }
 }
 

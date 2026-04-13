@@ -68,6 +68,25 @@ body {
   border: 0 !important;
 }
 
+/* ── Mobile utilities ──────────────────────────────────────────────────────── */
+
+/* Use dynamic viewport height so content doesn't overlap keyboard on mobile */
+.h-dvh { height: 100dvh; }
+.min-h-dvh { min-height: 100dvh; }
+
+/* Smooth momentum scrolling on iOS */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Minimum touch target (WCAG 2.5.5) */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ── Typing indicator animation ──────────────────────────────────────────── */
 /* Typing indicator animation */
 @keyframes typing-dot {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }

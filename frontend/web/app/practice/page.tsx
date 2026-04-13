@@ -103,10 +103,10 @@ export default function PracticePage() {
   if (showSummary) {
     return (
       <AuthGuard>
-      <div className="flex h-screen">
+      <div className="flex h-[100dvh]">
         <Sidebar />
-        <div className="md:ml-[236px] flex-1 overflow-y-auto">
-          <div className="max-w-2xl mx-auto px-6 py-8 pb-24 md:pb-10 space-y-6">
+        <div className="md:ml-[236px] flex-1 overflow-y-auto pt-14 md:pt-0">
+          <div className="max-w-2xl mx-auto px-6 py-8 pb-4 md:pb-10 space-y-6">
             <h1 className="text-2xl font-bold text-slate-800 mb-1">Practice Complete! 🎉</h1>
             <p className="text-slate-500">
               You answered {correctCount} out of {history.filter((h) => h.result !== null).length} questions correctly.
@@ -169,10 +169,10 @@ export default function PracticePage() {
 
   return (
     <AuthGuard>
-    <div className="flex h-screen">
+    <div className="flex h-[100dvh]">
       <Sidebar />
-      <div className="md:ml-[236px] flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-6 py-8 pb-24 md:pb-8 space-y-5">
+      <div className="md:ml-[236px] flex-1 overflow-y-auto pt-14 md:pt-0">
+        <div className="max-w-2xl mx-auto px-6 py-8 pb-4 md:pb-8 space-y-5">
 
           {/* Header */}
           <div className="flex items-center gap-3">

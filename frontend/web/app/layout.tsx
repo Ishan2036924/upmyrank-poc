@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/lib/auth'
+import QuickDoubtFAB from '@/components/QuickDoubtFAB'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'UpMyRank — AI Tutor',
-  description: 'AI-powered JEE/NEET tutoring · NCERT Physics Class 11 & 12',
+  description: 'AI-powered JEE/NEET tutoring · Physics, Chemistry & Maths · NCERT Class 11 & 12',
 }
 
 export default function RootLayout({
@@ -19,7 +20,11 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <body className={`${inter.className} h-full text-slate-900 antialiased`}>
         <div className="mesh-bg" />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          {/* FAB rendered globally — hides itself on /doubt, /auth, /onboarding */}
+          <QuickDoubtFAB />
+        </AuthProvider>
       </body>
     </html>
   )

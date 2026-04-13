@@ -164,7 +164,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
                 : placeholder ?? 'Ask a Physics question or attach an image…'
             }
             className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 resize-none outline-none leading-relaxed py-1 disabled:opacity-60"
-            style={{ maxHeight: 160 }}
+            style={{ maxHeight: 160, fontSize: 16 }}
           />
 
           {/* Send button */}

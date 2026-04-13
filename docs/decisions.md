@@ -106,3 +106,14 @@
 **Why:** Earlier documentation referenced `all-MiniLM-L6-v2` (384-dim, sentence-transformers) but the actual implementation in `app/services/rag/embeddings.py` uses OpenAI text-embedding-3-small. The 384-dim model was considered in early POC but never shipped. 1536-dim gives better recall for math-heavy NCERT content.
 **Rejected:** all-MiniLM-L6-v2 (384-dim, free, local) — was in early docs but not in production code. text-embedding-3-large (3072-dim) — cost prohibitive with no recall gain for NCERT chunk sizes.
 **Note:** All pgvector columns are `vector(1536)`. Never insert 384-dim embeddings — schema mismatch will fail silently with wrong similarity scores.
+
+## 2026-04-13 — UI Overhaul: Topic Tree + Quick Doubt FAB + Mobile Responsive
+**Decision:** Full sidebar redesign — topic tree navigation (Subject → Chapter → Topic) replaces old nav links. Quick Doubt FAB globally mounted in layout.tsx. Mobile header (hamburger + avatar) replaces bottom nav bar.
+**Why:** Old sidebar had text nav links with no syllabus context. Students navigated blindly. New tree shows mastery bars per topic + direct Doubt/Practice/Mock actions — closing the loop between "what to study" and "how to study it".
+**Key choices:**
+- `/taxonomy` as primary data source; static `lib/syllabus.ts` (62 chapters, 3 subjects) as fallback when subject has 0 API chapters
+- `QuickDoubtFAB` navigates to `/doubt?q=<question>` — no new endpoint, classification runs server-side as normal
+- Subject short-circuit in `engine.py`: if `subject` ∈ `SUPPORTED_SUBJECTS`, skip `_classify_subject()` gpt-4o-mini call entirely (saves ~200ms per topic-scoped session start)
+- Dashboard: 3 subject mastery cards computed by matching `genome.topic_mastery` keys against static syllabus topic names (lowercase), exam countdown using `target_year`
+- Mobile layout: `h-[100dvh]` instead of `h-screen`, `fontSize: 16` on all inputs (iOS zoom prevention), `pt-14 md:pt-0` for mobile header clearance
+**Files changed:** `lib/syllabus.ts` (new), `components/TopicTree.tsx` (new), `components/QuickDoubtFAB.tsx` (new), `components/Sidebar.tsx` (rewrite), `app/layout.tsx`, `app/doubt/page.tsx`, `app/page.tsx`, `app/practice/page.tsx`, `app/mock/page.tsx`, `app/progress/page.tsx`, `app/globals.css`, `components/ChatInput.tsx`, `app/services/doubt/engine.py`

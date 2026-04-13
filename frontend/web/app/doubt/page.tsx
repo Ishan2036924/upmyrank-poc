@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ArrowLeft, RotateCcw, Target } from 'lucide-react'
+import { ArrowLeft, RotateCcw, Target, BookOpen } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from '@/components/Sidebar'
 import ChatMessage from '@/components/ChatMessage'
@@ -101,9 +101,15 @@ function rebuildMessages(blocks: DoubtBlock[]): ChatMessageType[] {
 function DoubtPageInner() {
   const { studentId } = useAuth()
 
-  // Read topic lock from URL query param (?topic=...)
-  const searchParams = useSearchParams()
-  const topicLock = searchParams.get('topic') ?? null
+  // Read URL query params
+  const searchParams  = useSearchParams()
+  const subjectParam  = searchParams.get('subject') ?? 'Physics'  // from TopicTree navigation
+  const chapterParam  = searchParams.get('chapter') ?? null        // e.g. "Rotational Dynamics"
+  const topicLock     = searchParams.get('topic')   ?? null        // topic lock (from TopicTree or direct link)
+  const quickDoubtQ   = searchParams.get('q')       ?? null        // from QuickDoubtFAB bottom sheet
+
+  // Track whether we've auto-submitted the QuickDoubt question
+  const quickDoubtFiredRef = useRef(false)
 
   // Study-session state
   const [studySessionId,  setStudySessionId]  = useState<string | null>(null)
@@ -234,6 +240,20 @@ function DoubtPageInner() {
     }
   }, [isLoading, currentBlockSolved])
 
+  // ── Auto-submit QuickDoubt question once session is ready ─────────────────
+  useEffect(() => {
+    if (
+      quickDoubtQ &&
+      !quickDoubtFiredRef.current &&
+      studySessionId &&
+      !isLoading
+    ) {
+      quickDoubtFiredRef.current = true
+      handleSend(quickDoubtQ)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickDoubtQ, studySessionId])
+
   const addMessage = useCallback((msg: Omit<ChatMessageType, 'id'>) => {
     setMessages((prev) => [...prev, { ...msg, id: nanoid() }])
   }, [])
@@ -274,7 +294,7 @@ function DoubtPageInner() {
         question:           text || undefined,
         image_url:          imageUrl || undefined,
         student_id:         studentId,
-        subject:            'Physics',
+        subject:            subjectParam,
         study_session_id:   studySessionId ?? undefined,
         student_confidence: level,
         ...(topicLock ? { topic_lock: topicLock } : {}),
@@ -378,7 +398,7 @@ function DoubtPageInner() {
         question:         text || undefined,
         image_url:        imageUrl || undefined,
         student_id:       studentId,
-        subject:          'Physics',
+        subject:          subjectParam,
         study_session_id: studySessionId ?? undefined,
         ...(topicLock ? { topic_lock: topicLock } : {}),
       })
@@ -437,7 +457,7 @@ function DoubtPageInner() {
         // Don't start a new session — just prompt them to ask a question
         addMessage({
           role: 'tutor',
-          content: res.response ?? 'Ask me a Physics question and I\'ll guide you through it step by step! 🎓',
+          content: res.response ?? `Ask me a ${subjectParam} question and I'll guide you through it step by step! 🎓`,
         })
       } else {
         // greeting, meta, emotional, out_of_scope, recap, explanation
@@ -582,43 +602,69 @@ function DoubtPageInner() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen p-3 gap-3">
+    <div className="flex h-[100dvh] p-3 gap-3 pt-[calc(56px+12px)] md:pt-3">
       <Sidebar />
 
       {/* ── Floating glassmorphic main window ─────────────────────────────── */}
-      <div className="ml-[236px] flex-1 flex gap-3 min-w-0">
+      <div className="md:ml-[236px] flex-1 flex gap-3 min-w-0">
 
         {/* ── Center chat panel ─────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden min-w-0">
 
           {/* ── Top bar ─────────────────────────────────────────────────────── */}
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 flex-shrink-0">
-            <Link href="/" className="text-slate-400 hover:text-slate-700 transition-colors">
+          <div className="flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 border-b border-slate-100 flex-shrink-0">
+            <Link href="/" className="text-slate-400 hover:text-slate-700 transition-colors flex-shrink-0">
               <ArrowLeft className="h-5 w-5" />
             </Link>
 
-            <div className="flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-slate-800">Ask a doubt</span>
-                <span className="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs text-slate-500 font-medium">
-                  Socratic mode
-                </span>
-                {topicLock && (
-                  <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs text-indigo-700 font-medium flex items-center gap-1">
-                    <Target className="h-3 w-3" />
-                    Locked to: {topicLock}
+            <div className="flex-1 min-w-0">
+              {/* Topic-scoped header — shown when navigated from TopicTree */}
+              {(chapterParam || topicLock) ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Subject badge */}
+                  <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold flex-shrink-0 ${
+                    subjectParam === 'Physics'   ? 'bg-blue-50 border-blue-200 text-blue-700' :
+                    subjectParam === 'Chemistry' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                    subjectParam === 'Maths'     ? 'bg-violet-50 border-violet-200 text-violet-700' :
+                                                   'bg-slate-100 border-slate-200 text-slate-600'
+                  }`}>
+                    {subjectParam}
                   </span>
-                )}
-                {mentorMode && MENTOR_LABELS[mentorMode] && (
+                  {/* Chapter · Topic breadcrumb */}
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <BookOpen className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                    <span className="text-sm font-semibold text-slate-800 truncate">
+                      {chapterParam && topicLock
+                        ? `${chapterParam} · ${topicLock}`
+                        : chapterParam || topicLock}
+                    </span>
+                  </div>
+                  {/* Locked badge */}
+                  <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-xs text-indigo-700 font-medium flex items-center gap-1 flex-shrink-0">
+                    <Target className="h-3 w-3" />
+                    Focused
+                  </span>
+                </div>
+              ) : (
+                /* Generic header */
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-slate-800">Ask a doubt</span>
+                  <span className="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs text-slate-500 font-medium">
+                    Socratic mode
+                  </span>
+                </div>
+              )}
+              {mentorMode && MENTOR_LABELS[mentorMode] && (
+                <div className="mt-0.5">
                   <span className="rounded-full bg-violet-50 border border-violet-200 px-2.5 py-0.5 text-xs text-violet-600 font-medium">
                     {MENTOR_LABELS[mentorMode]}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {analysis && (
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                 {(analysis as { subtopic?: string }).subtopic && (
                   <span className="rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs text-blue-600 font-medium">
                     {(analysis as { subtopic: string }).subtopic}
@@ -626,7 +672,7 @@ function DoubtPageInner() {
                 )}
                 {(analysis as { difficulty?: number }).difficulty != null && (
                   <span className="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs text-slate-500">
-                    Difficulty {(analysis as { difficulty: number }).difficulty}/10
+                    Diff {(analysis as { difficulty: number }).difficulty}/10
                   </span>
                 )}
               </div>
@@ -649,8 +695,8 @@ function DoubtPageInner() {
                 </div>
                 <p className="text-slate-800 text-base mb-1.5 font-semibold tracking-tight">
                   {topicLock
-                    ? `Locked to: ${topicLock}`
-                    : 'Your Socratic AI Physics tutor'}
+                    ? `Focused on: ${topicLock}`
+                    : `Your Socratic AI ${subjectParam} tutor`}
                 </p>
                 <p className="text-slate-400 text-sm mb-8 max-w-xs leading-relaxed">
                   {topicLock
@@ -664,6 +710,20 @@ function DoubtPageInner() {
                         `What are the key formulas for ${topicLock}?`,
                         `Give me a JEE-level problem on ${topicLock}.`,
                         `What are common mistakes in ${topicLock}?`,
+                      ]
+                    : subjectParam === 'Chemistry'
+                    ? [
+                        'Explain hybridization in organic compounds.',
+                        'What is the difference between SN1 and SN2 reactions?',
+                        'How does Le Chatelier\u2019s principle work?',
+                        'Explain the periodic trends in ionization energy.',
+                      ]
+                    : subjectParam === 'Maths'
+                    ? [
+                        'How do I find the range of a function?',
+                        'Explain integration by parts with an example.',
+                        'What is the geometric meaning of a derivative?',
+                        'How do I solve a system of linear equations?',
                       ]
                     : [
                         'Why does a ball thrown upward come back down?',
@@ -827,10 +887,10 @@ function DoubtPageInner() {
                     forcedAttemptActive
                       ? 'Write your full answer and working — I\'ll evaluate it…'
                       : currentBlockSolved
-                        ? topicLock ? `Ask another question about ${topicLock}…` : 'Ask a new Physics question…'
+                        ? topicLock ? `Ask another question about ${topicLock}…` : `Ask a new ${subjectParam} question…`
                         : sessionId
                           ? 'Type your answer, or say "I got it" / "show solution"…'
-                          : topicLock ? `Ask a question about ${topicLock}…` : 'Ask a Physics question…'
+                          : topicLock ? `Ask a question about ${topicLock}…` : `Ask a ${subjectParam} question…`
                   }
                 />
               </motion.div>

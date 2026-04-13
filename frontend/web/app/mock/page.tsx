@@ -138,9 +138,9 @@ export default function MockPage() {
   if (phase === 'done') {
     return (
       <AuthGuard>
-      <div className="flex h-screen">
+      <div className="flex h-[100dvh]">
         <Sidebar />
-        <div className="md:ml-[236px] flex-1 overflow-y-auto">
+        <div className="md:ml-[236px] flex-1 overflow-y-auto pt-14 md:pt-0">
           <PostMortem
             records={records}
             onRetake={() => setPhase('setup')}
@@ -156,7 +156,7 @@ export default function MockPage() {
   if (phase === 'test') {
     return (
       <AuthGuard>
-      <div className="flex h-screen">
+      <div className="flex h-[100dvh]">
         <Sidebar />
         <div className="md:ml-[236px] flex-1 flex overflow-hidden">
 
@@ -335,9 +335,9 @@ export default function MockPage() {
   // ── Phase: setup ──────────────────────────────────────────────────────────────
   return (
     <AuthGuard>
-    <div className="flex h-screen">
+    <div className="flex h-[100dvh]">
       <Sidebar />
-      <div className="md:ml-[236px] flex-1 overflow-y-auto">
+      <div className="md:ml-[236px] flex-1 overflow-y-auto pt-14 md:pt-0">
         <div className="max-w-lg mx-auto px-6 py-10 space-y-7">
 
           {/* Header */}
