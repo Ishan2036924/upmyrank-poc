@@ -1,0 +1,73 @@
+# Bug History — UpMyRank
+
+## Full solution firing multiple times — fixed
+**Symptom:** Student would get 2-3 identical full solutions dumped into chat
+**Root cause:** Missing guard check — full solution handler didn't verify if solution was already delivered in current doubt block
+**Fix:** Added `solution_delivered` boolean flag on doubt block state. Check before generating.
+**DO NOT:** Debounce on frontend — the backend must be idempotent. Frontend debounce masks the real issue.
+
+## Verification confidence returning 0% — fixed
+**Symptom:** Every doubt showed 0% confidence score regardless of answer quality
+**Root cause:** Embedding dimension mismatch — verification was comparing 3072-dim reference against 384-dim query vectors. Cosine similarity returned near-zero.
+**Fix:** Ensured verification pipeline uses same all-MiniLM-L6-v2 (384d) embeddings throughout
+**DO NOT:** Hardcode confidence to a default value to "fix" the display. The underlying comparison must work.
+
+## Markdown/LaTeX rendering broken in chat — fixed
+**Symptom:** Raw LaTeX strings like `\frac{1}{2}mv^2` showing in chat instead of rendered math
+**Root cause:** Missing rehype-katex plugin in react-markdown pipeline, or remark-math not processing inline `$...$` delimiters
+**Fix:** Ensured react-markdown uses `remarkPlugins={[remarkMath]}` and `rehypePlugins={[rehypeKatex]}`. Also imported KaTeX CSS.
+**DO NOT:** Use dangerouslySetInnerHTML to render LaTeX. Always go through the react-markdown pipeline.
+
+## Intent detection too aggressive — fixed
+**Symptom:** Student saying "show me how to start" triggered full solution reveal instead of a hint
+**Root cause:** Give-up regex was too broad — matched "show me" anywhere in input
+**Fix:** Narrowed regex to explicit give-up phrases: "give up", "i give up", "just show me the answer", "show me the full solution". Must be near-exact match.
+**DO NOT:** Use broad substring matching for intent detection. Every pattern must be tested against common student phrases that should NOT trigger it.
+
+## Session summarizer race condition — fixed
+**Symptom:** Second doubt in a session had no context from the first doubt's summary
+**Root cause:** Summarizer was fired asynchronously (fire-and-forget) when ending a doubt block. The next doubt block started before the summary was written to DB.
+**Fix:** Made summarizer a blocking `await` call. Doubt block is only marked "ended" AFTER summary is persisted.
+**DO NOT:** Make the summarizer async/background again. This MUST be synchronous in the doubt-end flow. See docs/decisions.md.
+
+## Out-of-scope questions getting Socratic treatment — fixed
+**Symptom:** Student asking "what's the weather?" got a Socratic physics dialogue instead of a polite redirect
+**Root cause:** Intent classifier defaulted to "physics_doubt" for any unrecognized input
+**Fix:** Added explicit out-of-scope category in classifier. Unrecognized inputs now return a friendly redirect message.
+**DO NOT:** Add more subjects to the classifier to "catch" out-of-scope queries. The classifier needs a dedicated "not_a_doubt" class.
+
+## "Invalid or expired token" on onboarding — fixed
+**Symptom:** Students completing onboarding after >1 hour of inactivity got 401 and were blocked
+**Root cause:** Supabase access tokens expire after 1 hour. No refresh mechanism existed — the token in localStorage was used until it expired with no recovery path.
+**Fix:** Added `POST /auth/refresh` endpoint. `api.ts` catches 401, silently calls refresh, retries original request. Redirects to login only if refresh token is also expired.
+**DO NOT:** Extend token expiry in Supabase settings. Silent refresh is the right UX pattern.
+
+## "Failed to fetch" on Render cold start — fixed
+**Symptom:** First API call on login/onboarding pages returned network error, shown as "Failed to fetch / Go back and try again"
+**Root cause:** Render free tier spins down after inactivity. Cold start takes up to 50 seconds. Original 3-second retry was insufficient.
+**Fix:** `fetchWithRetry()` in `api.ts` with 3 retries at 5s/15s/30s delays. `pingBackend()` called on mount of login, signup, and onboarding pages to trigger warm-up before the user submits.
+**DO NOT:** Set a single short timeout and surface the error immediately. The first call on cold start will always fail — retry is mandatory.
+
+## AttributeError: SocraticEngine has no attribute '_openai' — fixed
+**Symptom:** `/onboarding/submit` crashed with `AttributeError: 'SocraticEngine' object has no attribute '_openai'`
+**Root cause:** `onboarding.py` used `._openai` but the engine stores the client as `._client` (as seen in `mock.py`)
+**Fix:** Changed `._openai` → `._client` in `app/api/onboarding.py`
+**DO NOT:** Add a `_openai` alias property. Fix the reference at the call site.
+
+## Image upload "supabaseUrl is required" — fixed
+**Symptom:** Clicking image upload in ChatInput threw "supabaseUrl is required" and blocked the upload
+**Root cause:** `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are not set in Vercel environment. `getSupabase()` threw on initialization.
+**Fix:** Removed Supabase Storage entirely. `ChatInput.tsx` now reads the file with `FileReader.readAsDataURL()` and sends base64 to backend. No Supabase env vars needed.
+**DO NOT:** Try to fix this by adding Supabase env vars to Vercel — base64 is the correct long-term approach for this use case.
+
+## Knowledge Genome not updating (Analytics shows 0%) — fixed
+**Symptom:** Analytics page always showed 0% mastery even after students completed multiple doubts
+**Root cause:** `handleGotIt()` was calling `/student/{id}/update-mastery` per-concept directly. This ran the EMA math but never triggered `_genome_update_task` which is the sole writer for session_events and persona updates.
+**Fix:** `handleGotIt()` now calls `POST /doubt/hint` with `student_resolved: true`. This triggers the correct `_genome_update_task` background path in `doubt.py`.
+**DO NOT:** Add a second mastery update path. `_genome_update_task` in `doubt.py` is the sole owner — see CLAUDE.md invariants.
+
+## Conversational replies starting new Socratic sessions — fixed
+**Symptom:** Student typing "yes", "ok", "thanks" after a hint triggered a new doubt session instead of being ignored
+**Root cause:** No pre-filter existed for short affirmative tokens. Every non-empty string was passed to the full intent classifier pipeline.
+**Fix:** Added `_CONVERSATIONAL_TOKENS` frozenset in `engine.py`. Messages ≤20 chars matching the set return `CONVERSATIONAL_RESPONSE` immediately without touching the LLM.
+**DO NOT:** Handle this inside the LLM classifier prompt alone. The pre-filter must be code-level for reliability and cost.

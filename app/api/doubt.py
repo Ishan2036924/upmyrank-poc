@@ -1,7 +1,7 @@
 """
 Doubt-resolution API — intent-gated routing.
 
-POST /doubt/ask    — classify intent → route to non-physics response or Socratic pipeline
+POST /doubt/ask    — classify intent → route to non-subject response or Socratic pipeline
 POST /doubt/hint   — progressive hint for an active doubt session
 POST /doubt/verify — two-layer solution verification
 """
@@ -35,6 +35,14 @@ class AskRequest(BaseModel):
     study_session_id: Optional[str] = None
     topic_lock: Optional[str] = None   # When set, skips intent classification and pins the topic
     student_confidence: Optional[str] = None  # low / medium / high — captured at forced attempt
+
+    @field_validator("subject")
+    @classmethod
+    def subject_must_be_valid(cls, v: str) -> str:
+        valid = {"Physics", "Chemistry", "Maths"}
+        if v not in valid:
+            raise ValueError(f"subject must be one of {sorted(valid)}, got '{v}'")
+        return v
 
     @field_validator("question")
     @classmethod
@@ -393,10 +401,10 @@ async def ask_doubt(
     """
     Intent-gated doubt handler.
 
-    1. Classify intent (greeting, meta, emotional, out_of_scope, physics_doubt, continuation)
-    2. Non-physics intents → immediate response, NO DB writes
+    1. Classify intent (greeting, meta, emotional, out_of_scope, subject_doubt, continuation)
+    2. Non-subject intents → immediate response, NO DB writes
     3. continuation → delegate to get_hint via active block's doubt_session_id
-    4. physics_doubt → start new session + create doubt block
+    4. subject_doubt → start new session + create doubt block
     """
     engine = request.app.state.socratic_engine
     pool = request.app.state.db_pool
@@ -437,13 +445,13 @@ async def ask_doubt(
     # ── 2. Classify intent (skipped when topic_lock is set or forced-attempt) ─
     elif body.topic_lock:
         # Topic is pinned from the syllabus — no LLM classification needed
-        intent = "physics_doubt"
-        logger.info("topic_lock=%r → bypassing intent classifier, forcing physics_doubt", body.topic_lock)
+        intent = "subject_doubt"
+        logger.info("topic_lock=%r → bypassing intent classifier, forcing subject_doubt", body.topic_lock)
     else:
-        intent = await engine.classify_intent(question, has_active_block)
+        intent = await engine.classify_intent(question, has_active_block, subject=body.subject or "Physics")
         logger.info("Intent classified: %s (active_block=%s)", intent, has_active_block)
 
-    # ── 3. Non-physics intents → immediate response, NO DB writes ─────────────
+    # ── 3. Non-subject intents → immediate response, NO DB writes ─────────────
     if intent in ("greeting", "meta", "emotional", "out_of_scope", "conversational", "explanation"):
         result = await engine.handle_non_physics_intent(intent, question)
         return result
@@ -480,7 +488,7 @@ async def ask_doubt(
             else:
                 response = (
                     "We haven't covered any topics yet in this session. "
-                    "Ask me a Physics question to get started!"
+                    "Ask me a Physics, Chemistry, or Maths question to get started!"
                 )
         else:
             response = (
@@ -540,7 +548,7 @@ async def ask_doubt(
             logger.exception("get_hint failed for continuation: %s", exc)
             raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    # ── 5. New physics doubt ──────────────────────────────────────────────────
+    # ── 5. New subject doubt ──────────────────────────────────────────────────
     # Close any existing active block first (if there was one but classified as new doubt)
     if active_block and body.study_session_id:
         await _close_doubt_block(
@@ -573,7 +581,7 @@ async def ask_doubt(
     # Create doubt block if within a study session
     doubt_block_id = None
     if body.study_session_id:
-        topic = result.get("analysis", {}).get("topic", "Physics")
+        topic = result.get("analysis", {}).get("topic", body.subject or "General")
         doubt_block_id = await _create_doubt_block(
             pool,
             body.study_session_id,
@@ -594,9 +602,9 @@ async def ask_doubt(
             doubt_count = count_row["doubt_count"] or 0
 
     return {
-        "intent": "physics_doubt",
+        "intent": "subject_doubt",
         "doubt_block_id": doubt_block_id,
-        "doubt_block_topic": result.get("analysis", {}).get("topic", "Physics"),
+        "doubt_block_topic": result.get("analysis", {}).get("topic", body.subject or "General"),
         "doubt_block_number": doubt_count,
         **result,
     }
@@ -692,7 +700,7 @@ async def ask_doubt_stream(
         data: {"token": "", "done": true, "session_id": "...", ...}\\n\\n
         data: {"error": "...", "done": true}\\n\\n
 
-    Only new physics_doubt sessions are streamed.
+    Only new subject_doubt sessions are streamed.
     Continuation + non-physics intents fall back to a single non-streamed event.
     Hint levels 1+ are NOT supported via this endpoint — use /doubt/hint as normal.
     """
@@ -716,11 +724,11 @@ async def ask_doubt_stream(
     if has_active_block and active_block.get("hint_level", 0) >= 3:
         intent = "continuation"
     elif body.topic_lock:
-        intent = "physics_doubt"
+        intent = "subject_doubt"
     else:
-        intent = await engine.classify_intent(question, has_active_block)
+        intent = await engine.classify_intent(question, has_active_block, subject=body.subject or "Physics")
 
-    # ── Non-streaming path: non-physics / continuation ─────────────────────
+    # ── Non-streaming path: non-subject / continuation ─────────────────────
     # These are cheap (no LLM or fast LLM) — return as a single SSE event.
     async def _single_event(payload: dict):
         data = _json.dumps({"token": "", "done": True, **payload})
@@ -761,7 +769,7 @@ async def ask_doubt_stream(
             else:
                 response = (
                     "We haven't covered any topics yet in this session. "
-                    "Ask me a Physics question to get started!"
+                    "Ask me a Physics, Chemistry, or Maths question to get started!"
                 )
         else:
             response = (
@@ -865,7 +873,7 @@ async def ask_doubt_stream(
                     session_id = chunk.get("session_id")
                     analysis   = chunk.get("analysis", {})
                     if body.study_session_id and session_id:
-                        topic = analysis.get("topic", "Physics")
+                        topic = analysis.get("topic", body.subject or "General")
                         doubt_block_id = await _create_doubt_block(
                             pool,
                             body.study_session_id,
@@ -875,9 +883,9 @@ async def ask_doubt_stream(
                             student_confidence=body.student_confidence,
                         )
                     final_metadata = {
-                        "intent":           "physics_doubt",
+                        "intent":           "subject_doubt",
                         "doubt_block_id":   doubt_block_id,
-                        "doubt_block_topic": chunk.get("analysis", {}).get("topic", "Physics"),
+                        "doubt_block_topic": chunk.get("analysis", {}).get("topic", body.subject or "General"),
                         "session_id":       session_id,
                         "mentor_mode":      chunk.get("mentor_mode"),
                         "out_of_scope":     chunk.get("out_of_scope", False),

@@ -37,7 +37,8 @@ class OnboardingSubmitRequest(BaseModel):
 # ── Persona builder ───────────────────────────────────────────────────────────
 
 _PERSONA_PROMPT = """\
-You are building a student profile for an AI Physics tutor preparing students for JEE/NEET.
+You are building a student profile for an AI tutor covering Physics, Chemistry, and Maths,
+preparing students for JEE/NEET.
 
 Student answers:
 - Class: {class_level}
@@ -46,6 +47,8 @@ Student answers:
 - Hard topics: {hard_topics}
 - Study hours/day: {study_hours_per_day}
 - Exam: {exam_type} on {exam_date}
+
+The easy_topics and hard_topics may span Physics, Chemistry, AND Maths — treat them holistically.
 
 Based on this, output a JSON profile with EXACTLY these fields:
 {{
@@ -66,10 +69,18 @@ Scoring logic:
 - scaffolding_level: marks < 50 OR (dropper with marks < 60) → HIGH; marks 50–75 → MEDIUM; marks > 75 → LOW; if marks unavailable (11th) → HIGH
 - predicted_irt_theta: dropper → -0.5 to +0.5 based on marks; 12th → -1.0 to 0.0; 11th → -2.0 to -1.0
 - learning_velocity: study_hours >= 6 → fast; 3–5.9 → medium; < 3 → slow
-- preferred_style: if hard_topics are mostly numerical (Kinematics, Work & Energy, Circular Motion, Rotational Dynamics, Current Electricity, Magnetism) → formula; if mostly conceptual (Thermodynamics, Modern Physics, Waves, Optics, Gravitation) → analogy; mixed → example
-- weak_concepts: map hard_topics to short concept ids (snake_case, e.g. "kinematics", "optics", "thermodynamics")
+- preferred_style:
+    * if hard_topics are mostly Physics/Maths numerical (Kinematics, Work & Energy, Circular Motion,
+      Rotational Dynamics, Current Electricity, Magnetism, Integration, Vectors, Determinants) → formula
+    * if mostly conceptual/theoretical (Thermodynamics, Modern Physics, Waves, Optics, Gravitation,
+      Chemical Equilibrium, Atomic Structure, Probability, Sequences) → analogy
+    * if mixed → example
+    * if hard_topics include many Chemistry topics (Organic Chemistry, Electrochemistry, p-Block) → visual
+- weak_concepts: map hard_topics to short concept ids (snake_case, e.g. "kinematics", "optics",
+  "thermodynamics", "chemical_equilibrium", "integration", "organic_chemistry")
 - strong_concepts: map easy_topics similarly
-- persona_summary: be specific — mention class, marks if available, top weak area, and recommended teaching approach
+- persona_summary: be specific — mention class, marks if available, top weak areas across all three
+  subjects, and recommended teaching approach. Mention if student is stronger in one subject.
 
 Return ONLY valid JSON, no markdown, no explanation.
 """

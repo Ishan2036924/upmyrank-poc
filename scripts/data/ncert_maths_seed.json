@@ -1,0 +1,258 @@
+[
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Sets",
+    "Explanation": "A set is a well-defined collection of distinct objects. Sets are usually denoted by capital letters A, B, C etc. The objects in a set are called elements or members. If x is an element of set A, we write x ∈ A. If x is not an element, we write x ∉ A.\n\nTypes of sets: Empty set (∅ or {}), Finite set, Infinite set, Equal sets, Subset (A ⊆ B), Power set P(A).\n\nSet operations: Union A ∪ B = {x : x ∈ A or x ∈ B}, Intersection A ∩ B = {x : x ∈ A and x ∈ B}, Difference A − B = {x : x ∈ A and x ∉ B}, Complement A' = U − A.\n\nDe Morgan's Laws: (A ∪ B)' = A' ∩ B', (A ∩ B)' = A' ∪ B'.\n\nFor finite sets: n(A ∪ B) = n(A) + n(B) − n(A ∩ B). For three sets: n(A ∪ B ∪ C) = n(A) + n(B) + n(C) − n(A ∩ B) − n(B ∩ C) − n(A ∩ C) + n(A ∩ B ∩ C).",
+    "Question": "In a class of 60 students, 25 play cricket, 20 play football and 10 play both. How many students play neither?",
+    "Answer": "n(C ∪ F) = n(C) + n(F) − n(C ∩ F) = 25 + 20 − 10 = 35. Neither = 60 − 35 = 25 students."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Sets",
+    "Explanation": "Cartesian product of sets: A × B = {(a, b) : a ∈ A, b ∈ B}. If n(A) = p and n(B) = q, then n(A × B) = pq. The power set of a set with n elements has 2^n subsets.",
+    "Question": "If A = {1, 2, 3} and B = {4, 5}, find A × B and n(A × B).",
+    "Answer": "A × B = {(1,4),(1,5),(2,4),(2,5),(3,4),(3,5)}. n(A × B) = 3 × 2 = 6."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Relations and Functions",
+    "Explanation": "A relation R from set A to set B is a subset of A × B. The domain of R is the set of first elements, and range is the set of second elements.\n\nA function f: A → B assigns exactly one element of B to each element of A. Domain = A, codomain = B, range = f(A) ⊆ B.\n\nTypes of functions:\n- One-one (injective): f(x₁) = f(x₂) ⟹ x₁ = x₂\n- Onto (surjective): range = codomain\n- Bijective: both one-one and onto\n\nAlgebra of functions: (f+g)(x) = f(x)+g(x), (fg)(x) = f(x)g(x), (f/g)(x) = f(x)/g(x) provided g(x) ≠ 0.",
+    "Question": "Is f: R → R defined by f(x) = 2x + 1 one-one and onto?",
+    "Answer": "One-one: f(x₁) = f(x₂) ⟹ 2x₁+1 = 2x₂+1 ⟹ x₁ = x₂. Yes, one-one. Onto: For any y ∈ R, x = (y−1)/2 ∈ R with f(x) = y. Yes, onto. Hence bijective."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Trigonometric Functions",
+    "Explanation": "Angles are measured in degrees or radians. π radians = 180°. Arc length l = rθ (θ in radians).\n\nTrigonometric functions for angle θ in standard position:\nsin θ = y/r, cos θ = x/r, tan θ = y/x, cot θ = x/y, sec θ = r/x, cosec θ = r/y.\n\nFundamental identities:\n- sin²θ + cos²θ = 1\n- 1 + tan²θ = sec²θ\n- 1 + cot²θ = cosec²θ\n\nValues: sin 30° = 1/2, sin 45° = 1/√2, sin 60° = √3/2, sin 90° = 1.\ncos 30° = √3/2, cos 45° = 1/√2, cos 60° = 1/2, cos 90° = 0.\n\nCompound angle formulas:\nsin(A±B) = sinA cosB ± cosA sinB\ncos(A±B) = cosA cosB ∓ sinA sinB\ntan(A+B) = (tanA + tanB)/(1 − tanA tanB)\n\nDouble angle: sin 2A = 2 sinA cosA, cos 2A = cos²A − sin²A = 1 − 2sin²A = 2cos²A − 1\ntan 2A = 2tanA/(1 − tan²A)",
+    "Question": "Prove that sin(A+B)sin(A−B) = sin²A − sin²B.",
+    "Answer": "sin(A+B)sin(A−B) = (sinA cosB + cosA sinB)(sinA cosB − cosA sinB) = sin²A cos²B − cos²A sin²B = sin²A(1−sin²B) − (1−sin²A)sin²B = sin²A − sin²A sin²B − sin²B + sin²A sin²B = sin²A − sin²B."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Trigonometric Functions",
+    "Explanation": "Product-to-sum formulas:\n2sinA cosB = sin(A+B) + sin(A−B)\n2cosA sinB = sin(A+B) − sin(A−B)\n2cosA cosB = cos(A−B) + cos(A+B)\n2sinA sinB = cos(A−B) − cos(A+B)\n\nSum-to-product:\nsinC + sinD = 2sin((C+D)/2)cos((C−D)/2)\nsinC − sinD = 2cos((C+D)/2)sin((C−D)/2)\ncosC + cosD = 2cos((C+D)/2)cos((C−D)/2)\ncosC − cosD = −2sin((C+D)/2)sin((C−D)/2)\n\nPrincipal values: sin x = a has solution x = nπ + (−1)ⁿ α where sin α = a.\ncos x = a has solution x = 2nπ ± α where cos α = a.\ntan x = a has solution x = nπ + α where tan α = a.",
+    "Question": "Find the general solution of sin x = √3/2.",
+    "Answer": "sin x = √3/2 = sin(π/3). General solution: x = nπ + (−1)ⁿ (π/3), n ∈ Z."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Permutations and Combinations",
+    "Explanation": "Fundamental Principle of Counting: If task A can be done in m ways and task B in n ways, then both tasks together can be done in m×n ways.\n\nFactorial: n! = n × (n−1) × (n−2) × ... × 1. 0! = 1.\n\nPermutation: Number of ways to arrange r items from n distinct items:\nnPr = n!/(n−r)!\n\nCombination: Number of ways to choose r items from n distinct items (order doesn't matter):\nnCr = n!/[r!(n−r)!]\n\nKey properties:\n- nCr = nC(n−r)\n- nCr + nC(r−1) = (n+1)Cr (Pascal's rule)\n- nC0 = nCn = 1\n- Sum of all combinations: nC0 + nC1 + ... + nCn = 2ⁿ",
+    "Question": "How many 4-digit numbers can be formed using digits 1,2,3,4,5 without repetition? How many of these are divisible by 2?",
+    "Answer": "Total 4-digit numbers = 5P4 = 5!/1! = 120. Divisible by 2: last digit must be 2 or 4 (2 choices), remaining 3 digits from 4 remaining digits = 4P3 = 24. Total = 2 × 24 = 48."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Binomial Theorem",
+    "Explanation": "Binomial Theorem: For positive integer n,\n(a + b)ⁿ = Σᵣ₌₀ⁿ nCr × aⁿ⁻ʳ × bʳ\n= nC0 aⁿ + nC1 aⁿ⁻¹b + nC2 aⁿ⁻²b² + ... + nCn bⁿ\n\nGeneral term: Tᵣ₊₁ = nCr × aⁿ⁻ʳ × bʳ\n\nMiddle term: If n is even, middle term = T(n/2+1). If n is odd, two middle terms: T((n+1)/2) and T((n+3)/2).\n\nProperties:\n- Total terms = n + 1\n- Sum of coefficients: put a=b=1 → 2ⁿ\n- Sum of odd-position coefficients = sum of even-position coefficients = 2ⁿ⁻¹\n- Binomial coefficients: nC0, nC1, ..., nCn form Pascal's triangle",
+    "Question": "Find the term independent of x in the expansion of (x + 1/x)⁸.",
+    "Answer": "General term: T(r+1) = 8Cr × x^(8−r) × (1/x)^r = 8Cr × x^(8−2r). For term independent of x: 8−2r = 0 → r = 4. Term = 8C4 = 70."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Sequences and Series",
+    "Explanation": "Arithmetic Progression (AP): a, a+d, a+2d, ...\n- nth term: aₙ = a + (n−1)d\n- Sum of n terms: Sₙ = n/2[2a + (n−1)d] = n/2(a + l) where l = last term\n- Arithmetic mean: A = (a+b)/2\n\nGeometric Progression (GP): a, ar, ar², ...\n- nth term: aₙ = arⁿ⁻¹\n- Sum of n terms: Sₙ = a(rⁿ−1)/(r−1) for r ≠ 1; Sₙ = na for r = 1\n- Sum of infinite GP (|r| < 1): S∞ = a/(1−r)\n- Geometric mean: G = √(ab)\n\nRelationship: If A is AM and G is GM between a and b, then A ≥ G (AM-GM inequality).\n\nSpecial sums:\n- Σk = n(n+1)/2\n- Σk² = n(n+1)(2n+1)/6\n- Σk³ = [n(n+1)/2]²",
+    "Question": "The sum of first 10 terms of an AP is 235 and the sum of first 5 terms is 60. Find the AP.",
+    "Answer": "S₁₀ = 235 → 5(2a+9d) = 235 → 2a+9d = 47. S₅ = 60 → (5/2)(2a+4d) = 60 → 2a+4d = 24. Subtracting: 5d = 23 → d = 23/5? Let me redo: S₅ = (5/2)(2a+4d)=60 → 2a+4d=24. S₁₀-S₅=175 → sum of terms 6-10 = 175. Actually: 2a+9d=47, 2a+4d=24 → 5d=23 gives non-integer. Recheck: if a=3,d=4: S₅=5/2(6+16)=55, S₁₀=5(6+36)=210. Try a=2,d=5: S₅=5/2(4+20)=60 ✓, S₁₀=5(4+45)=245. Try a=3,d=4: S₁₀=5(6+36)=210. With a=2,d=5: 2a+4d=4+20=24 ✓, S₁₀=5(2×2+9×5)=5(4+45)=245 ≠ 235. Let a=7/2,d=4: non-integer. AP with a=3,d=23/5 non-integer. Likely a=3, d=4, AP: 3,7,11,15,... S₅=5/2×26=65. Try: 2a+4d=24→a=12-2d; 2(12-2d)+9d=47→24-4d+9d=47→5d=23→d=23/5. The AP is: a=(24-4(23/5))/2=(24-92/5)/2=(28/5)/2=14/5. AP: 14/5, 14/5+23/5=37/5,... This is a valid AP with non-integer values. General solution: a=14/5, d=23/5."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Sequences and Series",
+    "Explanation": "Harmonic Progression (HP): a sequence whose reciprocals form an AP.\nHarmonic mean of a and b: H = 2ab/(a+b).\n\nRelationship between AM, GM, HM: For positive numbers a and b, AM ≥ GM ≥ HM.\nAlso: GM² = AM × HM.\n\nSum of n terms of Arithmetico-Geometric Series:\nSum = a/(1−r) + dr/(1−r)² for infinite series (|r|<1).",
+    "Question": "If the AM and GM of two positive numbers are 10 and 8 respectively, find the numbers.",
+    "Answer": "AM = (a+b)/2 = 10 → a+b = 20. GM = √(ab) = 8 → ab = 64. From a+b=20 and ab=64: t²−20t+64=0 → (t−4)(t−16)=0. Numbers are 4 and 16."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Straight Lines",
+    "Explanation": "Slope of a line through (x₁,y₁) and (x₂,y₂): m = (y₂−y₁)/(x₂−x₁).\nSlope = tan θ where θ is angle with positive x-axis.\n\nForms of equation of a line:\n- Slope-intercept: y = mx + c\n- Point-slope: y−y₁ = m(x−x₁)\n- Two-point: (y−y₁)/(y₂−y₁) = (x−x₁)/(x₂−x₁)\n- Intercept form: x/a + y/b = 1\n- Normal form: x cosω + y sinω = p\n\nAngle between two lines with slopes m₁ and m₂:\ntan θ = |(m₁−m₂)/(1+m₁m₂)|\nParallel: m₁ = m₂. Perpendicular: m₁m₂ = −1.\n\nDistance from point (x₁,y₁) to line ax+by+c=0:\nd = |ax₁+by₁+c|/√(a²+b²)\n\nDistance between parallel lines ax+by+c₁=0 and ax+by+c₂=0:\nd = |c₁−c₂|/√(a²+b²)",
+    "Question": "Find the equation of line passing through (3,4) and perpendicular to 3x+2y−5=0.",
+    "Answer": "Slope of given line = −3/2. Perpendicular slope = 2/3. Equation: y−4 = (2/3)(x−3) → 3y−12 = 2x−6 → 2x−3y+6=0."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Conic Sections",
+    "Explanation": "A conic section is the curve obtained by intersection of a plane with a right circular cone.\n\nCircle: (x−h)²+(y−k)² = r², center (h,k), radius r. Standard: x²+y² = r².\nGeneral form: x²+y²+2gx+2fy+c=0, center (−g,−f), radius = √(g²+f²−c).\n\nParabola: y² = 4ax (opens right, focus (a,0), directrix x=−a, vertex (0,0)).\nOther forms: y²=−4ax, x²=4ay, x²=−4ay.\n\nEllipse: x²/a²+y²/b² = 1 (a>b>0), foci (±c,0) where c²=a²−b², eccentricity e=c/a<1.\nLength of major axis=2a, minor axis=2b. Sum of focal distances = 2a.\n\nHyperbola: x²/a²−y²/b² = 1, foci (±c,0) where c²=a²+b², eccentricity e=c/a>1.\nAsymptotes: y=±(b/a)x. Difference of focal distances = 2a.\n\nFor parabola y²=4ax: parametric form (at²,2at). Length of latus rectum = 4a.",
+    "Question": "Find the focus, vertex, and directrix of the parabola y² − 4y − 8x − 4 = 0.",
+    "Answer": "Complete the square: (y−2)² = 8x+8 = 8(x+1). This is Y² = 8X where Y=y−2, X=x+1. So 4a=8→a=2. Vertex: X=0,Y=0 → (x,y)=(−1,2). Focus: X=2,Y=0 → (x,y)=(1,2). Directrix: X=−2 → x=−3."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Conic Sections",
+    "Explanation": "Ellipse properties:\n- Standard ellipse x²/a² + y²/b² = 1 (a > b): eccentricity e = c/a where c² = a²−b².\n- Focal radii: SP = a − ex, S'P = a + ex for point P(x,y) on ellipse.\n- Latus rectum length = 2b²/a.\n- Ellipse with b > a: foci on y-axis.\n\nHyperbola properties:\n- Standard: x²/a² − y²/b² = 1, eccentricity e = c/a > 1, c² = a²+b².\n- Rectangular hyperbola: xy = c² (asymptotes are coordinate axes, eccentricity = √2).\n- Latus rectum = 2b²/a.",
+    "Question": "An ellipse has foci at (±3,0) and passes through (4,0). Find the equation.",
+    "Answer": "c = 3, a = 4 (since it passes through (4,0) which is a vertex). b² = a²−c² = 16−9 = 7. Equation: x²/16 + y²/7 = 1."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Limits and Derivatives",
+    "Explanation": "Limit: lim(x→a) f(x) = L means f(x) approaches L as x approaches a.\n\nStandard limits:\n- lim(x→0) sinx/x = 1\n- lim(x→0) (1−cosx)/x² = 1/2\n- lim(x→0) (aˣ−1)/x = ln a\n- lim(x→0) (eˣ−1)/x = 1\n- lim(x→0) (1+x)^(1/x) = e\n- lim(x→a) (xⁿ−aⁿ)/(x−a) = naⁿ⁻¹\n\nDerivative: f'(x) = lim(h→0) [f(x+h)−f(x)]/h\n\nRules:\n- d/dx(xⁿ) = nxⁿ⁻¹\n- d/dx(sinx) = cosx, d/dx(cosx) = −sinx\n- d/dx(eˣ) = eˣ, d/dx(aˣ) = aˣ ln a\n- d/dx(ln x) = 1/x\n- Product rule: (uv)' = u'v + uv'\n- Quotient rule: (u/v)' = (u'v − uv')/v²\n- Chain rule: d/dx[f(g(x))] = f'(g(x))·g'(x)",
+    "Question": "Evaluate lim(x→0) [tan x − sin x]/x³.",
+    "Answer": "tan x − sin x = sin x/cos x − sin x = sin x(1/cos x − 1) = sin x(1−cos x)/cos x. [sinx(1−cosx)]/(x³ cosx). As x→0: sinx/x→1, (1−cosx)/x²→1/2, cosx→1. Limit = 1 × (1/2) × 1 = 1/2."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Relations and Functions",
+    "Explanation": "Types of relations on set A:\n- Reflexive: (a,a) ∈ R for all a ∈ A\n- Symmetric: (a,b) ∈ R ⟹ (b,a) ∈ R\n- Transitive: (a,b),(b,c) ∈ R ⟹ (a,c) ∈ R\n- Equivalence relation: reflexive + symmetric + transitive\n\nEquivalence classes partition the set.\n\nInverse function: If f: A→B is bijective, then f⁻¹: B→A exists.\n(f⁻¹ ∘ f)(x) = x and (f ∘ f⁻¹)(y) = y.\n\nComposition: (g ∘ f)(x) = g(f(x)). Composition is associative but not commutative.\n\nBinary operations: * on A is a function A×A→A.\n- Commutative: a*b = b*a\n- Associative: (a*b)*c = a*(b*c)\n- Identity element e: a*e = e*a = a\n- Inverse of a: a*a⁻¹ = e",
+    "Question": "Show that the relation R in ℝ defined by R = {(a,b): a ≤ b} is reflexive and transitive but not symmetric.",
+    "Answer": "Reflexive: a ≤ a is always true. ✓ Symmetric: 1 ≤ 2 but 2 ≰ 1. Not symmetric. ✗ Transitive: a ≤ b and b ≤ c ⟹ a ≤ c. ✓"
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Inverse Trigonometric Functions",
+    "Explanation": "Inverse trig functions with principal value branches:\n- sin⁻¹: [−1,1] → [−π/2, π/2]\n- cos⁻¹: [−1,1] → [0, π]\n- tan⁻¹: ℝ → (−π/2, π/2)\n- cot⁻¹: ℝ → (0, π)\n- sec⁻¹: ℝ\\(−1,1) → [0,π] \\ {π/2}\n- cosec⁻¹: ℝ\\(−1,1) → [−π/2,π/2] \\ {0}\n\nKey identities:\n- sin⁻¹(−x) = −sin⁻¹x, cos⁻¹(−x) = π − cos⁻¹x, tan⁻¹(−x) = −tan⁻¹x\n- sin⁻¹x + cos⁻¹x = π/2\n- tan⁻¹x + cot⁻¹x = π/2\n- tan⁻¹(1/x) = π/2 − tan⁻¹x for x > 0\n- tan⁻¹x + tan⁻¹y = tan⁻¹[(x+y)/(1−xy)] if xy < 1\n- 2tan⁻¹x = tan⁻¹[2x/(1−x²)] = sin⁻¹[2x/(1+x²)] = cos⁻¹[(1−x²)/(1+x²)]",
+    "Question": "Prove that tan⁻¹(1/2) + tan⁻¹(1/3) = π/4.",
+    "Answer": "tan⁻¹(1/2) + tan⁻¹(1/3) = tan⁻¹[(1/2+1/3)/(1−1/2·1/3)] = tan⁻¹[(5/6)/(5/6)] = tan⁻¹(1) = π/4. ✓"
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Matrices",
+    "Explanation": "A matrix is a rectangular array of numbers arranged in rows and columns. An m×n matrix has m rows and n columns.\n\nTypes: Zero matrix, Identity matrix (I), Square matrix, Symmetric matrix (A = Aᵀ), Skew-symmetric (A = −Aᵀ).\n\nOperations:\n- Addition: A+B is defined if A and B have same order.\n- Scalar multiplication: kA multiplies each element by k.\n- Matrix multiplication: (AB)ᵢⱼ = Σₖ AᵢₖBₖⱼ. Defined if columns of A = rows of B.\n\nProperties:\n- AB ≠ BA in general (non-commutative)\n- (AB)ᵀ = BᵀAᵀ\n- A(BC) = (AB)C (associative)\n- Every square matrix: A = (A+Aᵀ)/2 + (A−Aᵀ)/2 (symmetric + skew-symmetric)\n\nElementary row operations used for finding inverse by row reduction.",
+    "Question": "Express A = [[3,5],[1,−1]] as sum of symmetric and skew-symmetric matrices.",
+    "Answer": "Symmetric part: (A+Aᵀ)/2 = [[3,3],[3,−1]]. Skew-symmetric part: (A−Aᵀ)/2 = [[0,2],[−2,0]]. Verify: [[3,3],[3,−1]] + [[0,2],[−2,0]] = [[3,5],[1,−1]] = A. ✓"
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Determinants",
+    "Explanation": "Determinant of a square matrix gives a scalar value.\n\nFor 2×2: |A| = ad − bc for A = [[a,b],[c,d]].\nFor 3×3: Expand along any row/column.\n\nProperties:\n- |Aᵀ| = |A|\n- If two rows/columns are identical, |A| = 0\n- Multiplying a row by k multiplies |A| by k\n- |AB| = |A||B|\n- |kA| = kⁿ|A| for n×n matrix\n\nAdjoint: adj(A) = transpose of cofactor matrix.\nInverse: A⁻¹ = adj(A)/|A| if |A| ≠ 0.\n\nCramer's Rule for Ax = b: xᵢ = Dᵢ/D where D = |A|, Dᵢ = |A with i-th column replaced by b|.\n\nArea of triangle with vertices (x₁,y₁),(x₂,y₂),(x₃,y₃):\nArea = ½|det([[x₁,y₁,1],[x₂,y₂,1],[x₃,y₃,1]])|",
+    "Question": "Using Cramer's rule, solve: x+y+z=6, x+2y+3z=14, x+4y+9z=36.",
+    "Answer": "D = |[[1,1,1],[1,2,3],[1,4,9]]| = 1(18−12)−1(9−3)+1(4−2) = 6−6+2 = 2. D₁ = |[[6,1,1],[14,2,3],[36,4,9]]| = 6(18−12)−1(126−108)+1(56−72) = 36−18−16 = 2. D₂ = |[[1,6,1],[1,14,3],[1,36,9]]| = 1(126−108)−6(9−3)+1(36−14) = 18−36+22 = 4. D₃ = |[[1,1,6],[1,2,14],[1,4,36]]| = 1(72−56)−1(36−14)+6(4−2) = 16−22+12 = 6. x=D₁/D=1, y=D₂/D=2, z=D₃/D=3."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Continuity and Differentiability",
+    "Explanation": "Continuity at x=a: lim(x→a) f(x) = f(a). Both left and right limits must equal f(a).\n\nDifferentiability at x=a: f'(a) = lim(h→0) [f(a+h)−f(a)]/h exists.\nDifferentiable ⟹ Continuous, but not vice versa.\n\nDerivatives of special functions:\n- d/dx(sin⁻¹x) = 1/√(1−x²)\n- d/dx(cos⁻¹x) = −1/√(1−x²)\n- d/dx(tan⁻¹x) = 1/(1+x²)\n- d/dx(logₐx) = 1/(x ln a)\n\nChain rule, product rule, quotient rule.\n\nImplicit differentiation: Differentiate both sides w.r.t. x, treating y as function of x.\n\nLogarithmic differentiation: Take log, then differentiate. Useful for y = uᵛ.\n\nParametric differentiation: dy/dx = (dy/dt)/(dx/dt) if x=f(t), y=g(t).\n\nSecond order derivative: f''(x) = d²y/dx².",
+    "Question": "If y = xˢⁱⁿˣ, find dy/dx.",
+    "Answer": "Take log: ln y = sin x · ln x. Differentiate: (1/y)(dy/dx) = cos x · ln x + sin x · (1/x). dy/dx = y[cos x ln x + sin x/x] = xˢⁱⁿˣ[cos x ln x + sin x/x]."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Applications of Derivatives",
+    "Explanation": "Rate of change: dy/dx represents rate of change of y w.r.t. x.\n\nIncreasing/Decreasing functions:\n- f increasing on (a,b) if f'(x) > 0 on (a,b)\n- f decreasing if f'(x) < 0\n\nTangent and Normal:\n- Slope of tangent at (x₁,y₁): m = f'(x₁)\n- Equation of tangent: y−y₁ = m(x−x₁)\n- Slope of normal: −1/m\n\nMaxima and Minima:\n- First derivative test: f'(a)=0, sign changes from + to − → local max; − to + → local min\n- Second derivative test: f'(a)=0, f''(a)<0 → local max; f''(a)>0 → local min\n\nRolle's Theorem: If f is continuous on [a,b], differentiable on (a,b), and f(a)=f(b), then ∃ c ∈ (a,b) such that f'(c)=0.\n\nMean Value Theorem: If f continuous on [a,b], differentiable on (a,b), then ∃ c ∈ (a,b) such that f'(c) = [f(b)−f(a)]/(b−a).\n\nApproximations: f(x+Δx) ≈ f(x) + f'(x)Δx.",
+    "Question": "Find the local maxima and minima of f(x) = x³ − 6x² + 9x + 15.",
+    "Answer": "f'(x) = 3x²−12x+9 = 3(x²−4x+3) = 3(x−1)(x−3). f'(x)=0 at x=1,3. f''(x)=6x−12. f''(1)=−6<0 → local max at x=1. f''(3)=6>0 → local min at x=3. f(1)=1−6+9+15=19 (local max). f(3)=27−54+27+15=15 (local min)."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Integrals",
+    "Explanation": "Integration is the inverse of differentiation.\n\nStandard integrals:\n∫xⁿ dx = xⁿ⁺¹/(n+1) + C (n ≠ −1)\n∫1/x dx = ln|x| + C\n∫eˣ dx = eˣ + C\n∫sin x dx = −cos x + C\n∫cos x dx = sin x + C\n∫sec²x dx = tan x + C\n∫1/(1+x²) dx = tan⁻¹x + C\n∫1/√(1−x²) dx = sin⁻¹x + C\n\nMethods:\n- Substitution: ∫f(g(x))g'(x)dx = ∫f(t)dt\n- Integration by parts: ∫u dv = uv − ∫v du (ILATE rule: Inverse trig, Logarithm, Algebraic, Trig, Exponential)\n- Partial fractions for rational functions\n\nDefinite integral: ∫[a to b]f(x)dx = F(b)−F(a) where F'=f.\nProperties: ∫[a to b]f(x)dx = −∫[b to a]f(x)dx\n∫[0 to a]f(x)dx = ∫[0 to a]f(a−x)dx (King's property)",
+    "Question": "Evaluate ∫sin x · eˢⁱⁿˣ cos x dx.",
+    "Answer": "Let t = sin x, dt = cos x dx. ∫t·eᵗ dt = teᵗ − eᵗ + C (by parts) = eᵗ(t−1) + C = eˢⁱⁿˣ(sin x − 1) + C."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Integrals",
+    "Explanation": "Important integration techniques:\n\n1. ∫1/√(a²−x²)dx = sin⁻¹(x/a)+C\n2. ∫1/(a²+x²)dx = (1/a)tan⁻¹(x/a)+C\n3. ∫1/√(x²+a²)dx = ln|x+√(x²+a²)|+C\n4. ∫√(a²−x²)dx = (x/2)√(a²−x²)+(a²/2)sin⁻¹(x/a)+C\n\nDefinite integral properties:\n∫[−a to a]f(x)dx = 2∫[0 to a]f(x)dx if f is even\n∫[−a to a]f(x)dx = 0 if f is odd\n∫[0 to 2a]f(x)dx = 2∫[0 to a]f(x)dx if f(2a−x)=f(x)\n\nWalli's formula: ∫[0 to π/2]sinⁿx dx = ∫[0 to π/2]cosⁿx dx\n= [(n−1)(n−3)...]/[n(n−2)...] × (π/2 if n even, 1 if n odd)",
+    "Question": "Evaluate ∫[0 to π] x sin x dx.",
+    "Answer": "By parts: u=x, dv=sinx dx → du=dx, v=−cosx. ∫x sinx dx = −x cosx + ∫cosx dx = −x cosx + sinx. Evaluating from 0 to π: [−π cos π + sin π] − [0 + 0] = −π(−1)+0 = π."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Applications of Integrals",
+    "Explanation": "Area under curves using definite integrals:\n\nArea between curve y=f(x) and x-axis from x=a to x=b:\nA = ∫[a to b]|f(x)|dx\n\nArea between two curves y=f(x) and y=g(x):\nA = ∫[a to b]|f(x)−g(x)|dx\n\nFor area in terms of y: A = ∫[c to d]|x|dy where x=g(y).\n\nNote: Always split integral at zeros of f(x) within [a,b] for correct sign handling.",
+    "Question": "Find the area bounded by y² = 4x and x = 3.",
+    "Answer": "The parabola y²=4x: for x from 0 to 3, y = ±2√x. Area = 2∫[0 to 3]2√x dx = 4∫[0 to 3]√x dx = 4[2x^(3/2)/3]₀³ = (8/3)(3^(3/2)) = (8/3)(3√3) = 8√3 sq. units."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Differential Equations",
+    "Explanation": "A differential equation involves derivatives of an unknown function.\n\nOrder: highest derivative present. Degree: power of highest derivative (after making free of radicals/fractions).\n\nSolution methods:\n1. Variable separable: dy/dx = f(x)g(y) → dy/g(y) = f(x)dx → integrate both sides.\n2. Homogeneous: dy/dx = F(y/x). Substitute y=vx → dy/dx = v+x(dv/dx) → variable separable in v.\n3. Linear: dy/dx + Py = Q. Integrating factor IF = e^∫P dx. Solution: y·(IF) = ∫Q·(IF)dx + C.\n\nGeneral solution contains arbitrary constants equal to order of DE.\nParticular solution: obtained by applying initial/boundary conditions.",
+    "Question": "Solve the differential equation: dy/dx + y/x = x².",
+    "Answer": "Linear DE with P=1/x, Q=x². IF = e^∫(1/x)dx = e^(ln x) = x. Multiply both sides by x: x(dy/dx)+y = x³ → d(xy)/dx = x³. Integrating: xy = x⁴/4 + C. Solution: y = x³/4 + C/x."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Differential Equations",
+    "Explanation": "Exact differential equations and special forms:\n\nBernoulli equation: dy/dx + Py = Qyⁿ. Substitute v=y^(1−n) to convert to linear.\n\nOrthogonal trajectories: Replace dy/dx by −dx/dy in the DE of a family of curves to get the DE of orthogonal trajectories, then solve.\n\nApplications:\n- Growth/Decay: dN/dt = kN → N = N₀eᵏᵗ\n- Newton's law of cooling: dT/dt = k(T−T₀)\n- Population models",
+    "Question": "A population grows at rate proportional to current population. If population doubles in 3 years, find time to triple.",
+    "Answer": "dP/dt = kP → P = P₀eᵏᵗ. At t=3: 2P₀ = P₀e^(3k) → k = ln2/3. For triple: 3P₀ = P₀e^(kt) → t = ln3/k = 3ln3/ln2 ≈ 3×1.585 = 4.755 years."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Vectors",
+    "Explanation": "A vector has both magnitude and direction. Vectors are denoted by bold letters or with arrows.\n\nUnit vector: â = a⃗/|a⃗| (magnitude 1)\nPosition vector of P(x,y,z): r⃗ = xî + yĵ + zk̂, |r⃗| = √(x²+y²+z²)\n\nDot product (scalar product): a⃗·b⃗ = |a⃗||b⃗|cosθ = a₁b₁+a₂b₂+a₃b₃\nProperties: a⃗·a⃗ = |a⃗|², î·î=ĵ·ĵ=k̂·k̂=1, î·ĵ=ĵ·k̂=k̂·î=0.\n\nCross product (vector product): a⃗×b⃗ = |a⃗||b⃗|sinθ n̂ (n̂ perpendicular to both)\n|a⃗×b⃗|² + (a⃗·b⃗)² = |a⃗|²|b⃗|²\nî×ĵ=k̂, ĵ×k̂=î, k̂×î=ĵ (cyclic). Cross product: det([[î,ĵ,k̂],[a₁,a₂,a₃],[b₁,b₂,b₃]]).\n\nArea of parallelogram = |a⃗×b⃗|, triangle = ½|a⃗×b⃗|.\n\nScalar triple product: [a⃗ b⃗ c⃗] = a⃗·(b⃗×c⃗) = det([[a₁,a₂,a₃],[b₁,b₂,b₃],[c₁,c₂,c₃]]).\nVolume of parallelepiped = |[a⃗ b⃗ c⃗]|. Coplanar if [a⃗ b⃗ c⃗]=0.",
+    "Question": "Find the area of triangle with vertices A(1,2,3), B(2,3,1), C(3,1,2).",
+    "Answer": "AB⃗ = (1,1,−2), AC⃗ = (2,−1,−1). AB⃗×AC⃗ = det([[î,ĵ,k̂],[1,1,−2],[2,−1,−1]]) = î(1·(−1)−(−2)·(−1)) − ĵ(1·(−1)−(−2)·2) + k̂(1·(−1)−1·2) = î(−1−2) − ĵ(−1+4) + k̂(−1−2) = −3î−3ĵ−3k̂. |AB⃗×AC⃗| = √(9+9+9) = 3√3. Area = ½·3√3 = (3√3)/2 sq. units."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Three Dimensional Geometry",
+    "Explanation": "Direction cosines of a line: l = cosα, m = cosβ, n = cosγ where α,β,γ are angles with x,y,z axes. l²+m²+n²=1.\n\nDirection ratios: Any three numbers proportional to direction cosines.\n\nEquation of a line:\n- Through (x₁,y₁,z₁) with direction ratios (a,b,c):\n  Cartesian: (x−x₁)/a = (y−y₁)/b = (z−z₁)/c\n  Vector: r⃗ = (x₁î+y₁ĵ+z₁k̂) + t(aî+bĵ+ck̂)\n\nAngle between lines: cosθ = |l₁l₂+m₁m₂+n₁n₂|\n\nEquation of a plane:\n- With normal n⃗=(a,b,c) through (x₁,y₁,z₁): a(x−x₁)+b(y−y₁)+c(z−z₁)=0\n- Intercept form: x/a + y/b + z/c = 1\n- General: ax+by+cz+d=0, normal vector (a,b,c)\n\nDistance from point to plane ax+by+cz+d=0:\nd = |ax₀+by₀+cz₀+d|/√(a²+b²+c²)\n\nAngle between planes: cosθ = |a₁a₂+b₁b₂+c₁c₂|/[√(a₁²+b₁²+c₁²)·√(a₂²+b₂²+c₂²)]",
+    "Question": "Find the distance from point (2,3,−5) to the plane x+2y−2z=9.",
+    "Answer": "d = |1(2)+2(3)−2(−5)−9|/√(1+4+4) = |2+6+10−9|/3 = |9|/3 = 3 units."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Probability",
+    "Explanation": "Conditional Probability: P(A|B) = P(A∩B)/P(B), P(B) ≠ 0.\n\nMultiplication theorem: P(A∩B) = P(A)P(B|A) = P(B)P(A|B).\n\nIndependent events: P(A∩B) = P(A)P(B). Note: mutually exclusive ≠ independent.\n\nTotal Probability: If B₁,B₂,...,Bₙ partition sample space:\nP(A) = Σᵢ P(Bᵢ)P(A|Bᵢ)\n\nBayes' Theorem: P(Bᵢ|A) = P(Bᵢ)P(A|Bᵢ)/Σⱼ P(Bⱼ)P(A|Bⱼ)\n\nBernoulli trials: n independent trials, each success prob p:\nP(X=r) = nCr pʳ qⁿ⁻ʳ where q=1−p.\nBinomial distribution B(n,p): mean=np, variance=npq.\n\nRandom variable: Mean E(X)=Σxᵢpᵢ, Variance=E(X²)−[E(X)]², SD=√Variance.",
+    "Question": "A bag has 3 red and 4 black balls. Two balls drawn without replacement. Find P(both red).",
+    "Answer": "P(first red) = 3/7. P(second red | first red) = 2/6 = 1/3. P(both red) = (3/7)(1/3) = 1/7."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Probability",
+    "Explanation": "Bayes' theorem applications and conditional probability problems.\n\nPoisson distribution (limit of binomial): P(X=k) = e^(−λ)λᵏ/k! where λ=np. Mean = Variance = λ.\n\nKey probability formulas:\n- P(A∪B) = P(A)+P(B)−P(A∩B)\n- P(A') = 1−P(A)\n- P(A∩B') = P(A)−P(A∩B) (A but not B)\n\nFor JEE: Focus on conditional probability, Bayes' theorem, and binomial distribution.",
+    "Question": "A factory has 3 machines producing 50%, 30%, 20% of output. Defect rates are 2%, 3%, 4%. An item is defective. Find probability it came from machine 2.",
+    "Answer": "P(M₁)=0.5, P(M₂)=0.3, P(M₃)=0.2. P(D|M₁)=0.02, P(D|M₂)=0.03, P(D|M₃)=0.04. P(D) = 0.5(0.02)+0.3(0.03)+0.2(0.04) = 0.01+0.009+0.008=0.027. P(M₂|D) = 0.3(0.03)/0.027 = 0.009/0.027 = 1/3."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Mathematical Induction",
+    "Explanation": "Principle of Mathematical Induction (PMI): To prove P(n) is true for all n ≥ 1:\n1. Base case: Show P(1) is true.\n2. Inductive step: Assume P(k) is true (inductive hypothesis), then prove P(k+1) is true.\n3. Conclusion: P(n) is true for all n ∈ ℕ.\n\nStrong induction: Assume P(1), P(2), ..., P(k) all true, prove P(k+1).",
+    "Question": "Prove by induction: 1+2+3+...+n = n(n+1)/2.",
+    "Answer": "Base: n=1: LHS=1, RHS=1(2)/2=1. ✓ Inductive step: Assume 1+...+k=k(k+1)/2. Then 1+...+k+(k+1) = k(k+1)/2+(k+1) = (k+1)[k/2+1] = (k+1)(k+2)/2. This is the formula for n=k+1. ✓ By PMI, true for all n∈ℕ."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Complex Numbers",
+    "Explanation": "A complex number z = a + bi where a = Re(z), b = Im(z), i = √−1, i² = −1.\n\nModulus: |z| = √(a²+b²). Argument: arg(z) = θ = tan⁻¹(b/a) (adjust for quadrant).\n\nPolar form: z = r(cosθ + i sinθ) = re^(iθ). (Euler's formula: e^(iθ) = cosθ + i sinθ)\n\nDe Moivre's Theorem: (cosθ + i sinθ)ⁿ = cos(nθ) + i sin(nθ).\n\nConjugate: z̄ = a − bi. |z|² = z·z̄, Re(z) = (z+z̄)/2, Im(z) = (z−z̄)/(2i).\n\nRoots of unity: nth roots of 1 are e^(2πik/n) for k=0,1,...,n−1. They form a regular n-gon.\n\nAlgebra: (a+bi)+(c+di) = (a+c)+(b+d)i, (a+bi)(c+di) = (ac−bd)+(ad+bc)i.\nDivision: (a+bi)/(c+di) = [(a+bi)(c−di)]/(c²+d²).",
+    "Question": "If z = 1+i√3, find |z|, arg(z), and z⁶.",
+    "Answer": "|z| = √(1+3) = 2. arg(z) = tan⁻¹(√3/1) = π/3. z = 2e^(iπ/3). z⁶ = 2⁶·e^(i·2π) = 64·(cos2π+i sin2π) = 64·1 = 64."
+  },
+  {
+    "grade": "11",
+    "subject": "Maths",
+    "Topic": "Linear Inequalities",
+    "Explanation": "Linear inequality: expression involving <, >, ≤, ≥.\n\nRules:\n- Adding/subtracting same number to both sides preserves inequality.\n- Multiplying/dividing both sides by positive number preserves inequality.\n- Multiplying/dividing both sides by negative number REVERSES inequality.\n\nSolution set of linear inequality in one variable is an interval on number line.\n\nLinear inequalities in two variables: ax+by+c ≤ 0. Solution is a half-plane.\n\nSystem of linear inequalities: solution is intersection of half-planes. Use corner-point method for optimization.",
+    "Question": "Solve: (2x−3)/4 ≥ (3x−1)/6 and represent on number line.",
+    "Answer": "Multiply both sides by 12: 3(2x−3) ≥ 2(3x−1) → 6x−9 ≥ 6x−2 → −9 ≥ −2. This is false for all x. No solution."
+  },
+  {
+    "grade": "12",
+    "subject": "Maths",
+    "Topic": "Linear Programming",
+    "Explanation": "Linear programming problem (LPP) involves:\n- Objective function: Z = ax + by (to maximize or minimize)\n- Constraints: linear inequalities\n- Non-negativity: x ≥ 0, y ≥ 0\n\nFeasible region: set of all points satisfying all constraints. It's a convex polygon.\n\nCorner-point theorem: Optimal value of Z occurs at a corner (vertex) of feasible region.\n\nMethod:\n1. Graph all constraints to find feasible region.\n2. Find corner points (intersections of boundary lines).\n3. Evaluate Z at each corner.\n4. Select maximum/minimum.",
+    "Question": "Maximize Z = 3x+4y subject to: x+y≤4, x+2y≤6, x≥0, y≥0.",
+    "Answer": "Corner points: (0,0): Z=0; (4,0): Z=12; (2,2): Z=6+8=14; (0,3): Z=12. Check (2,2): x+y=4≤4 ✓, x+2y=6≤6 ✓. Maximum Z=14 at (2,2)."
+  }
+]

@@ -1,0 +1,308 @@
+[
+  {
+    "subject": "Physics",
+    "topic": "Rotational Dynamics",
+    "year": 2019,
+    "exam_type": "JEE Advanced",
+    "difficulty": 4,
+    "problem_text": "A ring of mass $M$ and radius $R$ is rotating about its axis with angular velocity $\\omega$. Two identical point masses, each of mass $m$, are now gently attached to the ring at its two diametrically opposite points. Find the new angular velocity of the ring.",
+    "solution_text": "Using conservation of angular momentum: $I_1 \\omega_1 = I_2 \\omega_2$. Initial moment of inertia $I_1 = MR^2$. Final moment of inertia $I_2 = MR^2 + 2mR^2 = (M+2m)R^2$. Therefore $\\omega_2 = \\frac{M\\omega}{M+2m}$.",
+    "solution_steps": [
+      {"step": 1, "description": "Identify that no external torque acts — angular momentum is conserved."},
+      {"step": 2, "description": "Write $I_1\\omega_1 = I_2\\omega_2$."},
+      {"step": 3, "description": "Initial MI: $I_1 = MR^2$ (ring about axis)."},
+      {"step": 4, "description": "Final MI: $I_2 = MR^2 + 2mR^2$ (two point masses at radius $R$)."},
+      {"step": 5, "description": "Solve: $\\omega_2 = \\frac{M\\omega}{M+2m}$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Physics",
+    "topic": "Electrostatics",
+    "year": 2020,
+    "exam_type": "JEE Mains",
+    "difficulty": 3,
+    "problem_text": "Three charges $+q$, $-q$, and $+q$ are placed at the vertices of an equilateral triangle of side $a$. What is the electric potential energy of the system?",
+    "solution_text": "Total potential energy $U = k\\frac{q^2}{a} \\cdot (1 - 1 - 1) = -\\frac{kq^2}{a}$. Using $U = \\sum_{i<j} \\frac{kq_iq_j}{r_{ij}}$: $U = \\frac{k(+q)(-q)}{a} + \\frac{k(+q)(+q)}{a} + \\frac{k(-q)(+q)}{a} = \\frac{kq^2}{a}(-1+1-1) = -\\frac{kq^2}{a}$.",
+    "solution_steps": [
+      {"step": 1, "description": "Write potential energy as sum of all pairs."},
+      {"step": 2, "description": "$U_{12} = \\frac{k(+q)(-q)}{a} = -\\frac{kq^2}{a}$"},
+      {"step": 3, "description": "$U_{13} = \\frac{k(+q)(+q)}{a} = +\\frac{kq^2}{a}$"},
+      {"step": 4, "description": "$U_{23} = \\frac{k(-q)(+q)}{a} = -\\frac{kq^2}{a}$"},
+      {"step": 5, "description": "Total $U = -\\frac{kq^2}{a}$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Physics",
+    "topic": "Waves and Oscillations",
+    "year": 2018,
+    "exam_type": "JEE Advanced",
+    "difficulty": 4,
+    "problem_text": "A string of linear mass density $\\mu$ is under tension $T$. A transverse wave $y = A\\sin(kx - \\omega t)$ travels along it. Find the average power transmitted by the wave.",
+    "solution_text": "Average power $P = \\frac{1}{2}\\mu\\omega^2 A^2 v$, where $v = \\sqrt{T/\\mu}$ is the wave speed. Therefore $P = \\frac{1}{2}\\mu\\omega^2 A^2 \\sqrt{\\frac{T}{\\mu}} = \\frac{1}{2}A^2\\omega^2\\sqrt{\\mu T}$.",
+    "solution_steps": [
+      {"step": 1, "description": "Average power = $\\frac{1}{2}\\mu\\omega^2 A^2 v$."},
+      {"step": 2, "description": "Wave speed $v = \\sqrt{T/\\mu}$."},
+      {"step": 3, "description": "Substitute: $P = \\frac{1}{2}A^2\\omega^2\\sqrt{\\mu T}$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Physics",
+    "topic": "Modern Physics",
+    "year": 2021,
+    "exam_type": "JEE Mains",
+    "difficulty": 3,
+    "problem_text": "The de Broglie wavelength of a particle of kinetic energy $K$ is $\\lambda$. What will be the de Broglie wavelength of the same particle if its kinetic energy becomes $4K$?",
+    "solution_text": "$\\lambda = \\frac{h}{p} = \\frac{h}{\\sqrt{2mK}}$. Since $\\lambda \\propto \\frac{1}{\\sqrt{K}}$, when $K$ becomes $4K$, $\\lambda$ becomes $\\frac{\\lambda}{\\sqrt{4}} = \\frac{\\lambda}{2}$.",
+    "solution_steps": [
+      {"step": 1, "description": "De Broglie relation: $\\lambda = h/p$."},
+      {"step": 2, "description": "Kinetic energy: $K = p^2/2m$, so $p = \\sqrt{2mK}$."},
+      {"step": 3, "description": "$\\lambda \\propto 1/\\sqrt{K}$. New wavelength $= \\lambda/2$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Physics",
+    "topic": "Laws of Motion",
+    "year": 2017,
+    "exam_type": "JEE Advanced",
+    "difficulty": 3,
+    "problem_text": "A block of mass $m$ is placed on a rough inclined plane of inclination $\\theta$. The coefficient of static friction is $\\mu_s$. For what minimum value of $\\mu_s$ will the block remain stationary on the incline?",
+    "solution_text": "For the block to remain stationary, the friction force must balance the component of gravity along the incline: $f = mg\\sin\\theta$. Maximum static friction $= \\mu_s mg\\cos\\theta$. Condition: $\\mu_s mg\\cos\\theta \\geq mg\\sin\\theta$, giving $\\mu_s \\geq \\tan\\theta$.",
+    "solution_steps": [
+      {"step": 1, "description": "Draw FBD: weight $mg$ downward, normal $N = mg\\cos\\theta$, friction $f$ up the incline."},
+      {"step": 2, "description": "For equilibrium: $f = mg\\sin\\theta$."},
+      {"step": 3, "description": "Maximum static friction: $f_{max} = \\mu_s N = \\mu_s mg\\cos\\theta$."},
+      {"step": 4, "description": "Condition: $\\mu_s \\geq \\tan\\theta$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Chemistry",
+    "topic": "Electrochemistry",
+    "year": 2019,
+    "exam_type": "JEE Mains",
+    "difficulty": 3,
+    "problem_text": "The standard electrode potential $E^\\circ$ for the cell $\\text{Zn}|\\text{Zn}^{2+}||\\text{Cu}^{2+}|\\text{Cu}$ is $+1.10\\,\\text{V}$. Calculate the Gibbs free energy change $\\Delta G^\\circ$ for this reaction at 298 K. ($F = 96500\\,\\text{C mol}^{-1}$)",
+    "solution_text": "$\\Delta G^\\circ = -nFE^\\circ$. Here $n = 2$ (two electrons transferred), $E^\\circ = 1.10\\,\\text{V}$. So $\\Delta G^\\circ = -2 \\times 96500 \\times 1.10 = -212300\\,\\text{J mol}^{-1} = -212.3\\,\\text{kJ mol}^{-1}$.",
+    "solution_steps": [
+      {"step": 1, "description": "Half-reactions: Zn → Zn²⁺ + 2e⁻ (oxidation); Cu²⁺ + 2e⁻ → Cu (reduction). $n = 2$."},
+      {"step": 2, "description": "$\\Delta G^\\circ = -nFE^\\circ = -2 \\times 96500 \\times 1.10$."},
+      {"step": 3, "description": "$\\Delta G^\\circ = -212300\\,\\text{J mol}^{-1} = -212.3\\,\\text{kJ mol}^{-1}$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Chemistry",
+    "topic": "Chemical Kinetics",
+    "year": 2020,
+    "exam_type": "JEE Advanced",
+    "difficulty": 4,
+    "problem_text": "For a first-order reaction, the half-life is 60 s. How long will it take for the concentration to reduce to $\\frac{1}{8}$th of its initial value?",
+    "solution_text": "For a first-order reaction: $t_{1/2} = \\frac{0.693}{k}$, so $k = \\frac{0.693}{60}\\,\\text{s}^{-1}$. To reach $\\frac{1}{8}$ of initial concentration, three half-lives are needed (since $\\frac{1}{2^3} = \\frac{1}{8}$). Time $= 3 \\times 60 = 180\\,\\text{s}$.",
+    "solution_steps": [
+      {"step": 1, "description": "Recognise that $\\frac{1}{8} = (\\frac{1}{2})^3$, so 3 half-lives are required."},
+      {"step": 2, "description": "Time $= 3 \\times t_{1/2} = 3 \\times 60 = 180\\,\\text{s}$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Chemistry",
+    "topic": "Organic Chemistry - Aldehydes and Ketones",
+    "year": 2018,
+    "exam_type": "JEE Mains",
+    "difficulty": 3,
+    "problem_text": "Which of the following compounds will NOT undergo Cannizzaro reaction? (A) Formaldehyde (B) Acetaldehyde (C) Benzaldehyde (D) 2,2-dimethylpropanal",
+    "solution_text": "Cannizzaro reaction occurs with aldehydes that have no α-hydrogen. Acetaldehyde (CH₃CHO) has α-hydrogens (the CH₃ group), so it undergoes aldol condensation, NOT Cannizzaro reaction. Formaldehyde (HCHO), benzaldehyde (PhCHO), and 2,2-dimethylpropanal ((CH₃)₃CCHO) have no α-H. Answer: (B) Acetaldehyde.",
+    "solution_steps": [
+      {"step": 1, "description": "Cannizzaro reaction: requires no α-hydrogen on the aldehyde."},
+      {"step": 2, "description": "Check each: HCHO (no α-H ✓), CH₃CHO (has α-H ✗), PhCHO (no α-H ✓), (CH₃)₃CCHO (no α-H ✓)."},
+      {"step": 3, "description": "Answer: Acetaldehyde (B) will NOT undergo Cannizzaro."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Chemistry",
+    "topic": "Thermodynamics",
+    "year": 2021,
+    "exam_type": "JEE Advanced",
+    "difficulty": 4,
+    "problem_text": "For a reaction at constant temperature, $\\Delta H = -400\\,\\text{kJ mol}^{-1}$ and $\\Delta S = -200\\,\\text{J mol}^{-1}\\text{K}^{-1}$. At what minimum temperature will the reaction become non-spontaneous?",
+    "solution_text": "$\\Delta G = \\Delta H - T\\Delta S$. For spontaneous reaction $\\Delta G < 0$. The reaction becomes non-spontaneous when $\\Delta G \\geq 0$: $T \\geq \\frac{\\Delta H}{\\Delta S} = \\frac{-400 \\times 10^3}{-200} = 2000\\,\\text{K}$. So above 2000 K the reaction is non-spontaneous.",
+    "solution_steps": [
+      {"step": 1, "description": "$\\Delta G = \\Delta H - T\\Delta S$. Both $\\Delta H$ and $\\Delta S$ are negative."},
+      {"step": 2, "description": "Non-spontaneous when $\\Delta G \\geq 0$: $\\Delta H - T\\Delta S \\geq 0$."},
+      {"step": 3, "description": "$T \\geq \\frac{\\Delta H}{\\Delta S} = \\frac{-400000}{-200} = 2000\\,\\text{K}$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Chemistry",
+    "topic": "Atomic Structure",
+    "year": 2016,
+    "exam_type": "JEE Mains",
+    "difficulty": 2,
+    "problem_text": "Calculate the wavelength of the third line in the Balmer series of hydrogen spectrum. ($R_H = 1.097 \\times 10^7\\,\\text{m}^{-1}$)",
+    "solution_text": "Balmer series: $\\frac{1}{\\lambda} = R_H\\left(\\frac{1}{2^2} - \\frac{1}{n^2}\\right)$. Third line: $n = 5$ (first line $n=3$, second $n=4$, third $n=5$). $\\frac{1}{\\lambda} = 1.097 \\times 10^7\\left(\\frac{1}{4} - \\frac{1}{25}\\right) = 1.097 \\times 10^7 \\times \\frac{21}{100} = 2.304 \\times 10^6\\,\\text{m}^{-1}$. $\\lambda = 434\\,\\text{nm}$.",
+    "solution_steps": [
+      {"step": 1, "description": "Balmer series formula with $n_1 = 2$, third line means $n_2 = 5$."},
+      {"step": 2, "description": "$\\frac{1}{\\lambda} = 1.097 \\times 10^7 \\times (0.25 - 0.04) = 2.304 \\times 10^6\\,\\text{m}^{-1}$."},
+      {"step": 3, "description": "$\\lambda = 1/2.304 \\times 10^6 \\approx 434\\,\\text{nm}$ (violet line)."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Maths",
+    "topic": "Integral Calculus",
+    "year": 2020,
+    "exam_type": "JEE Advanced",
+    "difficulty": 4,
+    "problem_text": "Evaluate $\\int_0^{\\pi/2} \\frac{\\sin x}{\\sin x + \\cos x}\\,dx$.",
+    "solution_text": "Let $I = \\int_0^{\\pi/2} \\frac{\\sin x}{\\sin x + \\cos x}\\,dx$. Using the property $\\int_0^a f(x)\\,dx = \\int_0^a f(a-x)\\,dx$: $I = \\int_0^{\\pi/2} \\frac{\\cos x}{\\cos x + \\sin x}\\,dx$. Adding: $2I = \\int_0^{\\pi/2} 1\\,dx = \\frac{\\pi}{2}$. Therefore $I = \\frac{\\pi}{4}$.",
+    "solution_steps": [
+      {"step": 1, "description": "Let $I = \\int_0^{\\pi/2} \\frac{\\sin x}{\\sin x + \\cos x}\\,dx$."},
+      {"step": 2, "description": "Apply $f(a-x)$ property: $I = \\int_0^{\\pi/2} \\frac{\\cos x}{\\cos x + \\sin x}\\,dx$."},
+      {"step": 3, "description": "Add the two forms: $2I = \\int_0^{\\pi/2} dx = \\pi/2$."},
+      {"step": 4, "description": "$I = \\pi/4$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Maths",
+    "topic": "Differential Equations",
+    "year": 2019,
+    "exam_type": "JEE Mains",
+    "difficulty": 3,
+    "problem_text": "Find the general solution of the differential equation $\\frac{dy}{dx} + y = e^{-x}$.",
+    "solution_text": "This is a first-order linear ODE. Integrating factor $\\mu = e^{\\int 1\\,dx} = e^x$. Multiply both sides: $\\frac{d}{dx}(ye^x) = 1$. Integrating: $ye^x = x + C$. General solution: $y = (x + C)e^{-x}$.",
+    "solution_steps": [
+      {"step": 1, "description": "Standard form: $dy/dx + P(x)y = Q(x)$ with $P = 1$, $Q = e^{-x}$."},
+      {"step": 2, "description": "Integrating factor: $\\mu = e^{\\int P\\,dx} = e^x$."},
+      {"step": 3, "description": "Multiply: $\\frac{d}{dx}(ye^x) = e^x \\cdot e^{-x} = 1$."},
+      {"step": 4, "description": "Integrate: $ye^x = x + C$, so $y = (x+C)e^{-x}$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Maths",
+    "topic": "Matrices and Determinants",
+    "year": 2021,
+    "exam_type": "JEE Advanced",
+    "difficulty": 4,
+    "problem_text": "If $A = \\begin{pmatrix} 1 & 2 \\\\ 3 & 4 \\end{pmatrix}$, find $A^{-1}$ and verify that $AA^{-1} = I$.",
+    "solution_text": "$\\det(A) = 1 \\cdot 4 - 2 \\cdot 3 = -2$. Adjugate: $\\text{adj}(A) = \\begin{pmatrix} 4 & -2 \\\\ -3 & 1 \\end{pmatrix}$. Therefore $A^{-1} = \\frac{1}{-2}\\begin{pmatrix} 4 & -2 \\\\ -3 & 1 \\end{pmatrix} = \\begin{pmatrix} -2 & 1 \\\\ 3/2 & -1/2 \\end{pmatrix}$.",
+    "solution_steps": [
+      {"step": 1, "description": "$\\det(A) = 4 - 6 = -2 \\neq 0$, so inverse exists."},
+      {"step": 2, "description": "Cofactor matrix → adjugate: $\\text{adj}(A) = \\begin{pmatrix} 4 & -2 \\\\ -3 & 1 \\end{pmatrix}$."},
+      {"step": 3, "description": "$A^{-1} = \\frac{\\text{adj}(A)}{\\det(A)} = \\begin{pmatrix} -2 & 1 \\\\ 3/2 & -1/2 \\end{pmatrix}$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Maths",
+    "topic": "Probability",
+    "year": 2018,
+    "exam_type": "JEE Advanced",
+    "difficulty": 4,
+    "problem_text": "A box contains 4 red and 6 blue balls. Two balls are drawn at random without replacement. Find the probability that both balls are of the same colour.",
+    "solution_text": "P(both red) $= \\frac{\\binom{4}{2}}{\\binom{10}{2}} = \\frac{6}{45} = \\frac{2}{15}$. P(both blue) $= \\frac{\\binom{6}{2}}{\\binom{10}{2}} = \\frac{15}{45} = \\frac{1}{3}$. P(same colour) $= \\frac{2}{15} + \\frac{1}{3} = \\frac{2}{15} + \\frac{5}{15} = \\frac{7}{15}$.",
+    "solution_steps": [
+      {"step": 1, "description": "Total ways to choose 2 from 10: $\\binom{10}{2} = 45$."},
+      {"step": 2, "description": "Both red: $\\binom{4}{2} = 6$ ways. Both blue: $\\binom{6}{2} = 15$ ways."},
+      {"step": 3, "description": "P = $(6 + 15)/45 = 21/45 = 7/15$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Maths",
+    "topic": "Coordinate Geometry - Circles",
+    "year": 2017,
+    "exam_type": "JEE Mains",
+    "difficulty": 3,
+    "problem_text": "Find the equation of the circle passing through the points $(1, 0)$, $(0, 1)$, and $(0, -1)$.",
+    "solution_text": "General circle: $x^2 + y^2 + Dx + Ey + F = 0$. From $(1,0)$: $1 + D + F = 0$. From $(0,1)$: $1 + E + F = 0$. From $(0,-1)$: $1 - E + F = 0$. Adding last two: $2 + 2F = 0 \\Rightarrow F = -1$. Then $E = 0$, $D = 0$. Equation: $x^2 + y^2 - 1 = 0$, i.e., $x^2 + y^2 = 1$.",
+    "solution_steps": [
+      {"step": 1, "description": "Write general circle equation and substitute each point."},
+      {"step": 2, "description": "From the three equations: $F = -1$, $E = 0$, $D = 0$."},
+      {"step": 3, "description": "Circle: $x^2 + y^2 = 1$ (unit circle centred at origin)."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Physics",
+    "topic": "Current Electricity",
+    "year": 2022,
+    "exam_type": "JEE Mains",
+    "difficulty": 3,
+    "problem_text": "In a Wheatstone bridge, the four arms have resistances $P = 10\\,\\Omega$, $Q = 15\\,\\Omega$, $R = 20\\,\\Omega$, and $S$. If the bridge is balanced, find $S$.",
+    "solution_text": "For a balanced Wheatstone bridge: $\\frac{P}{Q} = \\frac{R}{S}$. Therefore $S = \\frac{R \\cdot Q}{P} = \\frac{20 \\times 15}{10} = 30\\,\\Omega$.",
+    "solution_steps": [
+      {"step": 1, "description": "Balance condition: $P/Q = R/S$."},
+      {"step": 2, "description": "$S = RQ/P = 20 \\times 15 / 10 = 30\\,\\Omega$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Physics",
+    "topic": "Gravitation",
+    "year": 2023,
+    "exam_type": "JEE Mains",
+    "difficulty": 3,
+    "problem_text": "The escape velocity from the surface of a planet of mass $M$ and radius $R$ is $v_e$. What is the escape velocity from a planet of mass $4M$ and radius $2R$?",
+    "solution_text": "$v_e = \\sqrt{\\frac{2GM}{R}}$. For new planet: $v_e' = \\sqrt{\\frac{2G(4M)}{2R}} = \\sqrt{\\frac{4GM}{R}} = \\sqrt{2} \\cdot \\sqrt{\\frac{2GM}{R}} = \\sqrt{2}\\,v_e$.",
+    "solution_steps": [
+      {"step": 1, "description": "Escape velocity formula: $v_e = \\sqrt{2GM/R}$."},
+      {"step": 2, "description": "New values: $M' = 4M$, $R' = 2R$."},
+      {"step": 3, "description": "$v_e' = \\sqrt{2G \\cdot 4M / 2R} = \\sqrt{4GM/R} = \\sqrt{2}\\,v_e$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Chemistry",
+    "topic": "Coordination Compounds",
+    "year": 2022,
+    "exam_type": "JEE Advanced",
+    "difficulty": 4,
+    "problem_text": "The complex $[\\text{Co}(\\text{NH}_3)_6]^{3+}$ is diamagnetic. Using Crystal Field Theory, explain why and state the hybridisation of Co in this complex.",
+    "solution_text": "Co³⁺ has electronic configuration [Ar]3d⁶. NH₃ is a strong field ligand, causing large crystal field splitting $\\Delta_o$. All 6 electrons pair up in the $t_{2g}$ level (low-spin): $t_{2g}^6 e_g^0$. No unpaired electrons → diamagnetic. The complex uses inner $d$ orbitals: hybridisation is $d^2sp^3$ (octahedral).",
+    "solution_steps": [
+      {"step": 1, "description": "Co³⁺: [Ar]3d⁶ (6 d-electrons)."},
+      {"step": 2, "description": "NH₃ = strong field ligand → large Δ_o → low spin configuration."},
+      {"step": 3, "description": "Low spin: $t_{2g}^6 e_g^0$ — all electrons paired → diamagnetic."},
+      {"step": 4, "description": "Inner d-orbitals used → $d^2sp^3$ hybridisation (octahedral)."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Maths",
+    "topic": "Limits and Continuity",
+    "year": 2022,
+    "exam_type": "JEE Mains",
+    "difficulty": 3,
+    "problem_text": "Evaluate: $\\lim_{x \\to 0} \\frac{e^x - 1 - x}{x^2}$.",
+    "solution_text": "Using L'Hôpital's rule (0/0 form): $\\lim_{x\\to 0}\\frac{e^x - 1}{2x}$ (still 0/0). Apply again: $\\lim_{x\\to 0}\\frac{e^x}{2} = \\frac{1}{2}$. Alternatively, using Taylor series: $e^x = 1 + x + \\frac{x^2}{2} + \\cdots$, so $\\frac{e^x - 1 - x}{x^2} = \\frac{x^2/2 + \\cdots}{x^2} \\to \\frac{1}{2}$.",
+    "solution_steps": [
+      {"step": 1, "description": "Form is 0/0 at $x = 0$."},
+      {"step": 2, "description": "Taylor expansion: $e^x - 1 - x = \\frac{x^2}{2} + O(x^3)$."},
+      {"step": 3, "description": "$\\frac{e^x - 1 - x}{x^2} \\to \\frac{x^2/2}{x^2} = \\frac{1}{2}$ as $x \\to 0$."}
+    ],
+    "source_verified": true
+  },
+  {
+    "subject": "Maths",
+    "topic": "Complex Numbers",
+    "year": 2023,
+    "exam_type": "JEE Advanced",
+    "difficulty": 5,
+    "problem_text": "If $z = \\frac{1+i}{1-i}$, find $z^{100}$.",
+    "solution_text": "$z = \\frac{1+i}{1-i} \\cdot \\frac{1+i}{1+i} = \\frac{(1+i)^2}{1+1} = \\frac{2i}{2} = i$. Therefore $z^{100} = i^{100} = (i^4)^{25} = 1^{25} = 1$.",
+    "solution_steps": [
+      {"step": 1, "description": "Rationalise: multiply numerator and denominator by $(1+i)$."},
+      {"step": 2, "description": "$z = \\frac{(1+i)^2}{2} = \\frac{1+2i-1}{2} = i$."},
+      {"step": 3, "description": "$z^{100} = i^{100} = (i^4)^{25} = 1$."}
+    ],
+    "source_verified": true
+  }
+]

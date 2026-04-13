@@ -1,5 +1,7 @@
 # Claude Code Instructions — UpMyRank
 
+**FIRST ACTION EVERY SESSION: Read `docs/session_log.md` before anything else.**
+
 ALWAYS read `MEMORY.md` and `RULES.md` at the start of any new session. `RULES.md` contains hard invariants — violating them creates silent bugs. `MEMORY.md` has the current project state. Whenever you complete a major feature or make an architectural decision, update `MEMORY.md` to reflect the new state.
 
 ## Project Overview
@@ -108,3 +110,16 @@ frontend/web/
   components/ChatMessage.tsx — Message renderer with LaTeX + badge display
   components/Sidebar.tsx    — Slim desktop nav + mobile panel; LEARNING PROFILE section (level badge, style, weak concepts)
 ```
+
+## Auto-Read Rules (for Claude Code sessions)
+
+- **Every session, always:** Read `docs/session_log.md` — it's small (~30 lines) and tells you exactly what was happening last time, what's half-done, and what files matter right now. Never skip it.
+- **Default (any coding task):** CLAUDE.md + `docs/session_log.md`. Nothing else unless triggered below.
+- **"fix" / "bug" / "broken" / "error" / "failing" / "not working" in my prompt:** Also read `docs/bugs.md`
+- **"new feature" / "build" / "implement" / "add" / "create" in my prompt (for a feature):** Also read `docs/decisions.md` + `docs/bugs.md`
+- **"review" / "check" / "audit" in my prompt:** CLAUDE.md + `docs/session_log.md` is sufficient
+- **"architecture" / "design" / "should we use" / "migrate" / "refactor" in my prompt:** Also read `docs/decisions.md`
+- **"deploy" / "migration" / "database" / "schema" in my prompt:** Also read `docs/decisions.md` + `docs/bugs.md`
+- **I explicitly say "full context":** Read CLAUDE.md + `docs/session_log.md` + `docs/decisions.md` + `docs/bugs.md`
+- **Never auto-load all four unless I say "full context".** Token budget matters.
+- **End of session:** Run `/handoff` to write the session entry into `docs/session_log.md`.

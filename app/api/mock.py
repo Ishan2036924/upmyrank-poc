@@ -26,9 +26,9 @@ _MCQ_CACHE: dict[str, str] = {}
 
 # ── MCQ generation prompt ────────────────────────────────────────────────────────
 _MCQ_PROMPT = """\
-You are a JEE/NEET Physics exam question setter.
+You are a JEE/NEET {subject} exam question setter.
 
-Given a Physics question and its correct answer, generate exactly 4 multiple-choice \
+Given a {subject} question and its correct answer, generate exactly 4 multiple-choice \
 options (A, B, C, D) following these STRICT rules:
 1. Exactly ONE option must be the correct answer.
 2. The other THREE must be plausible but definitively wrong distractors — \
@@ -64,6 +64,7 @@ async def _generate_mcq_options(
     openai_client,
     question: str,
     correct_answer: str,
+    subject: str = "Physics",
 ) -> dict:
     """
     Call the cheap LLM to produce 4 MCQ options + the correct letter.
@@ -77,6 +78,7 @@ async def _generate_mcq_options(
                 {
                     "role": "user",
                     "content": _MCQ_PROMPT.format(
+                        subject=subject,
                         question=question,
                         correct_answer=correct_answer,
                     ),
@@ -179,6 +181,7 @@ async def generate_mock(
             openai_client=openai_client,
             question=row["question_text"],
             correct_answer=verified_answer,
+            subject=row.get("subject", body.subject),
         )
 
         # Cache correct letter — never sent to client

@@ -32,7 +32,7 @@ import asyncpg
 import openai
 
 from app.config import settings
-from app.services.doubt.context import get_rag_context, get_student_mastery_str
+from app.services.doubt.context import get_student_mastery_str
 from app.services.doubt.prompts import (
     CONVERSATIONAL_RESPONSE,
     DOUBT_BLOCK_SUMMARIZER_PROMPT,
@@ -50,9 +50,12 @@ from app.services.doubt.prompts import (
     PROBLEM_ANALYSIS_PROMPT,
     SOCRATIC_QUESTION_PROMPT,
     STUDENT_RESPONSE_ANALYSIS_PROMPT,
+    SUBJECT_CLASSIFIER_PROMPT,
+    SUBJECT_CLASSIFIER_SYSTEM,
     SYSTEM_PROMPT_FORCED_ATTEMPT,
     TUTOR_SYSTEM_PROMPT,
     build_system_prompt,
+    get_subject_context,
     render_personalization,
 )
 from app.services.memory.context import get_persona_profile
@@ -63,6 +66,7 @@ from app.services.eval.logger import log_scaffolding_score
 from app.services.cache.semantic_cache import cache_response, get_cached_response
 from app.services.mastery import update_concept_mastery
 from app.services.rag.retriever import Retriever
+from app.services.rag.agent import AgenticRetriever
 
 if TYPE_CHECKING:
     from app.services.verify.pipeline import VerificationPipeline
@@ -153,6 +157,14 @@ class SocraticEngine:
         self._retriever = retriever
         self._pool = db_pool
         self._verifier = verifier
+        # Agentic RAG — reuses the same embed service already held by the retriever.
+        # No new dependencies: pool and client are already available here.
+        self._agentic_retriever = AgenticRetriever(
+            openai_client=openai_client,
+            retriever=retriever,
+            pool=db_pool,
+            embed_service=retriever._embed,
+        )
 
     # ── public API ────────────────────────────────────────────────────────────
 
@@ -308,6 +320,7 @@ class SocraticEngine:
             logger.info("Analyzing problem …")
             analysis_raw = await self._call_llm(
                 PROBLEM_ANALYSIS_PROMPT.format(
+                    subject_context=get_subject_context(subject),
                     question=question,
                     overall_mastery=student_ctx["overall_mastery"],
                     concept_mastery_details=student_ctx["weak_areas"],
@@ -337,13 +350,36 @@ class SocraticEngine:
         # Store mentor_mode in analysis so get_hint() can retrieve it later
         analysis["mentor_mode"] = mentor_mode
 
-        # ── 3+4. RAG: top-3 NCERT chunks + 1 similar problem; concept IDs ───────
-        logger.info("Retrieving RAG context and concept IDs …")
+        # ── 3. Subject classification — pre-seeds the agentic loop ──────────────
+        # Runs after problem analysis so analysis_topic is available.
+        # Cheap model (gpt-4o-mini), temp=0.0 — fast and deterministic.
+        logger.info("Classifying subject and topic …")
+        subject_meta = await self._classify_subject(question)
+        _effective_subject = subject_meta.get("subject", subject)
+        _question_type     = subject_meta.get("question_type", "conceptual")
+
+        # ── 4. Agentic RAG + concept IDs (concurrent) ────────────────────────
+        # The agentic retriever decides which tools to call (NCERT / JEE PYQ /
+        # Concepts) and how many retrieval steps to take, up to MAX_STEPS=3.
+        logger.info(
+            "Running agentic RAG (subject=%s, qtype=%s) …",
+            _effective_subject, _question_type,
+        )
         analysis_topic = analysis.get("topic", "")
         rag, concept_ids = await asyncio.gather(
-            get_rag_context(self._retriever, question, subject, analysis_topic),
+            self._agentic_retriever.run(
+                question=question,
+                subject=_effective_subject,
+                topic=analysis_topic,
+                hint_level=0,
+                question_type=_question_type,
+            ),
             self._retriever.get_related_concepts(question),
         )
+        # Persist detected subject + question type in analysis so get_hint()
+        # can reuse them without re-classifying on every hint turn.
+        analysis["detected_subject"] = _effective_subject
+        analysis["question_type"]    = _question_type
 
         # ── 5. Scope check (DB-driven + keyword fallback) ─────────────────────
         out_of_scope = not await self._is_in_scope(question=question, analysis=analysis)
@@ -360,24 +396,31 @@ class SocraticEngine:
             session_memory = await self.get_session_memory(study_session_id)
 
         # ── 8. Policy engine — select pedagogy for this student + topic ──────────
+        _subject_context = get_subject_context(_effective_subject)
         try:
             import dataclasses
             persona_profile = await get_persona_profile(student_id, self._pool)
-            pedagogy_config = select_pedagogy(persona_profile, analysis.get("topic", ""), hint_level=0)
+            pedagogy_config = select_pedagogy(
+                persona_profile, analysis.get("topic", ""), hint_level=0, subject=_effective_subject,
+            )
             personalization_block = render_personalization(pedagogy_config)
-            active_system_prompt = build_system_prompt(personalization_block)
+            active_system_prompt = build_system_prompt(personalization_block, subject=_effective_subject)
             # Store in analysis for reference (persona_profile re-fetched in get_hint)
             analysis["persona_profile"] = persona_profile
             analysis["pedagogy_config"] = dataclasses.asdict(pedagogy_config)
         except Exception as exc:
             logger.warning("Policy engine failed (non-fatal), using default prompt: %s", exc)
-            active_system_prompt = TUTOR_SYSTEM_PROMPT
+            active_system_prompt = TUTOR_SYSTEM_PROMPT.format(
+                subject_context=_subject_context,
+            )
 
         # ── 9. Generate personalised Socratic response ────────────────────────
         logger.info("Generating Socratic response (mentor=%s) …", mentor_mode)
         _llm_t0 = time.monotonic()
         socratic_response = await self._call_llm(
             SOCRATIC_QUESTION_PROMPT.format(
+                subject=_effective_subject,
+                subject_context=_subject_context,
                 student_name=student_ctx["student_name"],
                 overall_mastery=student_ctx["overall_mastery"],
                 genome_injection=genome_injection,
@@ -399,7 +442,7 @@ class SocraticEngine:
 
         if out_of_scope:
             socratic_response = (
-                "⚠️ This question appears to be outside the Physics syllabus "
+                f"⚠️ This question appears to be outside the {_effective_subject} syllabus "
                 "(NCERT Class 11 & 12). I'll do my best to help, but for detailed "
                 "study, refer to the relevant chapter.\n\n" + socratic_response
             )
@@ -593,6 +636,7 @@ class SocraticEngine:
             else:
                 analysis_raw = await self._call_llm(
                     PROBLEM_ANALYSIS_PROMPT.format(
+                        subject_context=get_subject_context(subject),
                         question=question,
                         overall_mastery=student_ctx["overall_mastery"],
                         concept_mastery_details=student_ctx["weak_areas"],
@@ -605,7 +649,7 @@ class SocraticEngine:
                     analysis = _parse_json_response(analysis_raw)
                 except (ValueError, json.JSONDecodeError):
                     analysis = {
-                        "subject": subject, "topic": "Physics", "subtopic": "General",
+                        "subject": subject, "topic": subject, "subtopic": "General",
                         "concepts_required": [], "difficulty": 5,
                         "problem_type": "conceptual", "key_insight": "",
                         "common_misconceptions": [], "brief_analysis": question,
@@ -613,12 +657,25 @@ class SocraticEngine:
 
             analysis["mentor_mode"] = mentor_mode
 
-            # ── 3+4. RAG + concept IDs ──────────────────────────────────────────
+            # ── 3. Subject classification ────────────────────────────────────────
+            stream_subject_meta = await self._classify_subject(question)
+            _eff_subject_stream = stream_subject_meta.get("subject", subject)
+            _qtype_stream       = stream_subject_meta.get("question_type", "conceptual")
+
+            # ── 4. Agentic RAG + concept IDs (concurrent) ───────────────────────
             analysis_topic = analysis.get("topic", "")
             rag, concept_ids = await asyncio.gather(
-                get_rag_context(self._retriever, question, subject, analysis_topic),
+                self._agentic_retriever.run(
+                    question=question,
+                    subject=_eff_subject_stream,
+                    topic=analysis_topic,
+                    hint_level=0,
+                    question_type=_qtype_stream,
+                ),
                 self._retriever.get_related_concepts(question),
             )
+            analysis["detected_subject"] = _eff_subject_stream
+            analysis["question_type"]    = _qtype_stream
 
             # ── 5. Scope check ──────────────────────────────────────────────────
             out_of_scope = not await self._is_in_scope(question=question, analysis=analysis)
@@ -633,22 +690,30 @@ class SocraticEngine:
                 session_memory = await self.get_session_memory(study_session_id)
 
             # ── 8. Policy engine ────────────────────────────────────────────────
+            _stream_subject_context = get_subject_context(_eff_subject_stream)
             try:
                 import dataclasses
                 persona_profile = await get_persona_profile(student_id, self._pool)
                 pedagogy_config = select_pedagogy(
-                    persona_profile, analysis.get("topic", ""), hint_level=0
+                    persona_profile, analysis.get("topic", ""), hint_level=0,
+                    subject=_eff_subject_stream,
                 )
                 personalization_block = render_personalization(pedagogy_config)
-                active_system_prompt = build_system_prompt(personalization_block)
+                active_system_prompt = build_system_prompt(
+                    personalization_block, subject=_eff_subject_stream,
+                )
                 analysis["persona_profile"] = persona_profile
                 analysis["pedagogy_config"] = dataclasses.asdict(pedagogy_config)
             except Exception as exc:
                 logger.warning("Policy engine (stream) failed (non-fatal): %s", exc)
-                active_system_prompt = TUTOR_SYSTEM_PROMPT
+                active_system_prompt = TUTOR_SYSTEM_PROMPT.format(
+                    subject_context=_stream_subject_context,
+                )
 
             # ── 9. Build messages for streaming LLM call ─────────────────────
             socratic_prompt = SOCRATIC_QUESTION_PROMPT.format(
+                subject=_eff_subject_stream,
+                subject_context=_stream_subject_context,
                 student_name=student_ctx["student_name"],
                 overall_mastery=student_ctx["overall_mastery"],
                 genome_injection=genome_injection,
@@ -672,8 +737,9 @@ class SocraticEngine:
             # the text immediately — not just the badge shown in metadata.
             _oos_prefix = ""
             if out_of_scope:
+                _oos_subject_stream = analysis.get("detected_subject", subject)
                 _oos_prefix = (
-                    "⚠️ This question appears to be outside the Physics syllabus "
+                    f"⚠️ This question appears to be outside the {_oos_subject_stream} syllabus "
                     "(NCERT Class 11 & 12). I'll do my best to help, but for detailed "
                     "study, refer to the relevant chapter.\n\n"
                 )
@@ -892,7 +958,8 @@ class SocraticEngine:
         # (forced-attempt stage takes full priority). Pure keyword matching — no LLM.
         if student_response and student_response.strip() and current_level < 3:
             _topic = stored_analysis.get("topic", "")
-            _mc = check_for_misconception(student_response, _topic)
+            _mc_subject = stored_analysis.get("detected_subject", subject)
+            _mc = check_for_misconception(student_response, _topic, subject=_mc_subject)
             if _mc is not None:
                 logger.info(
                     "Misconception detected: id=%s session=%s", _mc.id, session_id
@@ -975,17 +1042,33 @@ class SocraticEngine:
                 "response_analysis": {},
             }
 
-        # ── 5+6. RAG context + targeted genome injection (concurrent) ────────────
+        # ── 5+6. Agentic RAG context + targeted genome injection (concurrent) ────
         # Nuclear override: hint level 3 (Forced Attempt) receives NO RAG context
         # and NO analysis. Starving the LLM of this material makes solution leakage
         # structurally impossible — it cannot teach what it has not been given.
+        # AgenticRetriever.run() also returns empty at hint_level==3 as a double gate.
         if new_level == 3:
-            rag = {"context_text": "", "chunks": [], "chunk_count": 0}
+            rag = {"context_text": "", "chunks": [], "chunk_count": 0, "tool_trace": []}
             genome_injection = ""
         else:
             analysis_topic = stored_analysis.get("topic", "")
+            # Re-use detected subject + question type stored during start_session().
+            # For hints, question_type skews toward "numerical" at levels 2+ since the
+            # student is deep in problem-solving — JEE PYQ search becomes more useful.
+            _hint_subject = stored_analysis.get("detected_subject", subject)
+            _hint_qtype = (
+                "numerical"
+                if new_level >= 2
+                else stored_analysis.get("question_type", "conceptual")
+            )
             rag, genome_injection = await asyncio.gather(
-                get_rag_context(self._retriever, problem_text, subject, analysis_topic),
+                self._agentic_retriever.run(
+                    question=problem_text,
+                    subject=_hint_subject,
+                    topic=analysis_topic,
+                    hint_level=new_level,
+                    question_type=_hint_qtype,
+                ),
                 get_student_mastery_str(self._pool, str(session_student_id), analysis_topic),
             )
 
@@ -1006,10 +1089,14 @@ class SocraticEngine:
         conversation_text = self._format_conversation(history)
         student_response_text = (student_response or "").strip() or "(no response provided)"
         analysis_json = json.dumps(stored_analysis, indent=2)
+        _hint_subject = stored_analysis.get("detected_subject", subject)
+        _hint_subject_context = get_subject_context(_hint_subject)
 
         # ── 8. Select & render the appropriate prompt ─────────────────────────
         if new_level == 1:
             prompt = HINT_LEVEL_1_PROMPT.format(
+                subject=_hint_subject,
+                subject_context=_hint_subject_context,
                 conversation_history=conversation_text,
                 student_response=student_response_text,
                 analysis=analysis_json,
@@ -1018,6 +1105,8 @@ class SocraticEngine:
             )
         elif new_level == 2:
             prompt = HINT_LEVEL_2_PROMPT.format(
+                subject=_hint_subject,
+                subject_context=_hint_subject_context,
                 conversation_history=conversation_text,
                 student_response=student_response_text,
                 analysis=analysis_json,
@@ -1033,6 +1122,8 @@ class SocraticEngine:
             )
         else:
             prompt = FULL_SOLUTION_PROMPT.format(
+                subject=_hint_subject,
+                subject_context=_hint_subject_context,
                 conversation_history=conversation_text,
                 question=problem_text,
                 analysis=analysis_json,
@@ -1052,12 +1143,17 @@ class SocraticEngine:
                     hint_persona_profile,
                     stored_analysis.get("topic", ""),
                     hint_level=new_level,
+                    subject=_hint_subject,
                 )
                 hint_personalization_block = render_personalization(hint_pedagogy_config)
-                hint_active_system_prompt = build_system_prompt(hint_personalization_block)
+                hint_active_system_prompt = build_system_prompt(
+                    hint_personalization_block, subject=_hint_subject,
+                )
             except Exception as exc:
                 logger.warning("Policy engine in get_hint failed (non-fatal): %s", exc)
-                hint_active_system_prompt = TUTOR_SYSTEM_PROMPT
+                hint_active_system_prompt = TUTOR_SYSTEM_PROMPT.format(
+                    subject_context=_hint_subject_context,
+                )
 
         # Append max_concepts constraint for HIGH/MEDIUM scaffolding (not LOW = max 5)
         if hint_pedagogy_config is not None and hint_pedagogy_config.max_concepts < 5:
@@ -1200,22 +1296,71 @@ class SocraticEngine:
             "response_analysis": response_analysis,
         }
 
+    # ── subject classification (for agentic RAG pre-seeding) ─────────────────
+
+    async def _classify_subject(self, question: str) -> dict:
+        """
+        Lightweight subject + topic + question_type classifier.
+
+        Runs BEFORE the agentic RAG loop in start_session() so the agent's
+        first tool call is already filtered to the correct subject.
+
+        Model: gpt-4o-mini (cheap tier), temp=0.0 (deterministic).
+        Max tokens: 80 — returns a tiny JSON object.
+
+        Returns:
+            {"subject": "Physics"|"Chemistry"|"Maths",
+             "topic": str,
+             "question_type": "conceptual"|"numerical"|"derivation"}
+
+        Falls back silently to Physics/conceptual on any error.
+        """
+        _default = {"subject": "Physics", "topic": "", "question_type": "conceptual"}
+        _valid_subjects = {"Physics", "Chemistry", "Maths"}
+
+        try:
+            raw = await self._call_llm(
+                SUBJECT_CLASSIFIER_PROMPT.format(question=question),
+                max_tokens=80,
+                temperature=0.0,
+                system_prompt=SUBJECT_CLASSIFIER_SYSTEM,
+                model_tier="cheap",
+            )
+            result = _parse_json_response(raw)
+            subject = result.get("subject", "Physics")
+            if subject not in _valid_subjects:
+                subject = "Physics"
+            question_type = result.get("question_type", "conceptual")
+            if question_type not in ("conceptual", "numerical", "derivation"):
+                question_type = "conceptual"
+            return {
+                "subject":       subject,
+                "topic":         str(result.get("topic", "")).strip(),
+                "question_type": question_type,
+            }
+        except Exception as exc:
+            logger.warning("_classify_subject failed (non-fatal): %s", exc)
+            return _default
+
     # ── intent classification ────────────────────────────────────────────────
 
     async def classify_intent(
         self,
         message: str,
         has_active_block: bool = False,
+        subject: str = "Physics",
     ) -> str:
         """Classify a student message into one of 9 intents.
 
         Returns one of: greeting, meta, emotional, out_of_scope,
-        recap, physics_doubt, continuation, conversational, explanation.
+        recap, subject_doubt, continuation, conversational, explanation.
         """
         _VALID_INTENTS = {
             "greeting", "meta", "emotional",
-            "out_of_scope", "physics_doubt", "continuation", "recap",
+            "out_of_scope", "subject_doubt", "continuation", "recap",
             "conversational", "explanation",
+            # backward-compat alias — old "physics_doubt" treated as subject_doubt
+            "physics_doubt",
         }
 
         stripped = message.strip().lower()
@@ -1238,6 +1383,7 @@ class SocraticEngine:
 
         prompt = INTENT_CLASSIFIER_PROMPT.format(
             has_active_block=str(has_active_block).lower(),
+            subject=subject,
             message=message,
         )
         raw = await self._call_llm(
@@ -1249,18 +1395,23 @@ class SocraticEngine:
         )
         intent = raw.strip().lower().replace('"', "").replace("'", "")
 
+        # Normalise legacy "physics_doubt" alias to "subject_doubt"
+        if intent == "physics_doubt":
+            intent = "subject_doubt"
+
         if intent in _VALID_INTENTS:
             return intent
 
         # Fallback: if there's an active block, treat as continuation;
-        # otherwise treat as a new physics doubt.
+        # otherwise treat as a new subject doubt.
         logger.warning("Classifier returned unknown intent '%s'; falling back", raw.strip())
-        return "continuation" if has_active_block else "physics_doubt"
+        return "continuation" if has_active_block else "subject_doubt"
 
     async def handle_non_physics_intent(
         self,
         intent: str,
         message: str,
+        subject: str = "Physics",
     ) -> dict:
         """Handle greeting / meta / emotional / out_of_scope intents.
 
@@ -1282,15 +1433,20 @@ class SocraticEngine:
         elif intent == "out_of_scope":
             response = OUT_OF_SCOPE_RESPONSE
         elif intent == "explanation":
+            _exp_subject = subject if subject else "Physics"
             response = await self._call_llm(
-                EXPLANATION_PROMPT.format(message=message),
+                EXPLANATION_PROMPT.format(
+                    subject=_exp_subject,
+                    subject_context=get_subject_context(_exp_subject),
+                    message=message,
+                ),
                 max_tokens=600,
                 temperature=0.5,
                 model_tier="quality",
             )
             response = self._sanitize_latex(response)
         else:
-            response = "I'm here to help with Physics! Ask me anything from NCERT Class 11 or 12."
+            response = "I'm here to help! Ask me a Physics, Chemistry, or Maths question from NCERT Class 11 or 12."
 
         return {"intent": intent, "response": response, "session_id": None}
 

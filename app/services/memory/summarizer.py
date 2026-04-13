@@ -81,9 +81,10 @@ async def summarize_session(
                     {
                         "role": "system",
                         "content": (
-                            "You are summarizing a student's physics study session for future "
-                            "context injection into an AI tutor. Be specific about errors and "
-                            "struggles. Max 80 words."
+                            "You are summarizing a student's JEE/NEET study session for future "
+                            "context injection into an AI tutor. The session may cover Physics, "
+                            "Chemistry, and/or Maths. Be specific about the subject(s) covered, "
+                            "errors made, and struggles. Max 80 words."
                         ),
                     },
                     {
@@ -240,9 +241,10 @@ async def maybe_compress_profile(
                     {
                         "role": "system",
                         "content": (
-                            "You maintain a rolling student profile for an AI Physics tutor. "
-                            "Update it to reflect the current state. Max 120 words. "
-                            "Be specific about patterns, errors, improvements."
+                            "You maintain a rolling student profile for an AI JEE/NEET tutor "
+                            "covering Physics, Chemistry, and Maths. Update it to reflect the "
+                            "current state. Max 120 words. Be specific about which subjects "
+                            "are strong/weak, patterns, errors, and improvements."
                         ),
                     },
                     {
@@ -295,7 +297,8 @@ async def maybe_compress_profile(
                     {
                         "role": "system",
                         "content": (
-                            "You are updating a Physics tutor's understanding of a student. "
+                            "You are updating a JEE/NEET tutor's understanding of a student "
+                            "across Physics, Chemistry, and Maths. "
                             "Write 3-4 sentences only. Be specific. Use evidence from the sessions. "
                             "Do not repeat the old profile if the data contradicts it."
                         ),
@@ -307,10 +310,10 @@ async def maybe_compress_profile(
                             f"Last 10 session summaries:\n{summaries_text}\n\n"
                             f"Current mastery (top concepts):\n{mastery_lines}\n\n"
                             "Rewrite the persona in 3-4 sentences covering:\n"
-                            "1. Current ability level (beginner / developing / confident / advanced)\n"
+                            "1. Current ability level per subject (beginner / developing / confident / advanced) — note any subject-specific strengths or weaknesses\n"
                             "2. How they respond to Socratic questioning (need heavy hints / engage well / solve independently)\n"
                             "3. Emotional pattern (anxious under pressure / steady / impatient / motivated)\n"
-                            "4. What teaching style works best for them now"
+                            "4. What teaching style works best for them now across Physics, Chemistry, and Maths"
                         ),
                     },
                 ],
