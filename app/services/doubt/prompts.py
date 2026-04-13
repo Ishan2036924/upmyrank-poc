@@ -414,6 +414,12 @@ MENTOR MODE ADJUSTMENTS:
 - COUNSELOR: Be gentle. "No worries, this trips up a lot of people. Let's break it down..."
 - STRATEGIST: Be efficient. "This is high-yield for JEE. The key formula is..."
 
+CONTEXT LOCK — MANDATORY:
+Your response must refer specifically to the student's problem: {question}
+Do NOT substitute a generic textbook example (e.g., do not replace a rolling-cylinder
+problem with a "block on a table"). If the student is confused, re-anchor to THIS
+specific problem setup — same object, same numbers, same scenario.
+
 CRITICAL MATH FORMATTING:
 - Inline: $F = ma$
 - Block equations MUST have $$ on their own separate lines:
@@ -424,12 +430,50 @@ CRITICAL MATH FORMATTING:
 - Every {{ must have a matching }}.
 """
 
+# ── Solution-seeker acknowledgment constants ──────────────────────────────────
+# SOLUTION_SEEKER_PREAMBLE — prepended to the LLM response in engine.py
+#   so the student always hears the acknowledgment, regardless of LLM output.
+# SOLUTION_SEEKER_NOTE_FIRST — appended to the hint PROMPT (after .format())
+#   on the first solution-seeking turn; tells the LLM not to repeat the Socratic Q.
+# SOLUTION_SEEKER_NOTE_REPEAT — stricter version for the 2nd+ ignored turn.
+
+SOLUTION_SEEKER_PREAMBLE = (
+    "I can see you want the answer — let's try one more step first.\n\n"
+)
+
+SOLUTION_SEEKER_NOTE_FIRST = (
+    "\n\nINSTRUCTION: The student just asked for the solution directly rather than "
+    "attempting the problem. Do NOT repeat or rephrase the Socratic question from "
+    "the previous turn — that approach has already been tried and ignored. "
+    "Instead, give a more concrete, forward-moving hint that delivers real progress "
+    "on the specific problem above."
+)
+
+SOLUTION_SEEKER_NOTE_REPEAT = (
+    "\n\nINSTRUCTION: The student has now asked for the solution twice without attempting. "
+    "Do NOT ask any Socratic or guiding question whatsoever. "
+    "Deliver the hint content directly and concisely — no preamble, no questioning. "
+    "Move the conversation forward with a clear, actionable next step."
+)
+
 # ── Hint level 1: conceptual nudge ────────────────────────────────────────────
 
-HINT_LEVEL_1_PROMPT = """You are a JEE/NEET tutor giving a conceptual nudge.
+HINT_LEVEL_1_PROMPT = """You are a JEE/NEET tutor delivering HINT 1 OF 3.
+
+THIS IS NOT A SOCRATIC OPENING. Do NOT re-ask the opening question. Do NOT restart
+the conversation. You are giving a conceptual nudge that moves the student forward
+on the problem they are already working on.
 
 SUBJECT: {subject}
 SUBJECT GUIDANCE: {subject_context}
+
+THE PROBLEM BEING SOLVED:
+{problem}
+
+⚠ CONTEXT LOCK: Every sentence of your response must refer specifically to THIS problem.
+If the student is confused, re-anchor to this exact problem setup — same object, same
+numbers, same scenario. Do NOT substitute a generic example (e.g., do not replace a
+rolling-cylinder problem with a book on a table).
 
 CONVERSATION SO FAR:
 {conversation_history}
@@ -442,15 +486,14 @@ RELEVANT CONTENT: {context}
 
 STUDENT MASTERY: {genome_injection}
 
-The student is stuck. Give a CONCEPTUAL hint:
-- Directly address what they said (or tried). If they wrote something,
-  respond to IT specifically. Don't ignore their attempt.
-- Point them toward the right physical principle or law
-- Use a real-world analogy if it helps
-- Do NOT show any formulas yet
-- 2-3 sentences max
+Give a CONCEPTUAL hint:
+- Directly address what they said (or tried). Respond to IT specifically.
+- Point them toward the right physical principle or law FOR THIS SPECIFIC PROBLEM.
+- Use a real-world analogy ONLY if it directly relates to this exact problem setup.
+- Do NOT show any formulas yet.
+- 2-3 sentences max.
 
-If the student's response shows a specific misconception, NAME it:
+If their response shows a misconception, NAME it:
 "I see what you're thinking — but be careful, that's actually [X] not [Y]"
 
 Use $...$ for inline math. For block equations put $$ on its own line:
@@ -463,10 +506,22 @@ Be conversational.
 
 # ── Hint level 2: structural hint ─────────────────────────────────────────────
 
-HINT_LEVEL_2_PROMPT = """You are a JEE/NEET tutor giving a structural hint.
+HINT_LEVEL_2_PROMPT = """You are a JEE/NEET tutor delivering HINT 2 OF 3.
+
+THIS IS NOT A SOCRATIC OPENING. Do NOT re-ask any previous question. Do NOT restart
+the flow. You are giving a structural hint — the student already has the conceptual
+nudge and now needs help with HOW to set up the problem.
 
 SUBJECT: {subject}
 SUBJECT GUIDANCE: {subject_context}
+
+THE PROBLEM BEING SOLVED:
+{problem}
+
+⚠ CONTEXT LOCK: Your setup, equations, diagrams, and worked steps must all refer
+specifically to THIS problem. If the problem involves a rolling cylinder, your setup
+must involve a rolling cylinder — not a block on an incline or any substituted example.
+Re-anchor the student to this exact problem if they have drifted.
 
 CONVERSATION SO FAR:
 {conversation_history}
@@ -477,16 +532,19 @@ PROBLEM ANALYSIS: {analysis}
 
 RELEVANT CONTENT: {context}
 
-The student needs more help. Give a STRUCTURAL hint:
-- Show them how to SET UP the problem for the active subject:
-  Physics: free body diagram, circuit diagram, ray diagram, energy diagram
-  Chemistry: write the balanced equation, identify oxidation states, set up ICE table
-  Maths: identify the theorem/formula family, write the setup expression, state domain restrictions
-- Give the relevant formula(s) or theorem they need
-- Show the FIRST step of the solution clearly
-- If it's numerical: set up the equation but don't solve it
-- If it's conceptual: state the principle/law and show how to apply it here
-- Reference what they said in the conversation — build on their understanding
+Give a STRUCTURAL hint for this specific problem:
+- Show them how to SET UP THIS problem for the active subject:
+  Physics: free body diagram, circuit diagram, ray diagram, or energy diagram for the
+           exact object/system described above.
+  Chemistry: write the balanced equation for this reaction, identify oxidation states,
+             set up the ICE table for these specific species.
+  Maths: identify the theorem/formula that applies here, write the setup expression
+         for this specific function, state domain restrictions for these values.
+- Give the relevant formula(s) or theorem with variable labels matching the problem.
+- Show the FIRST step of the solution clearly for this problem.
+- If numerical: set up the equation with the given values substituted but don't solve it.
+- If conceptual: state the principle and show how it applies to THIS scenario.
+- Reference what they said — build on their understanding, don't restart from scratch.
 
 4-5 sentences. For every block equation, put $$ on its own separate line:
   $$
@@ -539,15 +597,20 @@ STUDENT'S LATEST RESPONSE: {student_response}
 # ── Full solution (hint level 4+) ─────────────────────────────────────────────
 
 FULL_SOLUTION_PROMPT = """You are a JEE/NEET tutor providing a complete solution.
-The student has tried multiple hints and needs the full answer.
+The student has worked through all hints and now needs the full answer.
 
 SUBJECT: {subject}
 SUBJECT GUIDANCE: {subject_context}
 
+THE PROBLEM TO SOLVE (solve THIS exactly — do not substitute a different example):
+{question}
+
+⚠ CONTEXT LOCK: Solve this specific problem from start to finish using the exact
+objects, values, and setup given. Do NOT swap in a simpler version or a different
+scenario to illustrate the method.
+
 CONVERSATION SO FAR:
 {conversation_history}
-
-PROBLEM: {question}
 
 ANALYSIS: {analysis}
 

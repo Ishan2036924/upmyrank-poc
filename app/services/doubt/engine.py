@@ -49,6 +49,9 @@ from app.services.doubt.prompts import (
     OUT_OF_SCOPE_RESPONSE,
     PROBLEM_ANALYSIS_PROMPT,
     SOCRATIC_QUESTION_PROMPT,
+    SOLUTION_SEEKER_NOTE_FIRST,
+    SOLUTION_SEEKER_NOTE_REPEAT,
+    SOLUTION_SEEKER_PREAMBLE,
     STUDENT_RESPONSE_ANALYSIS_PROMPT,
     SUBJECT_CLASSIFIER_PROMPT,
     SUBJECT_CLASSIFIER_SYSTEM,
@@ -92,6 +95,23 @@ _PROBLEM_SIGNALS: frozenset = frozenset({
     "find", "calculate", "prove", "derive", "solve",
     "determine", "compute", "evaluate", "obtain", "show that",
 })
+
+# ── Solution-seeker pattern (server-side regex, no LLM cost) ─────────────────
+# Catches soft solution-seeking that does NOT trigger the frontend GIVE_UP_RE
+# (which sets jump_to_full=True for explicit give-up phrases).
+# When matched: acknowledge, inject note into prompt, track ignored_socratic_count.
+# After 2 consecutive ignored turns: note escalates to SOLUTION_SEEKER_NOTE_REPEAT.
+_SOLUTION_SEEKER_RE = re.compile(
+    r'\b('
+    r'give\s+me\s+(the\s+)?(solution|answer)|'
+    r'with\s+solution|'
+    r'tell\s+me\s+(the\s+)?(answer|solution)|'
+    r'just\s+(tell|show|give)\s+me\s+(the\s+)?(answer|solution)|'
+    r'(show|give)\s+me\s+the\s+(solution|answer)|'
+    r'what(?:\'s|\s+is)\s+the\s+(correct\s+)?answer'
+    r')\b',
+    re.IGNORECASE,
+)
 
 # ── model tier routing ────────────────────────────────────────────────────────
 
@@ -964,7 +984,29 @@ class SocraticEngine:
         if student_response and student_response.strip():
             history.append({"role": "student", "content": student_response})
 
-        # ── 3b. Misconception check ───────────────────────────────────────────
+        # ── 3b. Soft solution-seeking detection ───────────────────────────────
+        # Regex-based, no LLM cost (same pattern as _CONVERSATIONAL_TOKENS).
+        # Does NOT overlap with jump_to_full (explicit give-up from frontend).
+        # Tracks consecutive ignored turns in stored_analysis so the count
+        # persists across turns without any new DB column.
+        is_solution_seeking: bool = False
+        if (
+            student_response
+            and student_response.strip()
+            and not jump_to_full
+            and not student_resolved
+            and current_level < 3
+            and _SOLUTION_SEEKER_RE.search(student_response)
+        ):
+            is_solution_seeking = True
+            _ignored = stored_analysis.get("ignored_socratic_count", 0) + 1
+            stored_analysis["ignored_socratic_count"] = _ignored
+            logger.info(
+                "Solution-seeking detected (count=%d) for session %s",
+                _ignored, session_id,
+            )
+
+        # ── 3d. Misconception check ───────────────────────────────────────────
         # Run before hint level is incremented. Never fires at hint_level >= 3
         # (forced-attempt stage takes full priority). Pure keyword matching — no LLM.
         if student_response and student_response.strip() and current_level < 3:
@@ -1108,21 +1150,31 @@ class SocraticEngine:
             prompt = HINT_LEVEL_1_PROMPT.format(
                 subject=_hint_subject,
                 subject_context=_hint_subject_context,
+                problem=problem_text,                  # Fix 1+4: explicit problem anchor
                 conversation_history=conversation_text,
                 student_response=student_response_text,
                 analysis=analysis_json,
                 context=rag["context_text"],
                 genome_injection=genome_injection,
             )
+            # Fix 2: append solution-seeker instruction if detected this turn
+            if is_solution_seeking:
+                _count = stored_analysis.get("ignored_socratic_count", 1)
+                prompt += SOLUTION_SEEKER_NOTE_REPEAT if _count >= 2 else SOLUTION_SEEKER_NOTE_FIRST
         elif new_level == 2:
             prompt = HINT_LEVEL_2_PROMPT.format(
                 subject=_hint_subject,
                 subject_context=_hint_subject_context,
+                problem=problem_text,                  # Fix 1+4: explicit problem anchor
                 conversation_history=conversation_text,
                 student_response=student_response_text,
                 analysis=analysis_json,
                 context=rag["context_text"],
             )
+            # Fix 2: append solution-seeker instruction if detected this turn
+            if is_solution_seeking:
+                _count = stored_analysis.get("ignored_socratic_count", 1)
+                prompt += SOLUTION_SEEKER_NOTE_REPEAT if _count >= 2 else SOLUTION_SEEKER_NOTE_FIRST
         elif new_level == 3:
             # Nuclear option: isolated prompt with no analysis or RAG context.
             # System prompt is also swapped to SYSTEM_PROMPT_FORCED_ATTEMPT,
@@ -1198,7 +1250,15 @@ class SocraticEngine:
                 "Let's work through this step-by-step.\n\n" + hint_response
             )
 
-        # ── 10c. LaTeX post-processing sanitizer ──────────────────────────────
+        # ── 10c. Solution-seeker acknowledgment preamble ──────────────────────
+        # Prepended AFTER the LLM response so the LLM doesn't echo it back.
+        # The prompt instruction (SOLUTION_SEEKER_NOTE_*) tells the LLM not to
+        # repeat the Socratic question; the preamble gives the student the
+        # human-sounding acknowledgment they need.
+        if is_solution_seeking:
+            hint_response = SOLUTION_SEEKER_PREAMBLE + hint_response
+
+        # ── 10e. LaTeX post-processing sanitizer ──────────────────────────────
         hint_response = self._sanitize_latex(hint_response)
 
         # ── 11. Verify full solution ───────────────────────────────────────────
