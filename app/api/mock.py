@@ -5,6 +5,7 @@ POST /mock/generate  — pick a random problem, generate 4 MCQ options via LLM,
                        cache correct option letter server-side, return options[] to client
 POST /mock/submit    — verify by letter comparison (A/B/C/D), no LLM verifier needed
 """
+import asyncio
 import json
 import logging
 import random
@@ -16,7 +17,6 @@ from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.middleware.auth import get_current_student_id
-from app.services.mastery import update_concept_mastery
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/mock", tags=["mock"])
@@ -262,21 +262,22 @@ async def submit_answer(
         verified_answer: str = problem["verified_answer"] or "See solution steps."
         concepts_tested: list = list(problem["concepts_tested"] or [])
 
-        # ── Update concept mastery ────────────────────────────────────────────────
+        # ── Full mastery pipeline (logs session_events + persona update) ──────────
+        # Uses _mock_genome_update_task instead of a direct update_concept_mastery()
+        # call so mock results feed the pedagogy loop (Rule 1 compliance).
         mastery_updates: list = []
         student_row = await pool.fetchrow(
             "SELECT id FROM students WHERE id = $1", student_uuid
         )
         if student_row is not None and concepts_tested:
-            for concept_id in concepts_tested:
-                result = await update_concept_mastery(
-                    pool=pool,
-                    student_id=student_uuid,
-                    concept_id=concept_id,
-                    performance_score=performance_score,
-                )
-                if result:
-                    mastery_updates.append(result)
+            from app.api.doubt import _mock_genome_update_task
+            asyncio.create_task(_mock_genome_update_task(
+                pool=pool,
+                student_id=str(student_uuid),
+                concept_ids=concepts_tested,
+                correct=correct,
+                topic=problem["topic"] or "Unknown",
+            ))
 
         # ── Pop cache entry ──────────────────────────────────────────────────────
         _MCQ_CACHE.pop(body.problem_id, None)

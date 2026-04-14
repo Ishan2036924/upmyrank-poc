@@ -81,6 +81,37 @@
 
 ---
 
+## LaTeX sanitizer missing on non-streaming start_session() and emotional path — fixed
+**Symptom:** Students on the non-SSE `/doubt/ask` path could receive the first Socratic response with broken KaTeX rendering (unbalanced `$$` delimiters, `\n\n` inside equations). Same for emotional support responses.
+**Root cause:** `_sanitize_latex()` was called on `start_session_stream()`, `get_hint()`, and `explanation` paths but NOT on the non-streaming `start_session()` path (RULES violation #6). The `emotional` branch in `handle_non_physics_intent()` also called `_call_llm()` without sanitizing.
+**Fix (`app/services/doubt/engine.py`):** Added `socratic_response = self._sanitize_latex(socratic_response)` immediately after `_response_latency_ms` is computed in `start_session()`. Added `response = self._sanitize_latex(response)` after the `emotional` LLM call in `handle_non_physics_intent()`.
+**DO NOT:** Remove either sanitizer call. Rule 6 states sanitizer runs on EVERY LLM response path.
+
+## 685 duplicate knowledge chunks — fixed
+**Symptom:** 4.5% of knowledge_chunks (685/15,069) had exact content duplicates (different UUIDs). Retrieval bias, inflated similarity scores, wasted embedding storage.
+**Root cause:** Resumable ingest scripts (`ingest_chem_maths.py`, `ingest_maths_pdf.py`) had no UNIQUE constraint guard — re-running a script from a checkpoint could insert the same chunk twice.
+**Fix:** `scripts/migrate_v13_dedup_chunks.sql` — CTE DELETE keeping lowest UUID per md5(content) group, then `CREATE UNIQUE INDEX IF NOT EXISTS idx_knowledge_chunks_content_md5 ON knowledge_chunks(md5(content))`. Applied: 15,069 → 14,384 chunks, 0 remaining duplicates. The UNIQUE INDEX prevents all future duplicates at the DB level.
+**DO NOT:** Add a UNIQUE constraint on `content` directly (text columns can't be indexed without hashing in Postgres). Always use `md5(content)` for dedup indexing.
+
+## Mock test mastery updates bypassing _genome_update_task — fixed
+**Symptom:** Mock test results didn't feed the pedagogy loop — no session_events logged, no persona update, no scaffolding re-inference. Mock performance was "dark" to the student model.
+**Root cause:** `mock.py` called `update_concept_mastery()` directly, bypassing `_genome_update_task` in `doubt.py` (RULES violation #1).
+**Fix:** Added `_mock_genome_update_task(pool, student_id, concept_ids, correct, topic)` to `doubt.py`. Runs the same 3-step pipeline as `_genome_update_task`: (1) INSERT session_terminal event with `session_type='mock'`, (2) UPSERT concept_mastery EMA, (3) update persona profile + re-infer scaffolding every 5 sessions. `mock.py` now calls this via `asyncio.create_task()` — removed the direct `update_concept_mastery()` loop.
+**Deliberate difference from doubt sessions:** No misconception penalty or confidence modifier — mock tests don't capture those signals.
+**DO NOT:** Add a second mastery update path. `_genome_update_task` (doubt) and `_mock_genome_update_task` (mock) are the only two callers of `update_concept_mastery()` — both go through the full pipeline.
+
+## Orphaned doubt sessions (no linked doubt_block) — fixed
+**Symptom:** 16/56 doubt sessions had no `doubt_blocks` row. `_genome_update_task` never fired for these (no block_close event), judge evaluations were skipped, session end couldn't summarize them.
+**Root cause:** If a user submitted a question before the study session init async call completed (~500ms on mount), `studySessionId` was still `null` in React state → `/doubt/ask` was sent with `study_session_id: undefined` → backend got `null` → no doubt_block created.
+**Fix (`frontend/web/app/doubt/page.tsx`):** Added `sessionReady` boolean state (default `false`). Set to `true` after each branch of the session init effect (`startFresh()` success, `resume` success, and init error catch). Passed `disabled={isLoading || !sessionReady}` to `ChatInput` so the input is blocked while the session is initializing. Added `'Starting your session…'` placeholder while `!sessionReady`.
+**DO NOT:** Remove the `setSessionReady(true)` in the error catch branch — if init fails, we still want to unblock the UI so the user isn't stuck.
+
+## No timeout on Socratic LLM call in start_session() — fixed
+**Symptom:** Slow OpenAI responses could hang `/doubt/ask` indefinitely with no feedback to the student.
+**Root cause:** `_call_llm()` in `start_session()` had no `asyncio.wait_for()` wrapper. The underlying OpenAI client has internal timeouts but they're not coordinated with the FastAPI request lifecycle.
+**Fix (`app/services/doubt/engine.py`):** Wrapped the `_call_llm()` call in `asyncio.wait_for(..., timeout=30.0)`. On `asyncio.TimeoutError`, logs an error and returns a graceful message: "I'm taking too long to respond right now — the AI service seems slow. Please try rephrasing your question or try again in a moment. Your question has been noted and your session is still active. 🔄"
+**DO NOT:** Raise the timeout above 30s. Render's proxy timeout is 55s — leaving 25s of headroom for DB writes and the response path.
+
 ## "Outside syllabus" warning firing for valid Chemistry/Maths topics — fixed
 **Symptom:** Questions like "Raoult's Law" (NCERT Chemistry Class 12, Solutions chapter) showed a ⚠️ "outside the [subject] syllabus" warning banner even though the topic is core JEE content. The warning also always said "Physics" regardless of the detected subject.
 **Root cause (two problems in `_is_in_scope` in `engine.py`):**

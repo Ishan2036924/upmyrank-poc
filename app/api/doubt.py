@@ -162,6 +162,113 @@ _HINT_PERF_MAP = {
 _GIVE_UP_PERF = 0.10    # student gave up — minimal positive signal
 
 
+async def _mock_genome_update_task(
+    pool,
+    student_id: str,
+    concept_ids: list,
+    correct: bool,
+    topic: str,
+) -> None:
+    """
+    Full mastery pipeline for mock test submissions — mirrors _genome_update_task
+    but takes explicit performance data instead of looking up a doubt_session.
+
+    Runs the same 3-step pipeline as _genome_update_task:
+      1. INSERT session_terminal event (session_type='mock') → feeds pedagogy_drift_report
+      2. UPSERT concept_mastery EMA (α=0.7) → same formula as doubt sessions
+      3. Update persona profile + re-infer scaffolding every 5 sessions
+
+    This replaces the raw update_concept_mastery() call in mock.py (Rule 1 fix).
+    The deliberate difference from _genome_update_task: no misconception penalty or
+    confidence modifier — mock tests don't capture those signals.
+    """
+    from app.services.mastery import update_concept_mastery
+
+    try:
+        student_uuid = uuid.UUID(student_id)
+    except ValueError:
+        logger.warning("_mock_genome_update_task: invalid student_id %s", student_id)
+        return
+
+    try:
+        performance: float = 1.0 if correct else 0.0
+
+        # ── 1. INSERT session_terminal event (session_type='mock') ───────────
+        await pool.execute(
+            """
+            INSERT INTO session_events
+                (session_id, event_type, student_id, session_type,
+                 time_to_solve_seconds, max_hint_level_used,
+                 mistake_forensics_tag, give_up_flag, misconception_detected, payload)
+            VALUES (gen_random_uuid(), $1, $2, $3,
+                    NULL, 0, NULL, FALSE, FALSE, $4::jsonb)
+            """,
+            "session_terminal",
+            student_uuid,
+            "mock",
+            json.dumps({"resolved": correct, "topic": topic, "source": "mock_test"}),
+        )
+
+        # ── 2. UPSERT concept_mastery (EMA α=0.7) ────────────────────────────
+        for concept_id in (concept_ids or []):
+            try:
+                result = await update_concept_mastery(
+                    pool=pool,
+                    student_id=student_uuid,
+                    concept_id=concept_id,
+                    performance_score=performance,
+                )
+                if result is None:
+                    # Row missing → seed at baseline for new concept
+                    await pool.execute(
+                        """
+                        INSERT INTO concept_mastery
+                            (student_id, concept_id, mastery_score,
+                             error_count, attempt_count, updated_at)
+                        VALUES ($1, $2, $3, $4, 1, NOW())
+                        ON CONFLICT (student_id, concept_id) DO UPDATE
+                            SET mastery_score = 0.7 * concept_mastery.mastery_score
+                                              + 0.3 * EXCLUDED.mastery_score,
+                                attempt_count = concept_mastery.attempt_count + 1,
+                                updated_at    = NOW()
+                        """,
+                        student_uuid,
+                        concept_id,
+                        performance,
+                        1 if not correct else 0,
+                    )
+            except Exception as exc:
+                logger.warning("Mock mastery update failed for concept=%s: %s", concept_id, exc)
+
+        # ── 3. Update persona profile + maybe re-infer scaffolding ───────────
+        try:
+            from app.services.memory.context import (
+                get_persona_profile,
+                update_persona_profile,
+                infer_scaffolding_level,
+                get_sessions_count,
+            )
+            current_profile = await get_persona_profile(student_id, pool)
+            depth_score = float(current_profile.get("interaction_depth_score", 0.0))
+            new_depth = min(1.0, depth_score + 0.05) if correct else max(0.0, depth_score - 0.02)
+            await update_persona_profile(student_id, {"interaction_depth_score": new_depth}, pool)
+
+            # Re-infer scaffolding level every 5 sessions (same cadence as doubt sessions)
+            sessions_count = await get_sessions_count(student_id, pool)
+            if sessions_count > 0 and sessions_count % 5 == 0:
+                await infer_scaffolding_level(student_id, pool)
+        except Exception as persona_exc:
+            logger.warning("Mock persona update failed (non-fatal): %s", persona_exc)
+
+        logger.info(
+            "Mock genome updated: student=%s concepts=%d correct=%s",
+            student_id, len(concept_ids or []), correct,
+        )
+
+    except Exception as exc:
+        logger.error("_mock_genome_update_task failed for student %s: %s", student_id, exc)
+
+
 async def _genome_update_task(
     pool,
     doubt_session_id: str,

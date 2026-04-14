@@ -442,28 +442,44 @@ class SocraticEngine:
         # ── 9. Generate personalised Socratic response ────────────────────────
         logger.info("Generating Socratic response (mentor=%s) …", mentor_mode)
         _llm_t0 = time.monotonic()
-        socratic_response = await self._call_llm(
-            SOCRATIC_QUESTION_PROMPT.format(
-                subject=_effective_subject,
-                subject_context=_subject_context,
-                student_name=student_ctx["student_name"],
-                overall_mastery=student_ctx["overall_mastery"],
-                genome_injection=genome_injection,
-                weak_areas=student_ctx["weak_areas"],
-                recent_errors=student_ctx["recent_errors"],
-                session_count=student_ctx["session_count"],
-                mentor_mode=mentor_mode,
-                question=question,
-                analysis=json.dumps(analysis, indent=2),
-                context=rag["context_text"],
-                session_memory=session_memory,
-                student_context=student_context,
-            ),
-            max_tokens=1024,
-            temperature=0.7,
-            system_prompt=active_system_prompt,
-        )
+        _LLM_TIMEOUT_SECONDS = 30.0
+        try:
+            socratic_response = await asyncio.wait_for(
+                self._call_llm(
+                    SOCRATIC_QUESTION_PROMPT.format(
+                        subject=_effective_subject,
+                        subject_context=_subject_context,
+                        student_name=student_ctx["student_name"],
+                        overall_mastery=student_ctx["overall_mastery"],
+                        genome_injection=genome_injection,
+                        weak_areas=student_ctx["weak_areas"],
+                        recent_errors=student_ctx["recent_errors"],
+                        session_count=student_ctx["session_count"],
+                        mentor_mode=mentor_mode,
+                        question=question,
+                        analysis=json.dumps(analysis, indent=2),
+                        context=rag["context_text"],
+                        session_memory=session_memory,
+                        student_context=student_context,
+                    ),
+                    max_tokens=1024,
+                    temperature=0.7,
+                    system_prompt=active_system_prompt,
+                ),
+                timeout=_LLM_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                "Socratic LLM timed out after %.0fs for student=%s question=%.60s",
+                _LLM_TIMEOUT_SECONDS, student_id, question,
+            )
+            socratic_response = (
+                "I'm taking too long to respond right now — the AI service seems slow. "
+                "Please try rephrasing your question or try again in a moment. "
+                "Your question has been noted and your session is still active. 🔄"
+            )
         _response_latency_ms = int((time.monotonic() - _llm_t0) * 1000)
+        socratic_response = self._sanitize_latex(socratic_response)  # Rule 6 — every path
 
         if out_of_scope:
             socratic_response = (
@@ -1520,6 +1536,7 @@ class SocraticEngine:
                 temperature=0.7,
                 model_tier="cheap",
             )
+            response = self._sanitize_latex(response)  # Rule 6 — every LLM path
         elif intent == "out_of_scope":
             response = OUT_OF_SCOPE_RESPONSE
         elif intent == "explanation":

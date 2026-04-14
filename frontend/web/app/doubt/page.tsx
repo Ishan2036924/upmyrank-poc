@@ -115,6 +115,9 @@ function DoubtPageInner() {
   const [studySessionId,  setStudySessionId]  = useState<string | null>(null)
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null)
   const [doubtCount,      setDoubtCount]      = useState(0)
+  // True once session init completes (start or resume). Blocks submit until ready
+  // so every /doubt/ask always carries a study_session_id (prevents orphaned sessions).
+  const [sessionReady,    setSessionReady]    = useState(false)
 
   // Chat state
   const [messages,          setMessages]          = useState<ChatMessageType[]>([])
@@ -156,6 +159,7 @@ function DoubtPageInner() {
       saveSession(res.study_session_id, startedAt)
       setStudySessionId(res.study_session_id)
       setSessionStartedAt(startedAt)
+      setSessionReady(true)
     }
 
     async function init() {
@@ -179,6 +183,7 @@ function DoubtPageInner() {
         setStudySessionId(res.study_session_id)
         setSessionStartedAt(res.started_at)
         setDoubtCount(res.doubt_count)
+        setSessionReady(true)
 
         if (res.doubt_blocks.length > 0) {
           setMessages(rebuildMessages(res.doubt_blocks))
@@ -204,7 +209,7 @@ function DoubtPageInner() {
       }
     }
 
-    init().catch(console.error)
+    init().catch((err) => { console.error(err); setSessionReady(true) })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -912,9 +917,11 @@ function DoubtPageInner() {
                 <ChatInput
                   ref={inputRef}
                   onSend={(text, imageUrl) => handleSend(text, imageUrl)}
-                  disabled={isLoading}
+                  disabled={isLoading || !sessionReady}
                   placeholder={
-                    forcedAttemptActive
+                    !sessionReady
+                      ? 'Starting your session…'
+                      : forcedAttemptActive
                       ? 'Write your full answer and working — I\'ll evaluate it…'
                       : currentBlockSolved
                         ? topicLock ? `Ask another question about ${topicLock}…` : `Ask a new ${subjectParam} question…`
