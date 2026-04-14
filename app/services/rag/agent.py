@@ -160,6 +160,18 @@ class AgenticRetriever:
         accumulated: List[dict] = []  # chunks collected across all tool calls
         tool_trace:  List[dict] = []  # audit log
 
+        # ── Pre-compute query embedding ONCE — shared across all tool calls ──
+        # This avoids 2-3 redundant OpenAI embed calls (search_ncert, search_jee,
+        # rerank_and_select each used to embed independently = ~300-600ms wasted).
+        loop = asyncio.get_running_loop()
+        try:
+            q_emb: Optional[List[float]] = await loop.run_in_executor(
+                None, self._embed.embed_single, question
+            )
+        except Exception as exc:
+            logger.warning("AgenticRetriever: pre-embed failed, tools will re-embed: %s", exc)
+            q_emb = None
+
         # ── Build initial messages ────────────────────────────────────────────
         system_prompt = _AGENT_SYSTEM_PROMPT.format(
             max_steps=MAX_STEPS,
@@ -207,99 +219,122 @@ class AgenticRetriever:
                 messages.append({"role": "assistant", "content": msg.content or ""})
                 break
 
-            # ── Execute each tool call ────────────────────────────────────────
+            # ── Execute ALL tool calls in this step CONCURRENTLY ──────────────
+            # Previously executed sequentially — if LLM requested search_ncert +
+            # search_jee in the same step that was 2× sequential tool calls.
+            # Now we dispatch all of them with asyncio.gather().
             messages.append(msg)  # append assistant tool_calls message
 
+            # Parse all tool calls first
+            parsed_calls: List[tuple] = []  # (tool_call_obj, tool_name, tool_args)
             for tool_call in msg.tool_calls:
                 tool_name = tool_call.function.name
                 try:
                     tool_args = json.loads(tool_call.function.arguments or "{}")
                 except json.JSONDecodeError:
                     tool_args = {}
+                parsed_calls.append((tool_call, tool_name, tool_args))
 
-                logger.info(
-                    "AgenticRetriever step=%d tool=%s args=%s",
-                    step, tool_name, tool_args,
-                )
-
-                # ── Dispatch tool ─────────────────────────────────────────────
-                tool_result_chunks: List[dict] = []
-                error_msg: Optional[str] = None
-
+            # Build coroutine for each tool call
+            async def _dispatch_one(
+                tc_obj: Any,
+                t_name: str,
+                t_args: Dict[str, Any],
+            ) -> tuple:
+                """Execute one tool call. Returns (tc_obj, t_name, t_args, chunks, error)."""
+                result_chunks: List[dict] = []
+                err: Optional[str] = None
                 try:
-                    if tool_name == "search_ncert":
-                        tool_result_chunks = await search_ncert(
+                    if t_name == "search_ncert":
+                        result_chunks = await search_ncert(
                             retriever=self._retriever,
-                            query=tool_args.get("query", question),
-                            subject=tool_args.get("subject", subject),
-                            chapter=tool_args.get("chapter"),
-                            top_k=int(tool_args.get("top_k", 3)),
+                            query=t_args.get("query", question),
+                            subject=t_args.get("subject", subject),
+                            chapter=t_args.get("chapter"),
+                            top_k=int(t_args.get("top_k", 3)),
+                            precomputed_embedding=q_emb,
                         )
 
-                    elif tool_name == "search_jee_problems":
-                        tool_result_chunks = await search_jee_problems(
+                    elif t_name == "search_jee_problems":
+                        result_chunks = await search_jee_problems(
                             pool=self._pool,
                             embed_service=self._embed,
-                            query=tool_args.get("query", question),
-                            subject=tool_args.get("subject", subject),
-                            exam_type=tool_args.get("exam_type"),
-                            difficulty_min=tool_args.get("difficulty_min"),
-                            difficulty_max=tool_args.get("difficulty_max"),
-                            year_min=tool_args.get("year_min"),
-                            year_max=tool_args.get("year_max"),
-                            top_k=int(tool_args.get("top_k", 3)),
+                            query=t_args.get("query", question),
+                            subject=t_args.get("subject", subject),
+                            exam_type=t_args.get("exam_type"),
+                            difficulty_min=t_args.get("difficulty_min"),
+                            difficulty_max=t_args.get("difficulty_max"),
+                            year_min=t_args.get("year_min"),
+                            year_max=t_args.get("year_max"),
+                            top_k=int(t_args.get("top_k", 3)),
+                            precomputed_embedding=q_emb,
                         )
 
-                    elif tool_name == "search_concepts":
-                        tool_result_chunks = await search_concepts(
+                    elif t_name == "search_concepts":
+                        result_chunks = await search_concepts(
                             pool=self._pool,
-                            query=tool_args.get("query", question),
-                            top_k=int(tool_args.get("top_k", 4)),
+                            query=t_args.get("query", question),
+                            top_k=int(t_args.get("top_k", 4)),
                         )
 
-                    elif tool_name == "rerank_and_select":
-                        # Run in executor — synchronous but fast
-                        loop = asyncio.get_running_loop()
-                        reranked = await loop.run_in_executor(
+                    elif t_name == "rerank_and_select":
+                        # Synchronous — run in executor; pass pre-computed embedding
+                        reranked = await asyncio.get_running_loop().run_in_executor(
                             None,
-                            rerank_and_select,
-                            accumulated,
-                            tool_args.get("query", question),
-                            self._embed,
-                            int(tool_args.get("max_chunks", 5)),
+                            lambda: rerank_and_select(
+                                accumulated,
+                                t_args.get("query", question),
+                                self._embed,
+                                int(t_args.get("max_chunks", 5)),
+                                precomputed_embedding=q_emb,
+                            ),
                         )
-                        # Replace accumulated with reranked selection
-                        accumulated = reranked
-                        tool_result_chunks = reranked
+                        result_chunks = reranked
 
                     else:
-                        error_msg = f"Unknown tool: {tool_name}"
-                        logger.warning("AgenticRetriever: %s", error_msg)
+                        err = f"Unknown tool: {t_name}"
+                        logger.warning("AgenticRetriever: %s", err)
 
                 except Exception as exc:
-                    error_msg = f"Tool {tool_name} failed: {exc}"
-                    logger.warning("AgenticRetriever: %s", error_msg)
+                    err = f"Tool {t_name} failed: {exc}"
+                    logger.warning("AgenticRetriever: %s", err)
 
+                logger.info(
+                    "AgenticRetriever step=%d tool=%s args=%s → %d chunks",
+                    step, t_name, t_args, len(result_chunks),
+                )
+                return (tc_obj, t_name, t_args, result_chunks, err)
+
+            # Run all tool calls in parallel
+            results = await asyncio.gather(
+                *[_dispatch_one(tc_obj, t_name, t_args) for tc_obj, t_name, t_args in parsed_calls],
+                return_exceptions=False,
+            )
+
+            # Process results in original order (important for rerank_and_select)
+            for tc_obj, t_name, t_args, tool_result_chunks, error_msg in results:
                 # Record trace
                 tool_trace.append({
                     "step":         step,
-                    "tool":         tool_name,
-                    "args":         tool_args,
+                    "tool":         t_name,
+                    "args":         t_args,
                     "result_count": len(tool_result_chunks),
                     "error":        error_msg,
                 })
 
-                # Accumulate chunks (except rerank_and_select which replaces)
-                if tool_name != "rerank_and_select":
+                # rerank_and_select replaces accumulated; others extend it
+                if t_name == "rerank_and_select":
+                    accumulated = tool_result_chunks
+                else:
                     accumulated.extend(tool_result_chunks)
 
                 # Build tool result message for LLM
                 result_summary = self._summarize_tool_result(
-                    tool_name, tool_result_chunks, error_msg
+                    t_name, tool_result_chunks, error_msg
                 )
                 messages.append({
                     "role":         "tool",
-                    "tool_call_id": tool_call.id,
+                    "tool_call_id": tc_obj.id,
                     "content":      result_summary,
                 })
 
@@ -314,6 +349,7 @@ class AgenticRetriever:
                     query=question,
                     subject=subject,
                     top_k=3,
+                    precomputed_embedding=q_emb,
                 )
                 accumulated = fallback
                 tool_trace.append({
@@ -327,14 +363,15 @@ class AgenticRetriever:
         # ── Final rerank if > MAX_CHUNKS (don't call LLM again, just rerank) ──
         MAX_FINAL_CHUNKS = 5
         if len(accumulated) > MAX_FINAL_CHUNKS:
-            loop = asyncio.get_running_loop()
-            accumulated = await loop.run_in_executor(
+            accumulated = await asyncio.get_running_loop().run_in_executor(
                 None,
-                rerank_and_select,
-                accumulated,
-                question,
-                self._embed,
-                MAX_FINAL_CHUNKS,
+                lambda: rerank_and_select(
+                    accumulated,
+                    question,
+                    self._embed,
+                    MAX_FINAL_CHUNKS,
+                    precomputed_embedding=q_emb,
+                ),
             )
 
         # ── Assemble context text ─────────────────────────────────────────────

@@ -38,16 +38,19 @@ async def search_ncert(
     subject: Optional[str] = None,
     chapter: Optional[str] = None,
     top_k: int = 3,
+    precomputed_embedding: Optional[List[float]] = None,
 ) -> List[dict]:
     """
     Hybrid RRF search over knowledge_chunks (NCERT textbook content).
 
     Args:
-        retriever: the shared Retriever instance (holds pool + embed service)
-        query:     free-text search query
-        subject:   filter by 'Physics', 'Chemistry', or 'Maths' (optional)
-        chapter:   further filter by chapter ILIKE match (optional)
-        top_k:     number of results to return (default 3)
+        retriever:             the shared Retriever instance (holds pool + embed service)
+        query:                 free-text search query
+        subject:               filter by 'Physics', 'Chemistry', or 'Maths' (optional)
+        chapter:               further filter by chapter ILIKE match (optional)
+        top_k:                 number of results to return (default 3)
+        precomputed_embedding: optional pre-computed query embedding — avoids a
+                               redundant OpenAI embed call when agent already has it
 
     Returns list of dicts with keys:
         id, content, subject, chapter, metadata,
@@ -57,14 +60,20 @@ async def search_ncert(
 
     if chapter:
         # Chapter filtering: run standard hybrid search, then post-filter by chapter
-        results = await retriever.search(query, k=top_k * 3, subject=subject)
+        results = await retriever.search(
+            query, k=top_k * 3, subject=subject,
+            precomputed_embedding=precomputed_embedding,
+        )
         filtered = [
             r for r in results
             if chapter.lower() in (r.get("chapter") or "").lower()
         ]
         results = (filtered or results)[:top_k]
     else:
-        results = await retriever.search(query, k=top_k, subject=subject)
+        results = await retriever.search(
+            query, k=top_k, subject=subject,
+            precomputed_embedding=precomputed_embedding,
+        )
 
     # Tag source so the agent knows where this chunk came from
     for r in results:
@@ -89,12 +98,17 @@ async def search_jee_problems(
     year_min: Optional[int] = None,
     year_max: Optional[int] = None,
     top_k: int = 3,
+    precomputed_embedding: Optional[List[float]] = None,
 ) -> List[dict]:
     """
     Embedding-similarity search over jee_problems (30-year JEE PYQ database).
 
     Calls match_jee_problems() Postgres function added in migrate_v11.
     Falls back gracefully if the table doesn't exist yet (empty list).
+
+    Args:
+        precomputed_embedding: optional pre-computed query embedding — avoids a
+                               redundant OpenAI embed call when agent already has it.
 
     Returns list of dicts with keys:
         problem_id, subject, topic, year, exam_type, difficulty,
@@ -104,14 +118,17 @@ async def search_jee_problems(
     top_k = max(1, min(top_k, 10))
 
     import asyncio
-    loop = asyncio.get_running_loop()
-    try:
-        q_emb: List[float] = await loop.run_in_executor(
-            None, embed_service.embed_single, query
-        )
-    except Exception as exc:
-        logger.warning("search_jee_problems: embedding failed: %s", exc)
-        return []
+    if precomputed_embedding is not None:
+        q_emb: List[float] = precomputed_embedding
+    else:
+        loop = asyncio.get_running_loop()
+        try:
+            q_emb = await loop.run_in_executor(
+                None, embed_service.embed_single, query
+            )
+        except Exception as exc:
+            logger.warning("search_jee_problems: embedding failed: %s", exc)
+            return []
 
     emb_str = _vec_str(q_emb)
 
@@ -302,6 +319,7 @@ def rerank_and_select(
     query: str,
     embed_service: EmbeddingService,
     max_chunks: int = 5,
+    precomputed_embedding: Optional[List[float]] = None,
 ) -> List[dict]:
     """
     Consolidate chunks from multiple tool calls, deduplicate, and select
@@ -315,6 +333,10 @@ def rerank_and_select(
       3. Deduplicate by content prefix (first 120 chars).
       4. Return top-max_chunks by score, preserving source diversity.
 
+    Args:
+        precomputed_embedding: optional pre-computed query embedding — avoids a
+                               redundant synchronous OpenAI call inside the executor.
+
     This is a synchronous function — called within the async agent loop via
     asyncio.get_running_loop().run_in_executor() or directly (it's fast).
     """
@@ -323,12 +345,15 @@ def rerank_and_select(
 
     max_chunks = max(1, min(max_chunks, 10))
 
-    # ── Embed query ───────────────────────────────────────────────────────────
-    try:
-        q_emb = embed_service.embed_single(query)
-    except Exception as exc:
-        logger.warning("rerank_and_select: embedding failed, using keyword fallback: %s", exc)
-        q_emb = None
+    # ── Embed query (skip if already computed) ────────────────────────────────
+    if precomputed_embedding is not None:
+        q_emb = precomputed_embedding
+    else:
+        try:
+            q_emb = embed_service.embed_single(query)
+        except Exception as exc:
+            logger.warning("rerank_and_select: embedding failed, using keyword fallback: %s", exc)
+            q_emb = None
 
     # ── Deduplicate by content prefix ─────────────────────────────────────────
     seen_prefixes: set[str] = set()

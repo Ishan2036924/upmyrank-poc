@@ -98,11 +98,13 @@ class Retriever:
         query: str,
         k: int = 5,
         subject: Optional[str] = None,
+        precomputed_embedding: Optional[List[float]] = None,
     ) -> List[dict]:
         """
         Hybrid search over knowledge_chunks.
 
-        1. Embeds *query* with the singleton sentence-transformer.
+        1. Embeds *query* with the singleton sentence-transformer (skipped if
+           precomputed_embedding is provided — avoids a redundant OpenAI call).
         2. Runs vector similarity search via `match_chunks()` (fetches 3×k rows).
         3. Runs keyword ILIKE search on `content` (fetches 3×k rows).
         4. Fuses both ranked lists with Reciprocal Rank Fusion.
@@ -112,10 +114,13 @@ class Retriever:
             id, content, subject, chapter, metadata,
             similarity_score, rrf_score
         """
-        loop = asyncio.get_running_loop()
-        q_emb: List[float] = await loop.run_in_executor(
-            None, self._embed.embed_single, query
-        )
+        if precomputed_embedding is not None:
+            q_emb = precomputed_embedding
+        else:
+            loop = asyncio.get_running_loop()
+            q_emb = await loop.run_in_executor(
+                None, self._embed.embed_single, query
+            )
         emb_str = _vec_str(q_emb)
         keywords = _extract_keywords(query)
         fetch_n = max(k * 3, 15)
