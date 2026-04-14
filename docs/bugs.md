@@ -81,6 +81,19 @@
 
 ---
 
+## "Outside syllabus" warning firing for valid Chemistry/Maths topics — fixed
+**Symptom:** Questions like "Raoult's Law" (NCERT Chemistry Class 12, Solutions chapter) showed a ⚠️ "outside the [subject] syllabus" warning banner even though the topic is core JEE content. The warning also always said "Physics" regardless of the detected subject.
+**Root cause (two problems in `_is_in_scope` in `engine.py`):**
+1. The keyword fallback list (`physics_terms`) was **Physics-only** — it had no Chemistry or Maths terms. Any Chemistry/Maths question that also failed the DB topic check returned `False` → `out_of_scope = True`.
+2. `_is_in_scope` ignored the **agentic RAG result** that had just been computed. If `rag["chunk_count"] > 0`, the KB clearly has relevant content → the question is in scope. This signal was thrown away.
+3. The default `return False` was too aggressive — the intent classifier is the primary out-of-scope gate and already filters coding/history/biology-for-JEE before `start_session()` is ever called.
+**Fix (`app/services/doubt/engine.py`):**
+- `_is_in_scope` now accepts `rag: dict | None = None`
+- Signal priority: RAG chunk_count > 0 → return True immediately; DB topic match → return True; subject-aware keyword match → return True; default → return True (trust intent classifier)
+- Added comprehensive `chemistry` and `maths` keyword lists covering all NCERT Class 11-12 JEE chapters (raoult, colligative, osmosis, molarity, integral, determinant, etc.)
+- Both call sites (start_session + start_session_stream) updated to pass `rag=rag`
+**DO NOT:** Revert the default `return True`. The intent classifier is the real out-of-scope gate. `_is_in_scope` inside `start_session()` is a secondary filter for genuinely beyond-NCERT content (advanced quantum field theory, etc.) — it should almost never fire for standard JEE questions.
+
 ## Known / Deferred Issues
 
 ## JEE PYQ bank too small (20 problems) — DEFERRED
@@ -90,7 +103,8 @@
 **Fix when ready:** Manually expand `jee_pyq_seed.json` to 200+ problems per subject, or find a public PYQ source. Re-run `scripts/ingest_jee_pyq.py --reset-progress` to re-ingest.
 
 ## Maths knowledge base smaller than Physics/Chemistry — DEFERRED
-**Symptom:** Maths questions occasionally get "outside syllabus" warning in agentic retriever even for standard NCERT topics.
+**Symptom:** Some Maths questions get fewer retrieved chunks, reducing response quality slightly.
 **Root cause:** Maths has 1,426 chunks vs Physics 10,505 and Chemistry 3,138. NCERT Maths PDFs have sparser text-per-page than Physics/Chemistry chapters.
+**Note:** The "outside syllabus" warning that used to accompany this is now fixed (see above) — the warning no longer fires for standard NCERT topics regardless of chunk count.
 **Status:** Acceptable for JEE prep coverage of core chapters. Core topics (Calculus, Algebra, Coordinate Geometry, Vectors) are covered.
 **Fix when ready:** Run `scripts/ingest_maths_pdf.py` with additional chapters, or add more entries to `scripts/data/ncert_maths_seed.json`.

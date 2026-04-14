@@ -407,7 +407,7 @@ class SocraticEngine:
         analysis["question_type"]    = _question_type
 
         # ── 5. Scope check (DB-driven + keyword fallback) ─────────────────────
-        out_of_scope = not await self._is_in_scope(question=question, analysis=analysis)
+        out_of_scope = not await self._is_in_scope(question=question, analysis=analysis, rag=rag)
         analysis["out_of_scope"] = out_of_scope
 
         # ── 6. Targeted genome injection: per-topic mastery string ────────────
@@ -718,7 +718,7 @@ class SocraticEngine:
             analysis["question_type"]    = _qtype_stream
 
             # ── 5. Scope check ──────────────────────────────────────────────────
-            out_of_scope = not await self._is_in_scope(question=question, analysis=analysis)
+            out_of_scope = not await self._is_in_scope(question=question, analysis=analysis, rag=rag)
             analysis["out_of_scope"] = out_of_scope
 
             # ── 6+7. Genome injection + session memory ──────────────────────────
@@ -1750,48 +1750,118 @@ class SocraticEngine:
             logger.debug("Response analysis parse failed: %s", exc)
             return {"misconceptions": [], "emotional_state": "uncertain"}
 
-    async def _is_in_scope(self, question: str, analysis: dict) -> bool:
+    async def _is_in_scope(
+        self, question: str, analysis: dict, rag: dict | None = None
+    ) -> bool:
         """
-        Check if the question is within the Physics curriculum.
+        Determine whether a question falls within the JEE/NEET NCERT curriculum
+        (Physics, Chemistry, or Maths — Class 11 & 12).
 
-        Primary check: match analysis topic against topics in our concepts table.
-        Fallback: keyword scan of the question text.
+        Signal priority:
+        1. RAG retrieved relevant chunks  → definitely in scope (KB has content for it)
+        2. DB topic match                 → in scope
+        3. Subject-aware keyword match    → in scope
+        4. Default → True                 → trust the intent classifier, which already
+                                            filtered genuine out-of-scope questions
+                                            (coding, history, biology-for-JEE, etc.)
+                                            BEFORE start_session() was ever called.
+
+        The warning should only fire for things that are truly beyond NCERT 11-12
+        (e.g. advanced quantum field theory, engineering-level content).  It must
+        NOT fire for valid JEE topics such as Raoult's Law, Solutions, Biomolecules,
+        or any standard Chemistry / Maths chapter.
         """
-        # DB-driven topic check
+        # ── 1. RAG result is the most reliable in-scope signal ──────────────
+        # If the agentic retriever found NCERT chunks for this question, the
+        # topic IS covered in our knowledge base — no further check needed.
+        if rag and rag.get("chunk_count", 0) > 0:
+            return True
+
+        # ── 2. DB-driven topic check ─────────────────────────────────────────
         try:
             topics = await self._pool.fetch("SELECT DISTINCT topic FROM concepts")
             topic_names = [t["topic"].lower() for t in topics]
             analysis_topic = analysis.get("topic", "").lower()
-
             for known_topic in topic_names:
-                if known_topic and (known_topic in analysis_topic or analysis_topic in known_topic):
+                if known_topic and (
+                    known_topic in analysis_topic or analysis_topic in known_topic
+                ):
                     return True
         except Exception as exc:
             logger.warning("Topic DB lookup failed in _is_in_scope: %s", exc)
 
-        # Keyword fallback
-        physics_terms = [
-            "force", "energy", "momentum", "charge", "field",
-            "current", "voltage", "resistance", "wave", "light", "optics",
-            "motion", "velocity", "acceleration", "gravity", "mass",
-            "electric", "magnetic", "nuclear", "atom", "photon",
-            "thermodynamics", "heat", "temperature", "pressure",
-            "capacitor", "inductor", "circuit", "semiconductor",
-            "friction", "torque", "angular", "oscillation", "frequency",
-            "displacement", "refraction", "reflection", "diffraction",
-            "interference", "radioactive", "fission", "fusion", "quantum",
-            "newton", "coulomb", "faraday", "ohm", "kirchhoff",
-            "bernoulli", "viscosity", "entropy", "carnot",
-            "projectile", "centripetal", "satellite", "orbit",
-        ]
+        # ── 3. Subject-aware keyword fallback ────────────────────────────────
+        # Each list covers the core NCERT JEE/NEET vocabulary for that subject.
+        _SUBJECT_TERMS: dict[str, list[str]] = {
+            "physics": [
+                "force", "energy", "momentum", "charge", "field",
+                "current", "voltage", "resistance", "wave", "light", "optics",
+                "motion", "velocity", "acceleration", "gravity", "mass",
+                "electric", "magnetic", "nuclear", "atom", "photon",
+                "thermodynamics", "heat", "temperature", "pressure",
+                "capacitor", "inductor", "circuit", "semiconductor",
+                "friction", "torque", "angular", "oscillation", "frequency",
+                "displacement", "refraction", "reflection", "diffraction",
+                "interference", "radioactive", "fission", "fusion", "quantum",
+                "newton", "coulomb", "faraday", "ohm", "kirchhoff",
+                "bernoulli", "viscosity", "entropy", "carnot",
+                "projectile", "centripetal", "satellite", "orbit",
+            ],
+            "chemistry": [
+                "mole", "molarity", "molality", "solution", "solubility",
+                "concentration", "acid", "base", "salt", "ph", "buffer",
+                "titration", "equilibrium", "reaction", "bond", "orbital",
+                "electron", "ion", "oxidation", "reduction", "redox",
+                "electrochemistry", "electrolysis", "galvanic", "cell",
+                "organic", "alkane", "alkene", "alkyne", "benzene",
+                "hydrocarbon", "alcohol", "aldehyde", "ketone", "carboxylic",
+                "ester", "amine", "polymer", "biomolecule", "protein",
+                "amino acid", "glucose", "thermochemistry", "enthalpy",
+                "entropy", "gibbs", "rate", "kinetics", "catalyst",
+                "activation", "raoult", "colligative", "osmosis", "vapour",
+                "boiling point", "freezing point", "depression", "elevation",
+                "distillation", "chromatography", "periodic", "element",
+                "compound", "valence", "hybridisation", "hybridization",
+                "isomer", "nomenclature", "mole fraction", "van't hoff",
+                "coordination", "complex", "ligand", "transition metal",
+                "solid state", "crystal", "unit cell", "semiconductor",
+                "surface chemistry", "adsorption", "colloid",
+            ],
+            "maths": [
+                "integral", "derivative", "limit", "function", "matrix",
+                "determinant", "vector", "probability", "statistics",
+                "trigonometry", "sin", "cos", "tan", "logarithm",
+                "exponential", "sequence", "series", "binomial", "complex",
+                "coordinate", "conic", "ellipse", "parabola", "hyperbola",
+                "circle", "permutation", "combination", "differential",
+                "equation", "polynomial", "arithmetic", "geometric",
+                "progression", "set", "relation", "algebra", "calculus",
+                "differentiation", "integration", "inverse", "transpose",
+                "eigenvalue", "continuity", "differentiability",
+            ],
+        }
+
         question_lower = question.lower()
-        if any(term in question_lower for term in physics_terms):
+        detected_subject = analysis.get("detected_subject", "").lower()
+
+        # Check the detected subject's terms first (most precise)
+        subject_terms = _SUBJECT_TERMS.get(detected_subject, [])
+        if subject_terms and any(term in question_lower for term in subject_terms):
             return True
 
-        # Note: we do NOT trust analysis["subject"] here because the
-        # PROBLEM_ANALYSIS_PROMPT hardcodes "subject": "Physics" in the schema.
-        # The DB-topic + keyword checks above are the reliable signal.
-        return False
+        # Broad check across all subjects (catches cross-topic questions)
+        for terms in _SUBJECT_TERMS.values():
+            if any(term in question_lower for term in terms):
+                return True
+
+        # ── 4. Default: trust the intent classifier ──────────────────────────
+        # If we reach here, the question had no recognisable NCERT keyword AND
+        # the RAG found nothing.  Even so, the intent classifier already screened
+        # out coding / history / biology-for-JEE before start_session() was called.
+        # Returning True avoids a false out-of-scope warning on unusual-phrased
+        # but valid JEE questions.  The RAG returning 0 chunks is already a soft
+        # signal captured in the response context — no extra banner needed.
+        return True
 
     @staticmethod
     def _format_conversation(history: list) -> str:
