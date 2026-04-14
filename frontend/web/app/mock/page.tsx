@@ -140,7 +140,7 @@ export default function MockPage() {
       <AuthGuard>
       <div className="flex h-[100dvh]">
         <Sidebar />
-        <div className="md:ml-[236px] flex-1 overflow-y-auto pt-14 md:pt-0">
+        <div className="md:ml-[296px] flex-1 overflow-y-auto pt-14 md:pt-0">
           <PostMortem
             records={records}
             onRetake={() => setPhase('setup')}
@@ -158,7 +158,7 @@ export default function MockPage() {
       <AuthGuard>
       <div className="flex h-[100dvh]">
         <Sidebar />
-        <div className="md:ml-[236px] flex-1 flex overflow-hidden">
+        <div className="md:ml-[296px] flex-1 flex overflow-hidden">
 
           {/* LEFT PANE: Question */}
           <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-100">
@@ -337,7 +337,7 @@ export default function MockPage() {
     <AuthGuard>
     <div className="flex h-[100dvh]">
       <Sidebar />
-      <div className="md:ml-[236px] flex-1 overflow-y-auto pt-14 md:pt-0">
+      <div className="md:ml-[296px] flex-1 overflow-y-auto pt-14 md:pt-0">
         <div className="max-w-lg mx-auto px-6 py-10 space-y-7">
 
           {/* Header */}

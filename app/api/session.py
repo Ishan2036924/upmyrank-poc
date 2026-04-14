@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from app.middleware.auth import get_current_student_id
 
+from app.services.eval.judge import evaluate_response
 from app.services.memory.summarizer import (
     maybe_compress_profile,
     summarize_session,
@@ -24,6 +25,99 @@ from app.services.memory.summarizer import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/session", tags=["session"])
+
+
+async def _run_judge_for_session(study_session_id: str, pool, openai_client) -> None:
+    """
+    Background task: run 4-dim judge evaluation for every doubt_session in a study session.
+    Fires fire-and-forget from POST /session/end — never blocks the response.
+    """
+    try:
+        session_uuid = uuid.UUID(study_session_id)
+        rows = await pool.fetch(
+            """
+            SELECT ds.id AS doubt_session_id,
+                   ds.conversation_history,
+                   db.topic,
+                   db.hint_level
+            FROM doubt_sessions ds
+            JOIN doubt_blocks db ON db.doubt_session_id = ds.id
+            WHERE db.study_session_id = $1
+              AND ds.conversation_history IS NOT NULL
+            ORDER BY db.started_at ASC
+            """,
+            session_uuid,
+        )
+
+        for row in rows:
+            try:
+                doubt_session_id = str(row["doubt_session_id"])
+                conv_raw = row["conversation_history"]
+                if conv_raw is None:
+                    continue
+
+                if isinstance(conv_raw, str):
+                    history = json.loads(conv_raw)
+                else:
+                    history = list(conv_raw)
+
+                if not history:
+                    continue
+
+                # Find first student message (the question)
+                question = next(
+                    (m.get("content", "") for m in history if m.get("role") == "user"),
+                    "",
+                )
+                # Find last AI message (the response to evaluate)
+                ai_response = ""
+                for m in reversed(history):
+                    if m.get("role") == "assistant":
+                        ai_response = m.get("content", "")
+                        break
+
+                if not question or not ai_response:
+                    continue
+
+                hint_level = row["hint_level"] or 0
+                prior_attempts = max(0, sum(1 for m in history if m.get("role") == "user") - 1)
+
+                result = await evaluate_response(
+                    question=question,
+                    ai_response=ai_response,
+                    hint_level=hint_level,
+                    prior_attempts=prior_attempts,
+                )
+
+                if result["overall_score"] < 0:
+                    continue  # judge failed, skip insert
+
+                await pool.execute(
+                    """
+                    INSERT INTO judge_evaluations
+                      (study_session_id, doubt_session_id, question, ai_response,
+                       pedagogical_score, factual_score, context_relevance_score,
+                       hint_appropriateness_score, overall_score, rationale_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    """,
+                    session_uuid,
+                    uuid.UUID(doubt_session_id),
+                    question[:4000],
+                    ai_response[:4000],
+                    result["pedagogical_score"],
+                    result["factual_score"],
+                    result["context_relevance_score"],
+                    result["hint_appropriateness_score"],
+                    result["overall_score"],
+                    json.dumps(result["rationale"]),
+                )
+                logger.info("Judge eval stored for doubt_session %s", doubt_session_id)
+
+            except Exception as exc:
+                logger.warning("Judge eval failed for doubt_session %s: %s", row.get("doubt_session_id"), exc)
+
+    except Exception as exc:
+        logger.warning("_run_judge_for_session failed (non-fatal): %s", exc)
 
 
 # ── request / response models ─────────────────────────────────────────────────
@@ -145,6 +239,12 @@ async def end_session(
             logger.warning("update_hot_context failed (non-fatal): %s", exc)
 
     asyncio.create_task(maybe_compress_profile(student_id, pool))
+
+    # ── Background judge evaluation across all doubt sessions ─────────────────
+    openai_client = request.app.state.socratic_engine._client
+    asyncio.create_task(
+        _run_judge_for_session(body.study_session_id, pool, openai_client)
+    )
 
     return {"status": "ended", "study_session_id": body.study_session_id}
 

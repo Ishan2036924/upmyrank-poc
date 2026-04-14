@@ -389,6 +389,43 @@ async def _genome_update_task(
         logger.error("_genome_update_task failed for session %s: %s", doubt_session_id, exc)
 
 
+async def _write_session_metrics(
+    pool,
+    study_session_id: Optional[str],
+    doubt_session_id: Optional[str],
+    subject: str,
+    rag: dict,
+) -> None:
+    """
+    Fire-and-forget: write RAG telemetry to session_metrics.
+    Called after every AgenticRetriever.run() in ask_doubt / ask_doubt_stream / get_hint.
+    Never raises — errors are logged as warnings.
+    """
+    try:
+        study_uuid = uuid.UUID(study_session_id) if study_session_id else None
+        doubt_uuid = uuid.UUID(doubt_session_id) if doubt_session_id else None
+
+        await pool.execute(
+            """
+            INSERT INTO session_metrics
+              (study_session_id, doubt_session_id, subject,
+               retrieval_latency_ms, agent_steps, chunks_retrieved,
+               has_similar_problem, tool_trace)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            """,
+            study_uuid,
+            doubt_uuid,
+            subject,
+            rag.get("retrieval_latency_ms", 0),
+            len(rag.get("tool_trace", [])),
+            rag.get("chunk_count", 0),
+            rag.get("similar_problem") is not None,
+            json.dumps(rag.get("tool_trace", [])),
+        )
+    except Exception as exc:
+        logger.warning("_write_session_metrics failed (non-fatal): %s", exc)
+
+
 # ── endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/ask")
@@ -578,6 +615,17 @@ async def ask_doubt(
         logger.exception("SocraticEngine.start_session failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
+    # Fire-and-forget RAG metrics write
+    _rag_m = result.get("_rag_metrics")
+    if _rag_m:
+        asyncio.create_task(_write_session_metrics(
+            pool=pool,
+            study_session_id=body.study_session_id,
+            doubt_session_id=result.get("session_id"),
+            subject=_rag_m.get("subject", body.subject),
+            rag=_rag_m,
+        ))
+
     # Create doubt block if within a study session
     doubt_block_id = None
     if body.study_session_id:
@@ -650,6 +698,17 @@ async def get_hint(
     except Exception as exc:
         logger.exception("SocraticEngine.get_hint failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    # Fire-and-forget RAG metrics write (hint turn)
+    _rag_m_hint = result.get("_rag_metrics")
+    if _rag_m_hint:
+        asyncio.create_task(_write_session_metrics(
+            pool=pool,
+            study_session_id=body.study_session_id,
+            doubt_session_id=body.session_id,
+            subject=_rag_m_hint.get("subject", "Physics"),
+            rag=_rag_m_hint,
+        ))
 
     # If within a study session, update the doubt block
     if body.study_session_id:

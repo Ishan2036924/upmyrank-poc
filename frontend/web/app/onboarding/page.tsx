@@ -11,14 +11,30 @@ import { apiPost, pingBackend } from '@/lib/api'
 
 type ClassLevel  = '11th' | '12th' | 'dropper'
 type ExamType    = 'JEE_MAINS' | 'JEE_ADVANCED' | 'NEET'
+type SubjectKey  = 'Physics' | 'Chemistry' | 'Maths'
 
-const TOPICS = [
-  'Kinematics', 'Laws of Motion', 'Work & Energy', 'Circular Motion',
-  'Rotational Dynamics', 'Gravitation', 'Thermodynamics', 'Waves',
-  'Electrostatics', 'Current Electricity', 'Magnetism',
-  'Electromagnetic Induction', 'Optics', 'Modern Physics',
-  'Semiconductors', 'Communication Systems',
-]
+const TOPICS: Record<SubjectKey, string[]> = {
+  Physics: [
+    'Kinematics', 'Laws of Motion', 'Work & Energy', 'Circular Motion',
+    'Rotational Dynamics', 'Gravitation', 'Thermodynamics', 'Waves',
+    'Electrostatics', 'Current Electricity', 'Magnetism',
+    'Electromagnetic Induction', 'Optics', 'Modern Physics',
+    'Semiconductors', 'Communication Systems',
+  ],
+  Chemistry: [
+    'Atomic Structure', 'Chemical Bonding', 'Equilibrium', 'Thermodynamics',
+    'Electrochemistry', 'Organic Chemistry Basics', 'p-Block Elements',
+    'Coordination Chemistry', 'Solid State', 'Surface Chemistry',
+  ],
+  Maths: [
+    'Algebra & Complex Numbers', 'Trigonometry', 'Coordinate Geometry',
+    'Calculus (Differentiation)', 'Calculus (Integration)', 'Vectors & 3D',
+    'Matrices & Determinants', 'Statistics & Probability',
+    'Sequences & Series', 'Binomial Theorem',
+  ],
+}
+
+const SUBJECTS: SubjectKey[] = ['Physics', 'Chemistry', 'Maths']
 
 const SCAFFOLDING_LABEL: Record<string, string> = {
   HIGH:   'Beginner',
@@ -127,17 +143,26 @@ export default function OnboardingPage() {
   const [direction,  setDirection]  = useState(1) // 1 = forward, -1 = back
 
   // Step 1
-  const [classLevel,   setClassLevel]   = useState<ClassLevel | null>(null)
-  const [prevMarks,    setPrevMarks]    = useState<string>('')
+  const [classLevel,         setClassLevel]         = useState<ClassLevel | null>(null)
+  const [prevMarks,          setPrevMarks]          = useState<string>('')
+  const [chemistryPrevMarks, setChemistryPrevMarks] = useState<string>('')
+  const [mathsPrevMarks,     setMathsPrevMarks]     = useState<string>('')
 
   // Step 2
-  const [easyTopics, setEasyTopics] = useState<Set<string>>(new Set())
-  const [hardTopics, setHardTopics] = useState<Set<string>>(new Set())
+  const [activeSubjectTab, setActiveSubjectTab] = useState<SubjectKey>('Physics')
+  const [easyTopics, setEasyTopics] = useState<Record<SubjectKey, string[]>>({
+    Physics: [], Chemistry: [], Maths: [],
+  })
+  const [hardTopics, setHardTopics] = useState<Record<SubjectKey, string[]>>({
+    Physics: [], Chemistry: [], Maths: [],
+  })
 
   // Step 3
-  const [studyHours, setStudyHours] = useState(4)
-  const [examType,   setExamType]   = useState<ExamType | null>(null)
-  const [examDate,   setExamDate]   = useState('')
+  const [studyHours,        setStudyHours]        = useState(4)
+  const [examType,          setExamType]          = useState<ExamType | null>(null)
+  const [examDate,          setExamDate]          = useState('')
+  const [prioritySubject,   setPrioritySubject]   = useState<string | null>(null)
+  const [learningPreference, setLearningPreference] = useState<string | null>(null)
 
   // Step 4
   const [submitting,      setSubmitting]      = useState(false)
@@ -153,24 +178,30 @@ export default function OnboardingPage() {
     setStep(n)
   }
 
-  const toggleEasy = (t: string) => {
+  const toggleEasy = (subject: SubjectKey, t: string) => {
     setEasyTopics((prev) => {
-      const next = new Set(prev)
-      if (next.has(t)) next.delete(t); else next.add(t)
-      return next
+      const arr = prev[subject]
+      const next = arr.includes(t) ? arr.filter((x) => x !== t) : [...arr, t]
+      return { ...prev, [subject]: next }
     })
     // Remove from hard if added to easy
-    setHardTopics((prev) => { const next = new Set(prev); next.delete(t); return next })
+    setHardTopics((prev) => ({
+      ...prev,
+      [subject]: prev[subject].filter((x) => x !== t),
+    }))
   }
 
-  const toggleHard = (t: string) => {
+  const toggleHard = (subject: SubjectKey, t: string) => {
     setHardTopics((prev) => {
-      const next = new Set(prev)
-      if (next.has(t)) next.delete(t); else next.add(t)
-      return next
+      const arr = prev[subject]
+      const next = arr.includes(t) ? arr.filter((x) => x !== t) : [...arr, t]
+      return { ...prev, [subject]: next }
     })
     // Remove from easy if added to hard
-    setEasyTopics((prev) => { const next = new Set(prev); next.delete(t); return next })
+    setEasyTopics((prev) => ({
+      ...prev,
+      [subject]: prev[subject].filter((x) => x !== t),
+    }))
   }
 
   const canProceed1 = !!classLevel
@@ -189,12 +220,16 @@ export default function OnboardingPage() {
     try {
       const body = {
         class_level:          classLevel,
-        physics_prev_marks:   prevMarks ? parseInt(prevMarks, 10) : null,
-        easy_topics:          Array.from(easyTopics),
-        hard_topics:          Array.from(hardTopics),
+        physics_prev_marks:   prevMarks !== '' ? Number(prevMarks) : null,
+        chemistry_prev_marks: chemistryPrevMarks !== '' ? Number(chemistryPrevMarks) : null,
+        maths_prev_marks:     mathsPrevMarks !== '' ? Number(mathsPrevMarks) : null,
+        easy_topics:          [...(easyTopics.Physics || []), ...(easyTopics.Chemistry || []), ...(easyTopics.Maths || [])],
+        hard_topics:          [...(hardTopics.Physics || []), ...(hardTopics.Chemistry || []), ...(hardTopics.Maths || [])],
         study_hours_per_day:  studyHours,
         exam_type:            examType,
         exam_date:            examDate || null,
+        priority_subject:     prioritySubject,
+        learning_preference:  learningPreference,
       }
       const data = await apiPost('/onboarding/submit', body) as { persona_profile: Record<string, unknown> }
       setPersonaResult(data.persona_profile)
@@ -258,22 +293,60 @@ export default function OnboardingPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                      Previous Physics marks
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                      Previous marks <span className="normal-case font-normal text-slate-400">(optional)</span>
                     </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={prevMarks}
-                        onChange={(e) => setPrevMarks(e.target.value)}
-                        placeholder="e.g. 68"
-                        className="w-28 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300"
-                      />
-                      <span className="text-slate-500 text-sm font-medium">%</span>
-                      <span className="text-xs text-slate-400 ml-1">(leave blank if unsure)</span>
+                    <div className="flex items-end gap-3">
+                      {/* Physics */}
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-blue-600 mb-1.5">Physics</p>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={prevMarks}
+                            onChange={(e) => setPrevMarks(e.target.value)}
+                            placeholder="e.g. 68"
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300"
+                          />
+                          <span className="text-slate-400 text-sm shrink-0">%</span>
+                        </div>
+                      </div>
+                      {/* Chemistry */}
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-emerald-600 mb-1.5">Chemistry</p>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={chemistryPrevMarks}
+                            onChange={(e) => setChemistryPrevMarks(e.target.value)}
+                            placeholder="e.g. 72"
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300"
+                          />
+                          <span className="text-slate-400 text-sm shrink-0">%</span>
+                        </div>
+                      </div>
+                      {/* Maths */}
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-violet-600 mb-1.5">Maths</p>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={mathsPrevMarks}
+                            onChange={(e) => setMathsPrevMarks(e.target.value)}
+                            placeholder="e.g. 75"
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300"
+                          />
+                          <span className="text-slate-400 text-sm shrink-0">%</span>
+                        </div>
+                      </div>
                     </div>
+                    <p className="text-xs text-slate-400 mt-2">Leave blank if unsure</p>
                   </motion.div>
                 )}
 
@@ -292,19 +365,37 @@ export default function OnboardingPage() {
             {step === 2 && (
               <motion.div key="s2" {...slideIn} className="p-8">
                 <h2 className="text-xl font-bold text-slate-900 mb-1">How are you with these topics?</h2>
-                <p className="text-sm text-slate-500 mb-5">Select topics that feel easy, then which feel hardest. You can skip if unsure.</p>
+                <p className="text-sm text-slate-500 mb-4">Select topics that feel easy, then which feel hardest. You can skip if unsure.</p>
+
+                {/* Subject tabs */}
+                <div className="flex gap-2 mb-5">
+                  {SUBJECTS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setActiveSubjectTab(s)}
+                      className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
+                        activeSubjectTab === s
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
 
                 <div className="mb-5">
                   <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> Feels easy
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {TOPICS.map((t) => (
+                    {TOPICS[activeSubjectTab].map((t) => (
                       <TopicChip
-                        key={`easy-${t}`}
+                        key={`easy-${activeSubjectTab}-${t}`}
                         label={t}
-                        selected={easyTopics.has(t)}
-                        onClick={() => toggleEasy(t)}
+                        selected={easyTopics[activeSubjectTab].includes(t)}
+                        onClick={() => toggleEasy(activeSubjectTab, t)}
                       />
                     ))}
                   </div>
@@ -315,12 +406,12 @@ export default function OnboardingPage() {
                     <span className="w-2 h-2 rounded-full bg-rose-400 inline-block" /> Feels hardest
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {TOPICS.map((t) => (
+                    {TOPICS[activeSubjectTab].map((t) => (
                       <TopicChip
-                        key={`hard-${t}`}
+                        key={`hard-${activeSubjectTab}-${t}`}
                         label={t}
-                        selected={hardTopics.has(t)}
-                        onClick={() => toggleHard(t)}
+                        selected={hardTopics[activeSubjectTab].includes(t)}
+                        onClick={() => toggleHard(activeSubjectTab, t)}
                       />
                     ))}
                   </div>
@@ -394,7 +485,7 @@ export default function OnboardingPage() {
                   </div>
                 </div>
 
-                <div className="mb-7">
+                <div className="mb-6">
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
                     Exam date <span className="normal-case font-normal text-slate-400">(optional)</span>
                   </label>
@@ -404,6 +495,76 @@ export default function OnboardingPage() {
                     onChange={(e) => setExamDate(e.target.value)}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300"
                   />
+                </div>
+
+                {/* Which subject needs the most attention? */}
+                <div className="mb-6">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                    Which subject needs the most attention?
+                  </label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPrioritySubject(prioritySubject === 'Physics' ? null : 'Physics')}
+                      className={`flex-1 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+                        prioritySubject === 'Physics'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-blue-200 text-blue-600 bg-white hover:bg-blue-50/50'
+                      }`}
+                    >
+                      Physics
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrioritySubject(prioritySubject === 'Chemistry' ? null : 'Chemistry')}
+                      className={`flex-1 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+                        prioritySubject === 'Chemistry'
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                          : 'border-emerald-200 text-emerald-600 bg-white hover:bg-emerald-50/50'
+                      }`}
+                    >
+                      Chemistry
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrioritySubject(prioritySubject === 'Maths' ? null : 'Maths')}
+                      className={`flex-1 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+                        prioritySubject === 'Maths'
+                          ? 'border-violet-500 bg-violet-50 text-violet-700'
+                          : 'border-violet-200 text-violet-600 bg-white hover:bg-violet-50/50'
+                      }`}
+                    >
+                      Maths
+                    </button>
+                  </div>
+                </div>
+
+                {/* How do you prefer to learn new concepts? */}
+                <div className="mb-7">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                    How do you prefer to learn new concepts?
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {([
+                      { value: 'formula', emoji: '🔢', label: 'Formula-first' },
+                      { value: 'analogy', emoji: '💡', label: 'Analogies'     },
+                      { value: 'example', emoji: '📋', label: 'Step-by-step'  },
+                      { value: 'visual',  emoji: '🎨', label: 'Visual diagrams' },
+                    ] as { value: string; emoji: string; label: string }[]).map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setLearningPreference(learningPreference === opt.value ? null : opt.value)}
+                        className={`rounded-xl border-2 px-4 py-3 text-sm font-semibold text-left transition-all duration-200 ${
+                          learningPreference === opt.value
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="mr-2">{opt.emoji}</span>{opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex gap-3">
@@ -486,7 +647,7 @@ export default function OnboardingPage() {
                       const weakConcepts = Array.isArray(personaResult.weak_concepts)
                         ? (personaResult.weak_concepts as unknown[]).map(String)
                         : []
-                      const badgeCls  = SCAFFOLDING_COLOR[level]  ?? 'bg-slate-100 text-slate-600 border-slate-200'
+                      const badgeCls   = SCAFFOLDING_COLOR[level]  ?? 'bg-slate-100 text-slate-600 border-slate-200'
                       const levelLabel = SCAFFOLDING_LABEL[level] ?? level
                       const styleDesc  = STYLE_DESC[style]        ?? style
 

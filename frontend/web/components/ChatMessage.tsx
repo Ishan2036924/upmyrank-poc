@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import MathText from './MathText'
 import VerificationBadge from './VerificationBadge'
 import { ChatMessage as ChatMessageType } from '@/lib/types'
@@ -9,6 +10,8 @@ interface Props {
   message: ChatMessageType
   dimmed?: boolean
   isStreaming?: boolean
+  msgIdx?: number
+  onFeedback?: (msgIdx: number, rating: 'thumbs_up' | 'thumbs_down') => void
 }
 
 const MENTOR_MODE_META: Record<string, { icon: string; label: string; cls: string }> = {
@@ -27,7 +30,7 @@ const HINT_LABELS: Record<number, { label: string; cls: string; icon: string }> 
 // Ease-out expo — feels premium, snappy
 const EASE_OUT_EXPO: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
-export default function ChatMessage({ message, dimmed = false, isStreaming = false }: Props) {
+export default function ChatMessage({ message, dimmed = false, isStreaming = false, msgIdx, onFeedback }: Props) {
   const { role, content, metadata } = message
   const streaming = isStreaming || message.isStreaming === true
 
@@ -175,6 +178,34 @@ export default function ChatMessage({ message, dimmed = false, isStreaming = fal
             {(metadata.analysis as { subtopic?: string }).subtopic
               ? `${(metadata.analysis as { subtopic: string }).subtopic}`
               : ''}
+          </div>
+        )}
+
+        {/* Thumbs feedback — AI non-streaming messages only */}
+        {!isStudent && !streaming && onFeedback != null && msgIdx != null && (
+          <div className="flex items-center gap-0.5 mt-1.5 pl-1">
+            <button
+              onClick={() => onFeedback(msgIdx, 'thumbs_up')}
+              title="Helpful"
+              className={`p-1 rounded-lg transition-colors duration-150 ${
+                message.feedback === 'thumbs_up'
+                  ? 'text-emerald-500'
+                  : 'text-slate-300 hover:text-slate-500'
+              }`}
+            >
+              <ThumbsUp size={13} />
+            </button>
+            <button
+              onClick={() => onFeedback(msgIdx, 'thumbs_down')}
+              title="Not helpful"
+              className={`p-1 rounded-lg transition-colors duration-150 ${
+                message.feedback === 'thumbs_down'
+                  ? 'text-red-400'
+                  : 'text-slate-300 hover:text-slate-500'
+              }`}
+            >
+              <ThumbsDown size={13} />
+            </button>
           </div>
         )}
       </div>

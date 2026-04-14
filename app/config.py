@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     model_cheap: str = "gpt-4o-mini"      # classification, summarization
     model_quality: str = "gpt-4.1-mini"   # Socratic responses, solutions
 
+    # Admin access gate (UUID of the admin student account)
+    admin_student_id: str = ""
+
     # Supabase
     supabase_url: str = ""
     supabase_publishable_key: str = ""

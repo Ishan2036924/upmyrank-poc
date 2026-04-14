@@ -90,11 +90,12 @@ Question type: {question_type}
 
 # ── EMPTY context (returned at hint_level == 3, preserves nuclear override) ──
 _EMPTY_CONTEXT: dict = {
-    "context_text":    "",
-    "chunks":          [],
-    "chunk_count":     0,
-    "similar_problem": None,
-    "tool_trace":      [],
+    "context_text":        "",
+    "chunks":              [],
+    "chunk_count":         0,
+    "similar_problem":     None,
+    "tool_trace":          [],
+    "retrieval_latency_ms": 0,
 }
 
 
@@ -346,11 +347,12 @@ class AgenticRetriever:
         )
 
         return {
-            "context_text":    context_text,
-            "chunks":          accumulated,
-            "chunk_count":     len(accumulated),
-            "similar_problem": similar_problem,
-            "tool_trace":      tool_trace,
+            "context_text":         context_text,
+            "chunks":               accumulated,
+            "chunk_count":          len(accumulated),
+            "similar_problem":      similar_problem,
+            "tool_trace":           tool_trace,
+            "retrieval_latency_ms": elapsed_ms,
         }
 
     # ── Private helpers ───────────────────────────────────────────────────────

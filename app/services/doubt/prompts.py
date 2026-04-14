@@ -734,7 +734,10 @@ PERSONALIZATION_PROMPT = """\
 STUDENT PROFILE:
 Scaffolding Level: {scaffolding_level}
 Teaching Style: {teaching_style_instruction}
+Learning Preference: {learning_preference}
 Max Concepts Per Response: {max_concepts}
+{subject_strengths_block}
+{priority_subject_block}
 {analogy_instruction}
 {check_in_instruction}
 Hint Tone: {hint_tone}
@@ -762,9 +765,10 @@ def build_system_prompt(personalization_block: str, subject: str = "Physics") ->
     return customization + "\n\n" + personalization_block
 
 
-def render_personalization(pedagogy_config) -> str:
+def render_personalization(pedagogy_config, persona_profile: dict | None = None) -> str:
     """
     Render PERSONALIZATION_PROMPT from a PedagogyConfig instance.
+    Optionally accepts persona_profile dict to inject multi-subject context.
     Returns the filled string ready to pass to build_system_prompt().
     """
     level = pedagogy_config.scaffolding_level
@@ -777,10 +781,33 @@ def render_personalization(pedagogy_config) -> str:
         "End your response with exactly one check-in question before moving to the next concept."
         if pedagogy_config.check_in_required else ""
     )
+
+    # New multi-subject persona fields
+    learning_preference = "not specified"
+    subject_strengths_block = ""
+    priority_subject_block = ""
+
+    if persona_profile:
+        lp = persona_profile.get("learning_preference") or persona_profile.get("preferred_style")
+        if lp:
+            learning_preference = lp
+
+        ss = persona_profile.get("subject_strengths")
+        if ss and isinstance(ss, dict):
+            parts = [f"{subj}={strength}" for subj, strength in ss.items()]
+            subject_strengths_block = f"Subject Strengths: {', '.join(parts)}"
+
+        ps = persona_profile.get("priority_subject")
+        if ps:
+            priority_subject_block = f"Priority Focus Subject: {ps} (student needs most help here)"
+
     return PERSONALIZATION_PROMPT.format(
         scaffolding_level=level,
         teaching_style_instruction=teaching_style,
+        learning_preference=learning_preference,
         max_concepts=pedagogy_config.max_concepts,
+        subject_strengths_block=subject_strengths_block,
+        priority_subject_block=priority_subject_block,
         analogy_instruction=analogy_instruction,
         check_in_instruction=check_in_instruction,
         hint_tone=pedagogy_config.hint_tone,

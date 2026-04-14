@@ -26,31 +26,38 @@ router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 class OnboardingSubmitRequest(BaseModel):
     class_level: str                            # "11th" | "12th" | "dropper"
-    physics_prev_marks: Optional[int] = None   # 0–100, nullable if 11th
-    easy_topics: List[str] = Field(default_factory=list, max_length=15)
-    hard_topics: List[str] = Field(default_factory=list, max_length=15)
+    physics_prev_marks: Optional[int] = Field(None, ge=0, le=100)    # nullable if 11th
+    chemistry_prev_marks: Optional[int] = Field(None, ge=0, le=100)  # NEW
+    maths_prev_marks: Optional[int] = Field(None, ge=0, le=100)      # NEW
+    easy_topics: List[str] = Field(default_factory=list, max_length=30)
+    hard_topics: List[str] = Field(default_factory=list, max_length=30)
     study_hours_per_day: float = Field(ge=0.5, le=16.0)
     exam_type: str                              # "JEE_MAINS" | "JEE_ADVANCED" | "NEET"
     exam_date: Optional[str] = None            # ISO date string "YYYY-MM-DD"
+    priority_subject: Optional[str] = None     # NEW: "Physics" | "Chemistry" | "Maths"
+    learning_preference: Optional[str] = None  # NEW: "formula"|"analogy"|"example"|"visual"
 
 
 # ── Persona builder ───────────────────────────────────────────────────────────
 
 _PERSONA_PROMPT = """\
-You are building a student profile for an AI tutor covering Physics, Chemistry, and Maths,
-preparing students for JEE/NEET.
+You are building a student profile for an AI JEE/NEET tutor covering Physics, Chemistry, and Maths.
 
 Student answers:
 - Class: {class_level}
-- Previous Physics marks: {physics_prev_marks}
+- Physics marks: {physics_prev_marks}
+- Chemistry marks: {chemistry_prev_marks}
+- Maths marks: {maths_prev_marks}
+- Priority subject (needs most work): {priority_subject}
+- Learning preference (explicit): {learning_preference}
 - Easy topics: {easy_topics}
 - Hard topics: {hard_topics}
 - Study hours/day: {study_hours_per_day}
 - Exam: {exam_type} on {exam_date}
 
-The easy_topics and hard_topics may span Physics, Chemistry, AND Maths — treat them holistically.
+The easy_topics and hard_topics span Physics, Chemistry, AND Maths.
 
-Based on this, output a JSON profile with EXACTLY these fields:
+Output a JSON profile with EXACTLY these fields:
 {{
   "scaffolding_level": "HIGH" | "MEDIUM" | "LOW",
   "preferred_style": "analogy" | "formula" | "example" | "visual",
@@ -62,25 +69,33 @@ Based on this, output a JSON profile with EXACTLY these fields:
   "common_misconceptions": [],
   "allowed_hint_depth": 3,
   "interaction_depth_score": 0.0,
-  "persona_summary": "<2-3 sentence human-readable summary of this student>"
+  "persona_summary": "<3-4 sentence human-readable summary covering all 3 subjects>",
+  "subject_strengths": {{
+    "Physics": "weak" | "medium" | "strong",
+    "Chemistry": "weak" | "medium" | "strong",
+    "Maths": "weak" | "medium" | "strong"
+  }},
+  "priority_subject": "<Physics|Chemistry|Maths or the student-provided value>",
+  "learning_preference": "<formula|analogy|example|visual — use student-provided value if given>"
 }}
 
 Scoring logic:
-- scaffolding_level: marks < 50 OR (dropper with marks < 60) → HIGH; marks 50–75 → MEDIUM; marks > 75 → LOW; if marks unavailable (11th) → HIGH
-- predicted_irt_theta: dropper → -0.5 to +0.5 based on marks; 12th → -1.0 to 0.0; 11th → -2.0 to -1.0
+- scaffolding_level: use the LOWEST marks across all 3 subjects:
+    < 50 (or dropper < 60) → HIGH; 50–75 → MEDIUM; > 75 → LOW; if no marks available → HIGH
+- subject_strengths per subject (based on that subject's marks):
+    marks < 50 → "weak"; marks 50–75 → "medium"; marks > 75 → "strong"; no marks → "medium" for 12th, "weak" for 11th
+- preferred_style: USE the student-provided learning_preference if it is not null/empty.
+    Only infer if learning_preference is null:
+    * mostly numerical hard_topics → formula
+    * mostly conceptual/theoretical hard_topics → analogy
+    * Chemistry-heavy hard_topics → visual
+    * mixed → example
+- predicted_irt_theta: dropper → -0.5 to +0.5 based on avg marks; 12th → -1.0 to 0.0; 11th → -2.0 to -1.0
 - learning_velocity: study_hours >= 6 → fast; 3–5.9 → medium; < 3 → slow
-- preferred_style:
-    * if hard_topics are mostly Physics/Maths numerical (Kinematics, Work & Energy, Circular Motion,
-      Rotational Dynamics, Current Electricity, Magnetism, Integration, Vectors, Determinants) → formula
-    * if mostly conceptual/theoretical (Thermodynamics, Modern Physics, Waves, Optics, Gravitation,
-      Chemical Equilibrium, Atomic Structure, Probability, Sequences) → analogy
-    * if mixed → example
-    * if hard_topics include many Chemistry topics (Organic Chemistry, Electrochemistry, p-Block) → visual
-- weak_concepts: map hard_topics to short concept ids (snake_case, e.g. "kinematics", "optics",
-  "thermodynamics", "chemical_equilibrium", "integration", "organic_chemistry")
+- weak_concepts: map hard_topics to snake_case ids (e.g. "kinematics", "organic_chemistry", "integration")
 - strong_concepts: map easy_topics similarly
-- persona_summary: be specific — mention class, marks if available, top weak areas across all three
-  subjects, and recommended teaching approach. Mention if student is stronger in one subject.
+- persona_summary: 3-4 sentences. Mention class, marks in each subject, priority subject,
+  learning style, and which subjects need the most work.
 
 Return ONLY valid JSON, no markdown, no explanation.
 """
@@ -94,13 +109,19 @@ async def _build_persona_from_onboarding(
     Call gpt-4.1-mini to build a structured persona profile from onboarding answers.
     Returns a dict. On any failure returns safe HIGH-scaffolding defaults.
     """
-    marks_str = f"{answers.physics_prev_marks}%" if answers.physics_prev_marks is not None else "not available (new to Physics assessments)"
-    easy_str  = ", ".join(answers.easy_topics)  if answers.easy_topics  else "none specified"
-    hard_str  = ", ".join(answers.hard_topics)  if answers.hard_topics  else "none specified"
+    def _marks_str(val: Optional[int], subject: str) -> str:
+        return f"{val}%" if val is not None else f"not available ({answers.class_level})"
+
+    easy_str = ", ".join(answers.easy_topics) if answers.easy_topics else "none specified"
+    hard_str = ", ".join(answers.hard_topics) if answers.hard_topics else "none specified"
 
     prompt = _PERSONA_PROMPT.format(
         class_level=answers.class_level,
-        physics_prev_marks=marks_str,
+        physics_prev_marks=_marks_str(answers.physics_prev_marks, "Physics"),
+        chemistry_prev_marks=_marks_str(answers.chemistry_prev_marks, "Chemistry"),
+        maths_prev_marks=_marks_str(answers.maths_prev_marks, "Maths"),
+        priority_subject=answers.priority_subject or "not specified",
+        learning_preference=answers.learning_preference or "not specified (infer from topics)",
         easy_topics=easy_str,
         hard_topics=hard_str,
         study_hours_per_day=answers.study_hours_per_day,
@@ -108,9 +129,10 @@ async def _build_persona_from_onboarding(
         exam_date=answers.exam_date or "not set",
     )
 
+    _default_style = answers.learning_preference or "analogy"
     _DEFAULTS = {
         "scaffolding_level":    "HIGH",
-        "preferred_style":      "analogy",
+        "preferred_style":      _default_style,
         "weak_concepts":        [t.lower().replace(" ", "_").replace("&", "and") for t in answers.hard_topics],
         "strong_concepts":      [t.lower().replace(" ", "_").replace("&", "and") for t in answers.easy_topics],
         "predicted_irt_theta":  -1.0,
@@ -121,8 +143,12 @@ async def _build_persona_from_onboarding(
         "interaction_depth_score": 0.0,
         "persona_summary": (
             f"{answers.class_level} student preparing for {answers.exam_type}. "
-            f"Will use analogy-first teaching with thorough scaffolding."
+            f"Priority subject: {answers.priority_subject or 'not specified'}. "
+            f"Will use {_default_style}-based teaching with thorough scaffolding."
         ),
+        "subject_strengths": {"Physics": "medium", "Chemistry": "medium", "Maths": "medium"},
+        "priority_subject": answers.priority_subject or "Physics",
+        "learning_preference": answers.learning_preference or "analogy",
     }
 
     try:
@@ -194,17 +220,25 @@ async def submit_onboarding(
     await pool.execute(
         """
         UPDATE students
-        SET class_level          = $2,
-            physics_prev_marks   = $3,
-            study_hours_per_day  = $4,
-            exam_date            = $5
+        SET class_level            = $2,
+            physics_prev_marks     = $3,
+            chemistry_prev_marks   = $4,
+            maths_prev_marks       = $5,
+            study_hours_per_day    = $6,
+            exam_date              = $7,
+            priority_subject       = $8,
+            learning_preference    = $9
         WHERE id = $1
         """,
         student_uuid,
         body.class_level,
         body.physics_prev_marks,
+        body.chemistry_prev_marks,
+        body.maths_prev_marks,
         body.study_hours_per_day,
         exam_date_val,
+        body.priority_subject,
+        body.learning_preference,
     )
 
     # ── 2. Build persona profile from answers via LLM ─────────────────────────

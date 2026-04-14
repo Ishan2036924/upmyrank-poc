@@ -3,6 +3,60 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-04-14 — Feedback Loop + 4-Dim Judge + RAG Metrics + Settings + Multi-Subject Onboarding
+**Focus:** Closed feedback loop for pedagogy quality; 4-dimension LLM judge pipeline; RAG telemetry; `/settings` page; multi-subject onboarding expansion (Chemistry + Maths marks, learning preference, subject_strengths persona); sidebar width fix; offline RAGAS eval script.
+**Status:** DONE — all 13 steps complete, migration applied, TypeScript 0 errors.
+
+**Changed files:**
+- `scripts/migrate_v12_feedback.sql` — NEW: `response_feedback`, `judge_evaluations`, `session_metrics` tables + 4 new `students` columns; idempotent (DROP POLICY IF EXISTS before each CREATE POLICY). ✅ Applied.
+- `frontend/web/components/Sidebar.tsx` — `w-[220px]` → `w-[280px]`
+- `frontend/web/components/TopicTree.tsx` — chapter name: removed `truncate`, added `break-words`; chevron `self-start mt-[3px]`
+- `frontend/web/app/page.tsx`, `doubt/page.tsx`, `practice/page.tsx`, `mock/page.tsx`, `progress/page.tsx` — `md:ml-[236px]` → `md:ml-[296px]`
+- `frontend/web/lib/types.ts` — `ChatMessage.feedback?`; `PersonaProfile` adds `subject_strengths?`, `priority_subject?`, `learning_preference?`
+- `frontend/web/components/ChatMessage.tsx` — ThumbsUp/ThumbsDown buttons on AI messages; `msgIdx` + `onFeedback` props
+- `frontend/web/app/doubt/page.tsx` — `handleFeedback()` with optimistic update; `onFeedback` + `msgIdx` wired to ChatMessage
+- `app/api/feedback.py` — NEW: `POST /feedback/response` (upsert), `GET /feedback/summary/{doubt_session_id}`
+- `app/main.py` — `feedback` router registered
+- `app/services/eval/judge.py` — REWRITTEN: `evaluate_response()` 4-dim output; backward-compat `score_response()` wrapper
+- `app/api/session.py` — `_run_judge_for_session()` coroutine + `asyncio.create_task()` in `POST /session/end`
+- `app/services/rag/agent.py` — `_EMPTY_CONTEXT` gains `retrieval_latency_ms: 0`
+- `app/services/doubt/engine.py` — `_rag_metrics` dict in `start_session()` and `get_hint()` returns; `render_personalization()` calls updated to pass `persona_profile`
+- `app/api/doubt.py` — `_write_session_metrics()` helper + fire-and-forget calls after each doubt turn
+- `frontend/web/app/settings/page.tsx` — NEW: 4-tab settings page (Profile / My Analytics / System Analytics / Preferences)
+- `app/config.py` — `admin_student_id: str = ""`
+- `app/api/admin.py` — `GET /admin/is_admin`, `GET /admin/judge-metrics`
+- `scripts/eval_ragas.py` — NEW: offline RAGAS-style eval pipeline
+- `scripts/data/golden_dataset.json` — NEW: 20 Q&A pairs (8 Physics, 6 Chemistry, 6 Maths)
+- `app/api/onboarding.py` — `OnboardingSubmitRequest` + `_PERSONA_PROMPT` expanded to multi-subject; DB UPDATE stores 4 new columns
+- `app/services/doubt/prompts.py` — `PERSONALIZATION_PROMPT` + `render_personalization()` updated for learning_preference, subject_strengths, priority_subject
+- `frontend/web/app/onboarding/page.tsx` — Step 1: 3 marks inputs; Step 2: subject-tabbed topic chips (36 total: 16+10+10); Step 3: priority_subject + learningPreference selectors
+- `MEMORY.md`, `docs/decisions.md`, `docs/session_log.md` — updated
+
+**Current system state:**
+- TypeScript: `npx tsc --noEmit` → 0 errors
+- DB: migrations v1–v12 all applied; 3 new tables active; 4 new students columns present
+- Backend: feedback, judge, RAG metrics all wired and fire-and-forget safe
+- Onboarding: full multi-subject persona builder (Physics + Chemistry + Maths marks, 36 topic chips, explicit learning preference)
+
+**In progress / half done:**
+Nothing. All 13 steps complete.
+
+**Cliff notes (non-obvious context):**
+- `CREATE POLICY` has no `IF NOT EXISTS` in PostgreSQL. Migration is now idempotent via `DROP POLICY IF EXISTS` before each `CREATE POLICY`. Never forget this pattern.
+- `_rag_metrics` is a non-user-facing key in engine return dicts — consumed by `doubt.py`, never sent to frontend.
+- `render_personalization(pedagogy_config, persona_profile)` — second arg is optional (default None). All 3 call sites in engine.py pass persona_profile as positional arg. Do not break this signature.
+- `judge_evaluations` is populated async after session/end. Allow 5-10s delay before checking DB rows.
+- `ADMIN_STUDENT_ID` env var must be set in `.env` for System Analytics tab to appear in `/settings`. Format: plain UUID string matching the admin student's `id` in the `students` table.
+- `learning_preference` from onboarding overrides `preferred_style` in rendered personalization — they map to the same concept but the explicit student input is authoritative.
+
+**Next session — read these files first:**
+Nothing specific needed — project is in clean state.
+
+**Next session — start here:**
+Ask the user what to build next. Possible directions: run `python scripts/eval_ragas.py` to get a baseline RAGAS score, expand golden_dataset.json to 50 questions, deploy to Render/Vercel, or build mobile PWA.
+
+---
+
 ## Session 2026-04-13 (UI Overhaul)
 **Focus:** Full UI overhaul — Topic Tree sidebar, Quick Doubt FAB, mobile responsive layout, subject mastery dashboard
 **Status:** DONE (steps 1–9 complete, step 10 = manual test at breakpoints)
@@ -84,87 +138,4 @@ Nothing specific — project is in clean state. Run `scripts/regression_gate.py`
 Ask the user what to build next. Possible directions: expand JEE PYQ bank (manual curation), add more Maths PDF chapters, build student-facing progress dashboard, or deploy.
 
 ---
-
-## Session 2026-04-13
-**Focus:** Agentic RAG upgrade — Part 1–4 complete: LLM-driven retrieval loop, NCERT Chemistry+Maths KB expansion, JEE PYQ table, subject router
-**Status:** DONE
-
-**Changed files:**
-- `scripts/migrate_v11_jee_problems.sql` — creates `jee_problems` table (vector(1536), HNSW index, `match_jee_problems()` function, RLS read-only policy)
-- `scripts/ingest_chem_maths.py` — new script: ingests NCERT Chem+Maths from KadamParth/Ncert_dataset HF → knowledge_chunks; grade 11/12 filter; 5 HF fallbacks for Maths; local seed fallback; resumable via progress JSON
-- `scripts/ingest_jee_pyq.py` — new script: ingests JEE PYQ from HuggingFace (with seed fallback); UUID5 deterministic IDs; resumable
-- `scripts/data/jee_pyq_seed.json` — 20 verified JEE PYQs (Physics, Chemistry, Maths) — already ingested
-- `scripts/data/ncert_maths_seed.json` — 32 NCERT Maths Q&A rows covering all key JEE chapters (Class 11+12) — already ingested
-- `app/services/rag/tools.py` — 4 retrieval tool functions + TOOL_SCHEMAS OpenAI function calling defs
-- `app/services/rag/agent.py` — AgenticRetriever class: MAX_STEPS=3, AGENT_MODEL=gpt-4o-mini, level-3 nuclear override double gate, full tool loop
-- `app/services/doubt/prompts.py` — appended SUBJECT_CLASSIFIER_SYSTEM + SUBJECT_CLASSIFIER_PROMPT
-- `app/services/doubt/engine.py` — 7 surgical edits: import AgenticRetriever, `_agentic_retriever` init in __init__, new `_classify_subject()` method, replaced `get_rag_context` calls in start_session/start_session_stream/get_hint with agentic retriever
-
-**Current system state:**
-- Backend: running on port 8000, fully operational
-- DB knowledge_chunks: Physics=10505, Chemistry=3138, Maths=47 chunks
-- DB jee_problems: 20 seed PYQs ingested
-- Agentic RAG: verified end-to-end (all 3 subjects retrieve correctly, level-3 returns empty)
-- Subject classifier: 3/3 questions classified correctly (Physics/Chemistry/Maths)
-
-**In progress / half done:**
-Nothing half-done. All 4 parts of Agentic RAG upgrade complete and tested.
-
-**Cliff notes (non-obvious context):**
-- KadamParth/Ncert_dataset has NO Mathematics subject — only Physics, Chemistry. Maths fallback uses local seed `scripts/data/ncert_maths_seed.json`.
-- All HuggingFace JEE PYQ datasets return 401 (private). `scripts/data/jee_pyq_seed.json` is the primary source.
-- Embedding model is `text-embedding-3-small` (1536-dim OpenAI) — NOT all-MiniLM-L6-v2 (384-dim). Both ingest scripts use OpenAI embeddings.
-- AgenticRetriever.run() is called in exactly 3 places in engine.py: start_session(), start_session_stream(), get_hint(). Never add a 4th.
-- Level-3 nuclear override is double-gated: checked in BOTH agent.py (returns _EMPTY_CONTEXT immediately) AND engine.py (sets rag={context_text:"", chunks:[], ...} before LLM call).
-- `_genome_update_task` is untouched — sole mastery writer invariant preserved.
-- Maths ingestion progress is tracked in `.ingest_chem_maths_progress.json` (2228 completed after this session).
-
-**Next session — read these files first:**
-`app/services/rag/agent.py`, `app/services/rag/tools.py` if modifying RAG behavior.
-
-**Next session — start here:**
-- Consider expanding `scripts/data/ncert_maths_seed.json` with more chapters (currently covers all 13 key JEE chapters but with ~2-3 Q&A each)
-- Consider expanding `scripts/data/jee_pyq_seed.json` with more verified PYQs
-- Run regression gate (`scripts/regression_gate.py`) to confirm pass rate ≥ 90% with new agentic RAG
-
----
-
-## Session 2026-04-10
-**Focus:** RLS security fix, project scaffolding, session handoff system, persona evolution, page margin fixes
-**Status:** DONE
-
-**Changed files:**
-- `scripts/migrate_v9_persona_staleness.sql` — adds `persona_profile_updated_at TIMESTAMPTZ` to student_memory (applied to production)
-- `scripts/migrate_v10_rls.sql` — enables RLS on all 10 public tables with 10 policies (applied to production)
-- `app/services/memory/summarizer.py` — `maybe_compress_profile()` now fires 2nd GPT-4o-mini call every 5 sessions to rewrite `persona_profile.persona_summary` using mastery data
-- `app/services/memory/context.py` — `build_context_bundle()` fetches persona freshness; `format_context_for_prompt()` renders STUDENT PERSONA block with staleness warning if >15 sessions old
-- `docs/decisions.md` — created, backfilled 11 architecture decisions + 2 new (RLS approach, run_migration over Supabase CLI)
-- `docs/bugs.md` — created, backfilled 11 bugs including all fixes from recent sessions
-- `docs/session_log.md` — created (this file), rolling 3-session handoff log
-- `.claude/settings.json` — created, Bash allow/deny rules (blocks git push, rm -rf, DROP, Supabase CLI)
-- `.claude/commands/handoff.md` — created, `/project:handoff` command for session handoff
-- `.claude/commands/review.md`, `fix.md`, `feature.md`, `debug.md` — created
-- `CLAUDE.md` — appended Auto-Read Rules (session_log.md always read, trigger rules for other docs)
-
-**Current system state:**
-- Backend: working, no pending changes
-- Frontend: working, no pending changes
-- DB: Last migration v10_rls applied. All 10 tables have RLS enabled. 10 policies active.
-
-**In progress / half done:**
-Nothing half-done. Project is in a clean state.
-
-**Cliff notes (non-obvious context):**
-- `/project:handoff` command not working in current Claude Code version — user must say "do a handoff" instead. File and format are fully set up.
-- RLS policies use `auth.uid() = student_id` NOT `user_id` — original request had wrong column names. Always inspect schema before writing RLS SQL.
-- FastAPI backend connects as `postgres` superuser — bypasses RLS by design. No backend changes needed for RLS ever.
-- Supabase CLI is NOT installed and blocked in `.claude/settings.json`. All migrations go through `./scripts/run_migration.sh`. Never suggest Supabase CLI.
-- `persona_profile` is a JSONB dict — `persona_summary` is a free-text key inside it. Other keys (`scaffolding_level`, `preferred_style`, etc.) preserved via dict merge in `maybe_compress_profile()`. Never overwrite the whole JSONB.
-- Sidebar is 220px inside m-3 = 236px total offset. All main pages use `md:ml-[236px]`.
-
-**Next session — read these files first:**
-Nothing specific needed — project is clean.
-
-**Next session — start here:**
-Ask the user what to build next.
 

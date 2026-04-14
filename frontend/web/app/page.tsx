@@ -188,7 +188,7 @@ export default function Home() {
     <AuthGuard>
     <div className="flex h-[100dvh]">
       <Sidebar />
-      <main className="md:ml-[236px] flex-1 overflow-y-auto pt-14 md:pt-0 scroll-touch">
+      <main className="md:ml-[296px] flex-1 overflow-y-auto pt-14 md:pt-0 scroll-touch">
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 pb-6">
 
           <motion.div

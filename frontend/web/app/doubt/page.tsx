@@ -582,6 +582,34 @@ function DoubtPageInner() {
     }
   }
 
+  // ── Per-message thumbs feedback ───────────────────────────────────────────
+  const handleFeedback = async (msgIdx: number, rating: 'thumbs_up' | 'thumbs_down') => {
+    if (!sessionId) return
+    // Optimistic update — toggle off if same rating clicked again
+    setMessages(prev => prev.map((m, i) => {
+      if (i !== msgIdx) return m
+      const next = m.feedback === rating ? null : rating
+      return { ...m, feedback: next }
+    }))
+    // Determine final rating from state (after optimistic update)
+    const currentMsg = messages[msgIdx]
+    const newRating = currentMsg.feedback === rating ? null : rating
+    if (!newRating) return  // toggled off — no API call needed
+    try {
+      await apiPost('/feedback/response', {
+        doubt_session_id: sessionId,
+        response_idx:     msgIdx,
+        rating:           newRating,
+      })
+    } catch {
+      // Revert optimistic update on error
+      setMessages(prev => prev.map((m, i) => {
+        if (i !== msgIdx) return m
+        return { ...m, feedback: currentMsg.feedback }
+      }))
+    }
+  }
+
   // ── New question: reset block state but keep the study session ────────────
   const handleNewQuestion = () => {
     setSessionId(null)
@@ -606,7 +634,7 @@ function DoubtPageInner() {
       <Sidebar />
 
       {/* ── Floating glassmorphic main window ─────────────────────────────── */}
-      <div className="md:ml-[236px] flex-1 flex gap-3 min-w-0">
+      <div className="md:ml-[296px] flex-1 flex gap-3 min-w-0">
 
         {/* ── Center chat panel ─────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden min-w-0">
@@ -754,10 +782,11 @@ function DoubtPageInner() {
               }
             >
               <AnimatePresence initial={false}>
-                {messages.map((msg) => (
+                {messages.map((msg, i) => (
                   <ChatMessage
                     key={msg.id}
                     message={msg}
+                    msgIdx={i}
                     isStreaming={false}
                     dimmed={
                       msg.role !== 'divider' &&
@@ -765,6 +794,7 @@ function DoubtPageInner() {
                       !!msg.metadata?.doubt_block_id &&
                       msg.metadata.doubt_block_id !== currentBlockId
                     }
+                    onFeedback={handleFeedback}
                   />
                 ))}
               </AnimatePresence>

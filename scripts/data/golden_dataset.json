@@ -1,0 +1,162 @@
+[
+  {
+    "subject": "Physics",
+    "question": "A ball is thrown at 30° with initial speed 20 m/s. Find the maximum height reached.",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "5.1 m",
+    "tags": ["kinematics", "projectile motion"]
+  },
+  {
+    "subject": "Physics",
+    "question": "What is the moment of inertia of a solid sphere about an axis through its centre?",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 0,
+    "ground_truth_answer": "2/5 MR²",
+    "tags": ["rotational mechanics", "moment of inertia"]
+  },
+  {
+    "subject": "Physics",
+    "question": "A capacitor of 10 µF is charged to 100 V. Find the energy stored.",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "0.05 J",
+    "tags": ["electrostatics", "capacitance"]
+  },
+  {
+    "subject": "Physics",
+    "question": "Explain why a current-carrying conductor placed in a magnetic field experiences a force.",
+    "ideal_response_type": "conceptual_explanation",
+    "expected_hint_level": 0,
+    "ground_truth_answer": "Lorentz force on moving charges in conductor",
+    "tags": ["magnetism", "Lorentz force"]
+  },
+  {
+    "subject": "Physics",
+    "question": "The de Broglie wavelength of an electron moving at 10^6 m/s. Find it.",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "7.28 × 10⁻¹⁰ m",
+    "tags": ["modern physics", "wave-particle duality"]
+  },
+  {
+    "subject": "Physics",
+    "question": "A block of mass 2 kg on a rough surface (µ=0.3) is pushed with 10 N. Find acceleration. (g=10)",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "2 m/s²",
+    "tags": ["laws of motion", "friction"]
+  },
+  {
+    "subject": "Physics",
+    "question": "Derive the expression for the period of a simple pendulum.",
+    "ideal_response_type": "derivation",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "T = 2π√(L/g)",
+    "tags": ["simple harmonic motion", "oscillations"]
+  },
+  {
+    "subject": "Physics",
+    "question": "Two charges +4µC and -4µC are separated by 10 cm. Find the electric field at the midpoint.",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "2.88 × 10⁷ N/C",
+    "tags": ["electrostatics", "electric field"]
+  },
+  {
+    "subject": "Chemistry",
+    "question": "Why does the first ionisation energy of oxygen (1314 kJ/mol) lower than nitrogen (1402 kJ/mol)?",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 0,
+    "ground_truth_answer": "Half-filled stability of N (2p³); O has electron pair repulsion in 2p⁴",
+    "tags": ["atomic structure", "ionisation energy"]
+  },
+  {
+    "subject": "Chemistry",
+    "question": "Balance the redox reaction: MnO4⁻ + Fe²⁺ → Mn²⁺ + Fe³⁺ in acidic medium.",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "MnO4⁻ + 5Fe²⁺ + 8H⁺ → Mn²⁺ + 5Fe³⁺ + 4H₂O",
+    "tags": ["electrochemistry", "redox reactions"]
+  },
+  {
+    "subject": "Chemistry",
+    "question": "Explain the role of entropy in determining the spontaneity of a reaction.",
+    "ideal_response_type": "conceptual_explanation",
+    "expected_hint_level": 0,
+    "ground_truth_answer": "ΔG = ΔH - TΔS; spontaneous when ΔG < 0",
+    "tags": ["thermodynamics", "Gibbs free energy"]
+  },
+  {
+    "subject": "Chemistry",
+    "question": "What is the hybridisation of the central atom in SF6?",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 0,
+    "ground_truth_answer": "sp³d² hybridisation",
+    "tags": ["chemical bonding", "hybridisation"]
+  },
+  {
+    "subject": "Chemistry",
+    "question": "Predict the product of the SN2 reaction between CH3Br and NaOH.",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "CH3OH (methanol) via backside attack, inversion of configuration",
+    "tags": ["organic chemistry", "SN2 mechanism"]
+  },
+  {
+    "subject": "Chemistry",
+    "question": "Calculate the pH of 0.01 M HCl solution.",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "pH = 2",
+    "tags": ["chemical equilibrium", "pH"]
+  },
+  {
+    "subject": "Maths",
+    "question": "Find the integral of x²·eˣ dx.",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "eˣ(x² - 2x + 2) + C",
+    "tags": ["calculus", "integration by parts"]
+  },
+  {
+    "subject": "Maths",
+    "question": "If the sum of an arithmetic progression is 210 and it has 10 terms with first term 3, find the common difference.",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "d = 3.8",
+    "tags": ["sequences and series", "arithmetic progression"]
+  },
+  {
+    "subject": "Maths",
+    "question": "Find the equation of the circle passing through the points (1,2), (3,4), (5,6).",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 2,
+    "ground_truth_answer": "These three points are collinear — no circle exists",
+    "tags": ["coordinate geometry", "circles"]
+  },
+  {
+    "subject": "Maths",
+    "question": "Evaluate lim(x→0) [sin(3x)/x].",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "3",
+    "tags": ["calculus", "limits"]
+  },
+  {
+    "subject": "Maths",
+    "question": "Find the determinant of the matrix [[1,2,3],[4,5,6],[7,8,9]].",
+    "ideal_response_type": "socratic",
+    "expected_hint_level": 1,
+    "ground_truth_answer": "0",
+    "tags": ["matrices", "determinants"]
+  },
+  {
+    "subject": "Maths",
+    "question": "Prove that √2 is irrational.",
+    "ideal_response_type": "proof",
+    "expected_hint_level": 0,
+    "ground_truth_answer": "Proof by contradiction: assume √2 = p/q in lowest terms, then 2q² = p², so p is even, contradiction",
+    "tags": ["number theory", "irrationality"]
+  }
+]

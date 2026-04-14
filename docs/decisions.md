@@ -124,3 +124,34 @@
 **Fix 2 (repetitive fallback):** Added `_SOLUTION_SEEKER_RE` regex in engine.py (same pattern as `_CONVERSATIONAL_TOKENS` — no LLM cost). When soft solution-seeking detected: (a) `SOLUTION_SEEKER_NOTE_FIRST`/`SOLUTION_SEEKER_NOTE_REPEAT` appended to the hint PROMPT (tells LLM not to repeat Socratic question), (b) `SOLUTION_SEEKER_PREAMBLE` prepended to the LLM response ("I can see you want the answer — let's try one more step first."), (c) `ignored_socratic_count` incremented in `stored_analysis` for persistence across turns.
 **Fix 3 (hint rhythm):** Added "THIS IS HINT N OF 3 — DO NOT RESTART" headers to `HINT_LEVEL_1_PROMPT` and `HINT_LEVEL_2_PROMPT`. Pure prompt-level fix — DB state (`current_hint_level`) was correct, the LLM was re-asking Socratic questions instead of delivering structured hints.
 **Rejected:** Storing `ignored_socratic_count` in a new DB column (unnecessary — `stored_analysis` JSONB is already persisted on every `get_hint()` call). Using `_analyze_student_response()` for solution-seeking detection (costs an LLM call — regex is sufficient and matches the project's existing pattern for cheap classification).
+
+## 2026-04-14 — 4-dimension judge over 1-dimension Socratic score
+**Decision:** Expanded judge from single Socratic quality score (0–2) to 4 dimensions: pedagogical (0–2), factual (0–1), context_relevance (0–1), hint_appropriateness (0–1). Composite `overall_score = 0.4*(ped/2) + 0.3*factual + 0.15*ctx + 0.15*hint`.
+**Why:** Socratic score alone missed factual errors (LLM could be Socratically correct but factually wrong) and couldn't distinguish RAG context utilization from good guessing. 4-dim output is the minimum to run a meaningful RAGAS-style eval pipeline.
+**Backward compat:** `score_response()` wrapper preserved — calls `evaluate_response()` internally and returns `{score: pedagogical_score, rationale: str}`. All existing callers continue to work unchanged.
+**Model:** gpt-4o-mini (not gpt-4.1-mini) at temp=0 — classification task, not Socratic dialogue. Single LLM call for all 4 dimensions (JSON output) to minimize latency.
+**Rejected:** Calling judge after every hint turn (too expensive, blocks student response). Instead: fired once at `POST /session/end` for all doubt sessions in the study session.
+
+## 2026-04-14 — Session metrics written fire-and-forget from API layer (not engine)
+**Decision:** `_write_session_metrics()` is a fire-and-forget `asyncio.create_task()` in `doubt.py`. RAG telemetry surfaced to API layer via `_rag_metrics` key in engine return dicts (not by direct DB access from engine layer).
+**Why:** `AgenticRetriever.run()` is called inside `engine.py` which has no direct access to the DB pool. Rather than threading pool through engine just for metrics, engine includes `_rag_metrics` as a non-user-facing key in its return dict. `doubt.py` consumes it and fires the metrics write. Keeps engine layer clean.
+**Rejected:** DB pool injected into engine (would break encapsulation — engine is a service layer, not a data access layer). Metrics written synchronously (would add latency to every student request).
+**Cliff note:** `_rag_metrics` key is never included in any API response — only consumed internally by `doubt.py` before returning.
+
+## 2026-04-14 — Admin gate via ADMIN_STUDENT_ID env var (not Supabase roles)
+**Decision:** System Analytics tab in Settings page (and `GET /admin/is_admin`) gates on `settings.admin_student_id` — a plain UUID string in `.env`. The authenticated student's UUID is compared with this value.
+**Why:** Adding a Supabase RLS role or a custom `is_admin` column would require schema changes and Supabase dashboard access. A UUID comparison in FastAPI config is zero-schema, zero-migration, and just as secure for a POC where there's one admin (the developer).
+**Rejected:** Supabase custom role (requires Supabase CLI/dashboard), `is_admin BOOL` column on students (another migration, another sync point), JWT custom claims (Supabase dashboard change needed).
+**Revisit if:** Multiple admin users needed, or RBAC required for team usage.
+
+## 2026-04-14 — Preferences stored in localStorage only (no DB)
+**Decision:** Settings → Preferences tab (show hint badges, show confidence meter, show RAG hints) stored exclusively in `localStorage` with `upmyrank_pref_` prefix. No DB column, no API call.
+**Why:** UI preferences are client-side concerns. They don't affect learning quality metrics, don't need server-side access, and don't affect persona. Storing them in DB adds migration + API surface for zero learning value.
+**Rejected:** `preferences JSONB` column on `students` (overkill for 3 boolean flags), `student_memory` JSONB injection (would pollute the persona context with UI toggles).
+**Revisit if:** Preferences need to sync across devices (e.g., mobile app), or a preference meaningfully affects backend behavior (e.g., disable Socratic mode entirely).
+
+## 2026-04-14 — Explicit learning_preference in onboarding (not LLM-inferred)
+**Decision:** Onboarding Step 3 now asks students directly: "How do you prefer to learn?" with 4 explicit choices (formula-first, analogies, step-by-step examples, visual diagrams). This value is stored as `learning_preference` on the `students` row and passed directly to `_PERSONA_PROMPT` as-is.
+**Why:** The original design had the LLM infer `preferred_style` from topic tags ("mostly numerical hard_topics → formula"). This inference was unreliable: a student who struggles with integration isn't necessarily formula-oriented — they may need analogies. Direct student input is more accurate than LLM inference from indirect signals.
+**Impact on prompts.py:** `render_personalization()` now accepts `persona_profile` as a second arg. If `learning_preference` is present it overrides `preferred_style` in the rendered personalization block. `PERSONALIZATION_PROMPT` has 3 new placeholders: `{learning_preference}`, `{subject_strengths_block}`, `{priority_subject_block}`.
+**Rejected:** Pure LLM inference of learning style (unreliable), separate onboarding step for each preference type (too long), inferring from session behavior after N doubts (too slow — student would get mismatched style for first 10+ sessions).

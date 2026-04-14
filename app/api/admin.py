@@ -1,11 +1,9 @@
 """
 Admin metrics API — pedagogy quality dashboard.
 
-GET /admin/metrics?days=7
-    Returns Socratic adherence rate, avg retrieval similarity, latency P95,
-    and per-topic breakdown from session_events.
-
-No student auth required (internal/admin use only).
+GET /admin/is_admin          — check if authenticated student is admin
+GET /admin/metrics?days=7    — Socratic adherence, retrieval similarity, latency P95
+GET /admin/judge-metrics?days=7 — 4-dimension judge evaluation averages
 """
 from __future__ import annotations
 
@@ -15,10 +13,20 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
+from app.config import settings
 from app.db.database import get_pool
 from app.middleware.auth import get_current_student_id
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+# ── Admin gate ────────────────────────────────────────────────────────────────
+
+@router.get("/is_admin")
+async def check_admin(student_id: str = Depends(get_current_student_id)):
+    """Return whether the authenticated student is the configured admin."""
+    is_admin = bool(settings.admin_student_id and str(student_id) == settings.admin_student_id)
+    return {"is_admin": is_admin}
 
 
 # ── Response models ───────────────────────────────────────────────────────────
@@ -142,3 +150,45 @@ async def get_admin_metrics(
         latency_p95_ms=latency_p95,
         topics=topics,
     )
+
+
+@router.get("/judge-metrics")
+async def get_judge_metrics(
+    days: int = Query(7, ge=1, le=90),
+    db=Depends(get_pool),
+    _: str = Depends(get_current_student_id),
+):
+    """
+    Aggregate 4-dimension judge evaluation averages from the judge_evaluations table.
+
+    Returns avg scores for each dimension + total evaluated count over the lookback window.
+    """
+    row = await db.fetchrow(
+        f"""
+        SELECT
+            COUNT(*)                                 AS total_evaluated,
+            AVG(pedagogical_score)::FLOAT            AS avg_pedagogical,
+            AVG(factual_score)::FLOAT                AS avg_factual,
+            AVG(context_relevance_score)::FLOAT      AS avg_context_relevance,
+            AVG(hint_appropriateness_score)::FLOAT   AS avg_hint_appropriateness,
+            AVG(overall_score)::FLOAT                AS avg_overall
+        FROM judge_evaluations
+        WHERE evaluated_at >= NOW() - INTERVAL '{days} days'
+          AND overall_score >= 0
+        """
+    )
+
+    total = int(row["total_evaluated"] or 0)
+
+    def _safe_round(val, digits: int = 4) -> Optional[float]:
+        return round(float(val), digits) if val is not None else None
+
+    return {
+        "period_days":              days,
+        "total_evaluated":          total,
+        "avg_pedagogical_score":    _safe_round(row["avg_pedagogical"]),
+        "avg_factual_score":        _safe_round(row["avg_factual"]),
+        "avg_context_relevance":    _safe_round(row["avg_context_relevance"]),
+        "avg_hint_appropriateness": _safe_round(row["avg_hint_appropriateness"]),
+        "avg_overall_score":        _safe_round(row["avg_overall"]),
+    }

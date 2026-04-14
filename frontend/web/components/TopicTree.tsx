@@ -111,7 +111,7 @@ function TopicRow({
     >
       {/* Topic name + action buttons */}
       <div className="flex items-center gap-2 min-h-[36px]">
-        <span className="flex-1 text-[13px] text-slate-700 font-medium leading-tight min-w-0 truncate">
+        <span className="flex-1 text-[13px] text-slate-700 font-medium leading-tight min-w-0">
           {topic.name}
         </span>
 
@@ -186,14 +186,14 @@ function ChapterAccordion({
       {/* Chapter header */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-left bg-white/60 hover:bg-slate-50 active:bg-slate-100 transition-colors duration-150 min-h-[44px]"
+        className="w-full flex items-center gap-2 px-3 py-2 text-left bg-white/60 hover:bg-slate-50 active:bg-slate-100 transition-colors duration-150 min-h-[44px]"
       >
-        <span className="flex-shrink-0 text-slate-400">
+        <span className="flex-shrink-0 text-slate-400 self-start mt-[3px]">
           {isOpen
             ? <ChevronDown style={{ width: 13, height: 13 }} />
             : <ChevronRight style={{ width: 13, height: 13 }} />}
         </span>
-        <span className="flex-1 text-[13px] font-semibold text-slate-800 leading-tight truncate">
+        <span className="flex-1 text-[13px] font-semibold text-slate-800 leading-snug break-words">
           {chapter.name}
         </span>
         {/* Chapter mastery mini bar */}

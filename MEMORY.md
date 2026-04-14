@@ -298,6 +298,61 @@ RLS: authenticated users read-only. `match_jee_problems()` function available.
 - **`session_events`**: telemetry — event_type, time_to_solve_seconds, max_hint_level_used, mistake_forensics_tag, give_up_flag
 - **`study_sessions`** (V2): study_session_id, student_id, started_at, ended_at, doubt_count
 - **`doubt_blocks`** (V2): doubt_block_id, study_session_id, doubt_session_id FK, topic, hint_level, solved, summary
+- **`response_feedback`** (v12): id, student_id FK, doubt_session_id FK, response_idx INT, rating TEXT ('thumbs_up'|'thumbs_down'), UNIQUE(student_id, doubt_session_id, response_idx), RLS student-owned
+- **`judge_evaluations`** (v12): id, study_session_id FK, doubt_session_id FK, question TEXT, ai_response TEXT, pedagogical_score SMALLINT, factual_score SMALLINT, context_relevance_score SMALLINT, hint_appropriateness_score SMALLINT, overall_score FLOAT, rationale_json JSONB, evaluated_at — RLS TRUE (backend bypasses)
+- **`session_metrics`** (v12): id, study_session_id FK, doubt_session_id FK, subject TEXT, retrieval_latency_ms INT, agent_steps SMALLINT, chunks_retrieved SMALLINT, has_similar_problem BOOL, tool_trace JSONB — RLS TRUE
+- **`students` new columns** (v12): `chemistry_prev_marks SMALLINT`, `maths_prev_marks SMALLINT`, `priority_subject TEXT`, `learning_preference TEXT`
+
+### Feature 23 — Feedback Loop + 4-Dim Judge + RAG Metrics + Settings + Multi-Subject Onboarding ✅ (2026-04-14)
+
+**Migration:** `scripts/migrate_v12_feedback.sql` ✅ Applied.
+Three new tables + 4 new columns on `students`.
+
+#### Part 0 — Sidebar Width Fix
+- `Sidebar.tsx`: `w-[220px]` → `w-[280px]` on desktop aside element
+- `TopicTree.tsx`: chapter name `truncate` removed → `break-words`; chevron `self-start mt-[3px]` for multi-line alignment
+- All 5 main pages (`page.tsx`, `doubt`, `practice`, `mock`, `progress`): `md:ml-[236px]` → `md:ml-[296px]`
+
+#### Part 1 — Per-Response Feedback (thumbs up/down)
+- **`response_feedback` table**: UUID PK, student_id FK, doubt_session_id FK, response_idx INT, rating TEXT ('thumbs_up'|'thumbs_down'), UNIQUE constraint, RLS student-only
+- **`frontend/web/lib/types.ts`**: `ChatMessage.feedback?: 'thumbs_up' | 'thumbs_down' | null`
+- **`frontend/web/components/ChatMessage.tsx`**: ThumbsUp/ThumbsDown buttons below AI messages (non-streaming only); togglable (click same = clear, click other = switch)
+- **`frontend/web/app/doubt/page.tsx`**: `handleFeedback()` with optimistic update → `POST /feedback/response` → revert on error
+- **`app/api/feedback.py`** (NEW): `POST /feedback/response` (upsert ON CONFLICT DO UPDATE), `GET /feedback/summary/{doubt_session_id}`
+- **`app/main.py`**: `feedback` router registered
+
+#### Part 2 — 4-Dimension LLM Judge Pipeline
+- **`judge_evaluations` table**: 4 score columns (pedagogical SMALLINT 0-2, factual SMALLINT 0-1, context_relevance SMALLINT 0-1, hint_appropriateness SMALLINT 0-1), overall_score FLOAT, rationale_json JSONB
+- **`app/services/eval/judge.py`** (REWRITTEN): `evaluate_response(question, ai_response, rag_context, hint_level, prior_attempts) → dict` with all 4 dims + `overall_score = 0.4*(ped/2) + 0.3*factual + 0.15*ctx + 0.15*hint`; uses `model_cheap` (gpt-4o-mini) at temp=0; backward-compat `score_response()` wrapper preserved
+- **`app/api/session.py`**: `_run_judge_for_session()` coroutine — fetches all doubt_sessions for study session, calls `evaluate_response()`, INSERTs into `judge_evaluations`; fired as `asyncio.create_task()` from `POST /session/end` after `maybe_compress_profile`
+
+#### Part 3 — RAG Timing + Session Metrics
+- **`session_metrics` table**: retrieval_latency_ms INT, agent_steps SMALLINT, chunks_retrieved SMALLINT, has_similar_problem BOOL, tool_trace JSONB
+- **`app/services/rag/agent.py`**: `_EMPTY_CONTEXT` gains `"retrieval_latency_ms": 0`; `run()` return dict already includes `retrieval_latency_ms`
+- **`app/services/doubt/engine.py`**: `start_session()` and `get_hint()` return dicts include `_rag_metrics` key (non-user-facing) with subject, latency, agent_steps, chunk_count, has_similar_problem, tool_trace
+- **`app/api/doubt.py`**: `_write_session_metrics()` async helper (INSERT into session_metrics, try/except silent); fired as `asyncio.create_task()` after `start_session` and after `get_hint`
+
+#### Part 4 — Settings Page (`/settings`)
+- **`frontend/web/app/settings/page.tsx`** (NEW): 4 tabs: Profile, My Analytics, System Analytics (admin-gated), Preferences
+  - Profile tab: student info + persona summary card + "Redo Onboarding" button
+  - My Analytics: RadialBarChart per-subject mastery + weakest topics BarChart (Recharts)
+  - System Analytics: gated via `GET /admin/is_admin`; lazy-fetches `GET /admin/metrics` + `GET /admin/judge-metrics` on first activation; shows adherence rate, latency P95, per-topic scores, judge eval averages
+  - Preferences: 3 localStorage toggles (`upmyrank_pref_` prefix): show hint badges, show confidence meter, show RAG hints
+
+#### Part 5 — Admin API Extension
+- **`app/config.py`**: `admin_student_id: str = ""` field added
+- **`app/api/admin.py`**: `GET /admin/is_admin` → `{is_admin: bool}` (UUID string compare vs `settings.admin_student_id`); `GET /admin/judge-metrics` → aggregates 4-dim averages from `judge_evaluations` last N days
+
+#### Part 6 — Multi-Subject Onboarding Expansion
+- **DB columns added to `students`**: `chemistry_prev_marks SMALLINT`, `maths_prev_marks SMALLINT`, `priority_subject TEXT`, `learning_preference TEXT`
+- **`app/api/onboarding.py`**: `OnboardingSubmitRequest` gets 4 new fields; `_PERSONA_PROMPT` fully rewritten for multi-subject (all 3 marks, `subject_strengths` output key, explicit `learning_preference` pass-through, `priority_subject`); `_DEFAULTS` include new persona keys; DB UPDATE stores all 4 new columns
+- **`app/services/doubt/prompts.py`**: `PERSONALIZATION_PROMPT` adds `{learning_preference}`, `{subject_strengths_block}`, `{priority_subject_block}` placeholders; `render_personalization(pedagogy_config, persona_profile=None)` now accepts optional persona_profile and renders multi-subject context
+- **`frontend/web/app/onboarding/page.tsx`**: Step 1 — 3 marks inputs side-by-side (Physics/Chemistry/Maths, color-coded, conditional on class_level); Step 2 — Subject tabs (Physics 16 topics / Chemistry 10 / Maths 10); Step 3 — `prioritySubject` 3-pill selector + `learningPreference` 2×2 card grid; API payload flattens all topic records + sends 4 new fields
+- **`frontend/web/lib/types.ts`**: `PersonaProfile` gets `subject_strengths?`, `priority_subject?`, `learning_preference?`
+
+#### Part 7 — Eval Infrastructure
+- **`scripts/eval_ragas.py`** (NEW): Offline RAGAS-style eval — reads golden_dataset.json, runs AgenticRetriever + stub Socratic response + `evaluate_response()`, prints ANSI colored per-dimension report, exits 1 if avg overall_score < 0.6
+- **`scripts/data/golden_dataset.json`** (NEW): 20 Q&A pairs — 8 Physics, 6 Chemistry, 6 Maths; format: `{subject, question, ideal_response_type, expected_hint_level, ground_truth_answer, tags}`
 
 ---
 

@@ -428,7 +428,7 @@ class SocraticEngine:
             pedagogy_config = select_pedagogy(
                 persona_profile, analysis.get("topic", ""), hint_level=0, subject=_effective_subject,
             )
-            personalization_block = render_personalization(pedagogy_config)
+            personalization_block = render_personalization(pedagogy_config, persona_profile)
             active_system_prompt = build_system_prompt(personalization_block, subject=_effective_subject)
             # Store in analysis for reference (persona_profile re-fetched in get_hint)
             analysis["persona_profile"] = persona_profile
@@ -535,6 +535,15 @@ class SocraticEngine:
             "retrieved_context_count": rag["chunk_count"],
             "out_of_scope": out_of_scope,
             "cache_hit": False,
+            # RAG telemetry — consumed by doubt.py to write session_metrics
+            "_rag_metrics": {
+                "retrieval_latency_ms": rag.get("retrieval_latency_ms", 0),
+                "agent_steps":          len(rag.get("tool_trace", [])),
+                "chunk_count":          rag["chunk_count"],
+                "has_similar_problem":  rag.get("similar_problem") is not None,
+                "tool_trace":           rag.get("tool_trace", []),
+                "subject":              _effective_subject,
+            },
         }
 
         # ── 12. Store in semantic cache (background, never blocks response) ────
@@ -729,7 +738,7 @@ class SocraticEngine:
                     persona_profile, analysis.get("topic", ""), hint_level=0,
                     subject=_eff_subject_stream,
                 )
-                personalization_block = render_personalization(pedagogy_config)
+                personalization_block = render_personalization(pedagogy_config, persona_profile)
                 active_system_prompt = build_system_prompt(
                     personalization_block, subject=_eff_subject_stream,
                 )
@@ -1208,7 +1217,7 @@ class SocraticEngine:
                     hint_level=new_level,
                     subject=_hint_subject,
                 )
-                hint_personalization_block = render_personalization(hint_pedagogy_config)
+                hint_personalization_block = render_personalization(hint_pedagogy_config, hint_persona_profile)
                 hint_active_system_prompt = build_system_prompt(
                     hint_personalization_block, subject=_hint_subject,
                 )
@@ -1354,6 +1363,7 @@ class SocraticEngine:
             asyncio.create_task(_run_judge())
 
         logger.info("Hint level %d delivered for session %s", new_level, session_id)
+        _hint_subject_for_metrics = stored_analysis.get("detected_subject", subject)
         return {
             "session_id": session_id,
             "hint_level": new_level,
@@ -1365,6 +1375,15 @@ class SocraticEngine:
             "verification": verification_result,
             "mentor_mode": mentor_mode,
             "response_analysis": response_analysis,
+            # RAG telemetry — consumed by doubt.py to write session_metrics
+            "_rag_metrics": {
+                "retrieval_latency_ms": rag.get("retrieval_latency_ms", 0),
+                "agent_steps":          len(rag.get("tool_trace", [])),
+                "chunk_count":          rag.get("chunk_count", 0),
+                "has_similar_problem":  rag.get("similar_problem") is not None,
+                "tool_trace":           rag.get("tool_trace", []),
+                "subject":              _hint_subject_for_metrics,
+            },
         }
 
     # ── subject classification (for agentic RAG pre-seeding) ─────────────────

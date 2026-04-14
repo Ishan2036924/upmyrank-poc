@@ -223,7 +223,7 @@ export default function Sidebar() {
   return (
     <>
       {/* ── Desktop sidebar (220px) ─────────────────────────────────────────── */}
-      <aside className="hidden md:flex fixed left-0 top-0 h-full w-[220px] z-40 flex-col">
+      <aside className="hidden md:flex fixed left-0 top-0 h-full w-[280px] z-40 flex-col">
         <div className="m-3 flex-1 flex flex-col rounded-3xl bg-white/75 backdrop-blur-xl border border-white/60 shadow-xl shadow-slate-200/50 overflow-hidden">
           <SidebarContent
             genome={genome}

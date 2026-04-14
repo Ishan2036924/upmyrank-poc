@@ -44,6 +44,10 @@ export interface PersonaProfile {
   allowed_hint_depth: number
   interaction_depth_score: number
   persona_summary: string
+  // Multi-subject onboarding expansion fields
+  subject_strengths?: { Physics: string; Chemistry: string; Maths: string }  // "weak"|"medium"|"strong"
+  priority_subject?: string    // "Physics" | "Chemistry" | "Maths"
+  learning_preference?: string // "formula"|"analogy"|"example"|"visual" (explicit from student input)
 }
 
 export interface StudentGenome {
@@ -64,6 +68,7 @@ export interface ChatMessage {
   role: 'student' | 'tutor' | 'divider'
   content: string
   isStreaming?: boolean   // true while SSE tokens are still arriving
+  feedback?: 'thumbs_up' | 'thumbs_down' | null  // per-response student feedback
   metadata?: {
     hint_level?: number
     analysis?: Record<string, unknown>
