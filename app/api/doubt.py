@@ -618,7 +618,8 @@ async def ask_doubt(
         logger.info("Intent classified: %s (active_block=%s)", intent, has_active_block)
 
     # ── 3. Non-subject intents → immediate response, NO DB writes ─────────────
-    if intent in ("greeting", "meta", "emotional", "out_of_scope", "conversational", "explanation"):
+    if intent in ("greeting", "meta", "meta_identity", "meta_pricing", "meta_competitor",
+                  "emotional", "out_of_scope", "conversational", "explanation"):
         result = await engine.handle_non_physics_intent(intent, question)
         return result
 
@@ -927,7 +928,8 @@ async def ask_doubt_stream(
         data = _json.dumps({"token": "", "done": True, **payload})
         yield f"data: {data}\n\n"
 
-    if intent in ("greeting", "meta", "emotional", "out_of_scope"):
+    if intent in ("greeting", "meta", "meta_identity", "meta_pricing", "meta_competitor",
+                  "emotional", "out_of_scope"):
         result = await engine.handle_non_physics_intent(intent, question)
         return StreamingResponse(
             _single_event({"response": result["response"], "intent": intent, "session_id": None}),

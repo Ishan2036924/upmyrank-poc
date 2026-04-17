@@ -214,9 +214,12 @@ Student message: "{message}"
 Categories:
 - greeting: casual hellos, hi, hey, what's up
 - conversational: short affirmative/acknowledgement replies ("yes", "ok", "sure", "got it", "thanks", "cool", "alright") that are NOT subject questions
-- meta: questions about the tutor's capabilities, identity, how it works
+- meta: generic questions about the tutor's capabilities or how it works (e.g. "what can you do", "how do hints work")
+- meta_identity: questions about who/what the AI is, what model it uses ("are you GPT", "who made you", "are you ChatGPT")
+- meta_pricing: questions about UpMyRank pricing, plans, subscription, features ("how much does this cost", "is this free", "what plans are there")
+- meta_competitor: questions comparing UpMyRank to other apps/platforms/tutors ("is Physicswallah better", "vs Byju's", "compared to Aakash")
 - emotional: expressions of stress, frustration, self-doubt, discouragement
-- out_of_scope: questions about subjects outside JEE/NEET scope (Biology for JEE, History, coding, etc.)
+- out_of_scope: questions about subjects outside JEE/NEET scope (Biology for JEE, History, coding, general trivia, etc.). NOTE: basic arithmetic like "2+2" is Maths (subject_doubt), NOT out_of_scope.
 - recap: asking for a summary, review, or list of previous questions/topics covered in this session
 - continuation: a follow-up to an ongoing discussion on the active subject (only if active doubt block is true)
 - explanation: requests to explain/define a concept without solving a problem ("explain capacitance", "what is Le Chatelier's principle", "define integration by parts", "how does osmosis work")
@@ -237,6 +240,22 @@ Few-shot examples:
 "thanks" → conversational
 "got it" → conversational
 "what can you do" → meta
+"how do hints work" → meta
+"who made you" → meta_identity
+"are you gpt" → meta_identity
+"are you chatgpt" → meta_identity
+"what model are you" → meta_identity
+"how much does upmyrank cost" → meta_pricing
+"is this free" → meta_pricing
+"what plans are there" → meta_pricing
+"how much is the subscription" → meta_pricing
+"is physicswallah better than you" → meta_competitor
+"compare yourself to byju's" → meta_competitor
+"vs aakash" → meta_competitor
+"how do you compare with doubtnut" → meta_competitor
+"what is 2+2" → subject_doubt
+"2+2" → subject_doubt
+"solve 5 times 3" → subject_doubt
 "I'm feeling stressed" → emotional
 "explain photosynthesis" → out_of_scope
 "what is the capital of France" → out_of_scope
@@ -280,6 +299,27 @@ META_RESPONSE = (
     "Got a doubt? Let's dive in!"
 )
 
+# FIX 10: sub-class canned responses — be honest about limits instead of
+# recycling the Socratic boilerplate for every meta-ish question.
+
+META_IDENTITY_RESPONSE = (
+    "I'm UpMyRank's AI tutor, built to help you crack JEE and NEET through "
+    "Socratic guidance. I don't share details about the model powering me — "
+    "but I'm happy to help with any Physics, Chemistry, or Maths doubt you have."
+)
+
+META_PRICING_RESPONSE = (
+    "I don't have pricing info at hand — please check upmyrank.com or the "
+    "settings inside the app for current plans. Meanwhile, want to tackle a "
+    "Physics, Chemistry, or Maths doubt?"
+)
+
+META_COMPETITOR_RESPONSE = (
+    "I'm not the right source to compare tutoring platforms — pick whatever "
+    "helps you learn best. What I *can* do is work through doubts with you "
+    "Socratically, one concept at a time. Got a question in mind?"
+)
+
 EMOTIONAL_RESPONSE_PROMPT = """\
 A student sent this message expressing emotional distress:
 
@@ -311,8 +351,9 @@ Subject: {subject}
 Subject guidance: {subject_context}
 
 Student message: "{message}"
+Student tone signal: {tone_signal}
 
-FIX 4 — SCOPE GUARD (check BEFORE explaining):
+SCOPE GUARD (check BEFORE explaining):
 If the student's question is clearly NOT a JEE/NEET Physics, Chemistry, or Maths
 concept (e.g. "capital of France", "how do I cook pasta", "write me a Python
 function", "who won the World Cup", any biology, history, geography, general
@@ -326,7 +367,41 @@ Then stop. Do NOT reveal the answer to the off-topic question anywhere in
 your reply. Do NOT say "the answer is X but..." — pure redirect only.
 
 If the question IS a Physics/Chemistry/Maths concept, proceed with the
-structured explanation below.
+structured explanation below — BUT FIRST adapt your opening based on the
+TONE SIGNAL above:
+
+• TONE SIGNAL = "stressed" (e.g. "I have an exam tomorrow", "I'm so stressed",
+  "please help me"):
+  → Open with ONE short sentence of calm acknowledgement before the overview:
+    "Deep breath — this is manageable. Let me walk you through [concept]..."
+  → Keep the explanation slightly shorter and more focused than usual.
+
+• TONE SIGNAL = "frustrated" (e.g. "you explained this badly", "this is
+  confusing", past-complaint signals):
+  → Open with ONE sentence acknowledging the friction without being defensive:
+    "Let me try this a different way — here's a cleaner take on [concept]..."
+  → Avoid repeating prior phrasing if visible in conversation history.
+
+• TONE SIGNAL = "overconfident" (e.g. "easy", "I'm very good at this",
+  confident wrong attempts visible in message):
+  → Open by acknowledging their approach briefly, then note where the tricky
+    part is BEFORE the overview: "You've got the right instinct on X, but
+    there's a subtle point most students miss — let's pin that down..."
+  → Ensure the overview explicitly addresses the subtle point.
+
+• TONE SIGNAL = "slow_learner" (e.g. "I'm really slow", "sorry I'm bad at
+  this", self-deprecating signals):
+  → Open with ONE sentence of warm encouragement: "No apology needed — this
+    trips up lots of students. Let's take it one step at a time..."
+  → Use the simplest possible analogies in the Intuition section.
+
+• TONE SIGNAL = "complimentary" (e.g. "you're the best tutor", excessive
+  praise):
+  → Open with a brief deflect: "Thanks — let's get you to the answer."
+  → Do NOT gush back. Move straight to content.
+
+• TONE SIGNAL = "default" or missing / neutral question:
+  → No tone-adapting opener. Go straight to the structured overview.
 
 Provide a clear, direct explanation. Structure it as:
 

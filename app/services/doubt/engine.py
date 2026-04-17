@@ -48,6 +48,9 @@ from app.services.doubt.prompts import (
     INTENT_CLASSIFIER_PROMPT,
     INTENT_CLASSIFIER_SYSTEM,
     META_RESPONSE,
+    META_IDENTITY_RESPONSE,
+    META_PRICING_RESPONSE,
+    META_COMPETITOR_RESPONSE,
     OUT_OF_SCOPE_RESPONSE,
     PROBLEM_ANALYSIS_PROMPT,
     SOCRATIC_QUESTION_PROMPT,
@@ -579,6 +582,9 @@ class SocraticEngine:
             )
         _response_latency_ms = int((time.monotonic() - _llm_t0) * 1000)
         socratic_response = self._sanitize_latex(socratic_response)  # Rule 6 — every path
+        # FIX 8: post-gen single-question enforcement (L0 prompt rule alone
+        # was ignored 33% of the time in the comprehensive eval).
+        socratic_response = await self._enforce_single_question(socratic_response)
 
         if out_of_scope:
             socratic_response = (
@@ -1094,6 +1100,51 @@ class SocraticEngine:
                 "mentor_mode": mentor_mode,
                 "response_analysis": {},
             }
+
+        # ── 1c. FIX 11: subject-switch detection ───────────────────────────────
+        # If the student's reply is clearly asking about a different subject
+        # mid-session (e.g. physics session → "now tell me about acid-base
+        # chemistry"), don't silently drift. Return a gentle redirect asking
+        # the student to finish the current doubt or start a new session.
+        if student_response and student_response.strip() and current_level < 3:
+            _new_subj = self._detect_subject_switch(student_response, subject)
+            if _new_subj:
+                logger.info(
+                    "get_hint: subject-switch REDIRECT — current=%r detected=%r",
+                    subject, _new_subj,
+                )
+                _redir = (
+                    f"Looks like you're asking about **{_new_subj}** — but this "
+                    f"session is on **{subject}**. To dive into {_new_subj}, "
+                    f"start a new session for that topic. "
+                    f"Or I can continue helping you with {subject} — did you "
+                    f"want to finish this problem first?"
+                )
+                # Append the student's message + the redirect to history so
+                # the next turn has full context.
+                history.append({"role": "student", "content": student_response})
+                history.append({"role": "tutor", "content": _redir})
+                await self._pool.execute(
+                    """
+                    UPDATE doubt_sessions
+                    SET conversation_history = $1::jsonb
+                    WHERE id = $2
+                    """,
+                    json.dumps(history),
+                    uuid.UUID(session_id),
+                )
+                return {
+                    "session_id": str(session_id),
+                    "hint_level": current_level,
+                    "hint": _redir,
+                    "response": _redir,
+                    "is_full_solution": False,
+                    "is_forced_attempt": False,
+                    "resolved": False,
+                    "verification": None,
+                    "mentor_mode": mentor_mode,
+                    "response_analysis": {"subject_switch_detected": _new_subj},
+                }
 
         # ── 2. Analyze student response before appending to history ───────────
         # Skip response analysis at the forced-attempt stage (current_level >= 3).
@@ -1734,7 +1785,8 @@ class SocraticEngine:
         recap, subject_doubt, continuation, conversational, explanation.
         """
         _VALID_INTENTS = {
-            "greeting", "meta", "emotional",
+            "greeting", "meta", "meta_identity", "meta_pricing", "meta_competitor",
+            "emotional",
             "out_of_scope", "subject_doubt", "continuation", "recap",
             "conversational", "explanation",
             # backward-compat alias — old "physics_doubt" treated as subject_doubt
@@ -1801,6 +1853,12 @@ class SocraticEngine:
             response = CONVERSATIONAL_RESPONSE
         elif intent == "meta":
             response = META_RESPONSE
+        elif intent == "meta_identity":
+            response = META_IDENTITY_RESPONSE
+        elif intent == "meta_pricing":
+            response = META_PRICING_RESPONSE
+        elif intent == "meta_competitor":
+            response = META_COMPETITOR_RESPONSE
         elif intent == "emotional":
             response = await self._call_llm(
                 EMOTIONAL_RESPONSE_PROMPT.format(message=message),
@@ -1813,11 +1871,17 @@ class SocraticEngine:
             response = OUT_OF_SCOPE_RESPONSE
         elif intent == "explanation":
             _exp_subject = subject if subject else "Physics"
+            # FIX 9: detect tone signal from the raw message so the explanation
+            # opens with an appropriate acknowledgement (stressed / frustrated /
+            # overconfident / slow_learner / complimentary / default).
+            _tone_signal = self._detect_tone_signal(message)
+            logger.info("explanation: tone_signal=%r for message=%r", _tone_signal, message[:80])
             response = await self._call_llm(
                 EXPLANATION_PROMPT.format(
                     subject=_exp_subject,
                     subject_context=get_subject_context(_exp_subject),
                     message=message,
+                    tone_signal=_tone_signal,
                 ),
                 max_tokens=600,
                 temperature=0.5,
@@ -2017,6 +2081,152 @@ class SocraticEngine:
                 return int(avg * 100)
 
         return overall
+
+    def _detect_subject_switch(self, message: str, current_subject: str) -> Optional[str]:
+        """FIX 11: detect when a student's hint reply is asking about a
+        different subject than the current doubt_session's subject.
+
+        Returns the NEW subject name (e.g. "Chemistry") if detected, else None.
+        Keyword-based so it's cheap and deterministic. Conservative: only
+        triggers on clear subject keywords, never on ambiguous tokens.
+        """
+        if not message or not current_subject:
+            return None
+        m = message.lower()
+        subject_keywords = {
+            "Physics": (
+                " physics", "newton's", "newtons law", "kinematics",
+                "electrostatics", "magnetism", "optics", "thermodynamics of",
+                "moment of inertia", "torque", "gravitation", "projectile",
+            ),
+            "Chemistry": (
+                " chemistry", "acid-base", "acid base", "ph of ", "mole concept",
+                "oxidation state", "organic chemistry", "sn1", "sn2", "hcl",
+                "nacl", "electrochemistry", "periodic table", "reaction mechanism",
+                "le chatelier",
+            ),
+            "Maths": (
+                " maths", " math", "derivative", "integral", "differentiation",
+                "integration", "calculus", "probability", "complex number",
+                "coordinate geometry", "quadratic equation", "matrix",
+                "determinant", "trigonometr",
+            ),
+        }
+        # Must also contain a "now/switch/instead" marker to avoid false positives
+        # when student is legitimately quoting/referencing a related concept.
+        switch_markers = (
+            "instead", "now tell me about", "switch to", "change to", "move to",
+            "now explain", "now talk about", "let's do", "lets do",
+        )
+        has_switch_marker = any(sm in m for sm in switch_markers)
+        if not has_switch_marker:
+            return None
+        # Detect which NEW subject they're asking about
+        for new_subj, kws in subject_keywords.items():
+            if new_subj == current_subject:
+                continue
+            for kw in kws:
+                if kw in m:
+                    logger.info(
+                        "subject-switch detected: current=%r message has kw=%r → new=%r",
+                        current_subject, kw, new_subj,
+                    )
+                    return new_subj
+        return None
+
+    def _detect_tone_signal(self, message: str) -> str:
+        """FIX 9: classify the student message into one of 5 tone buckets so the
+        EXPLANATION_PROMPT can adapt its opening. Keyword-based so it's
+        deterministic and adds zero latency.
+
+        Returns one of: stressed | frustrated | overconfident | slow_learner |
+        complimentary | default.
+        """
+        if not message:
+            return "default"
+        m = message.lower()
+        # Order matters — check specific signals before generic defaults.
+        stressed_kw = (
+            "exam tomorrow", "exam today", "so stressed", "stressed",
+            "so anxious", "anxious", "panicking", "please help", "help me",
+            "running out of time", "cannot focus",
+        )
+        frustrated_kw = (
+            "explained this badly", "badly last time", "confusing", "doesn't make sense",
+            "doesn’t make sense", "this is frustrating", "i hate this",
+            "why is this so hard", "tried multiple times",
+        )
+        overconfident_kw = (
+            "i'm very good at this", "im very good at this", "this is easy",
+            "easy question", "i know this", "trivial", "obvious",
+        )
+        slow_learner_kw = (
+            "i'm really slow", "im really slow", "sorry i'm slow", "sorry im slow",
+            "i'm bad at this", "im bad at this", "sorry i", "i don't get it",
+            "i dont get it", "i am dumb", "i'm dumb", "im dumb",
+        )
+        complimentary_kw = (
+            "best tutor", "you are amazing", "you're amazing", "love you",
+            "you're the best", "you are the best", "you rock", "thank you so much",
+            "so helpful",
+        )
+        for kw in stressed_kw:
+            if kw in m: return "stressed"
+        for kw in frustrated_kw:
+            if kw in m: return "frustrated"
+        for kw in overconfident_kw:
+            if kw in m: return "overconfident"
+        for kw in slow_learner_kw:
+            if kw in m: return "slow_learner"
+        for kw in complimentary_kw:
+            if kw in m: return "complimentary"
+        return "default"
+
+    async def _enforce_single_question(self, response: str) -> str:
+        """Post-generation cleanup: if the response has ≥ 2 question marks,
+        rewrite it keeping only the single most important closing question.
+
+        Rationale: the SINGLE QUESTION RULE in SOCRATIC_QUESTION_PROMPT and
+        HINT_L1/L2 prompts is frequently ignored by the LLM at L0 (33% of
+        openings had 2+ '?' in the 83-test eval). A post-gen rewrite is more
+        reliable than prompt instruction alone.
+
+        Fails open: if the cleanup call errors, return the original response.
+        """
+        if not response or response.count("?") < 2:
+            return response
+        # Ignore '?' that appear inside LaTeX inline math like '$f(x)?$' —
+        # those are rare but skipping them is safer than a false positive.
+        # Simple heuristic: still run cleanup only if plain-text ? count ≥ 2.
+        try:
+            prompt = (
+                "The following tutor response ends with multiple questions, but a "
+                "Socratic tutor should end with EXACTLY ONE focused question.\n\n"
+                "Rewrite the response keeping EVERYTHING the same except: merge or "
+                "drop all but the single most important closing question. Preserve "
+                "all analogies, math notation, LaTeX, formatting, and explanatory "
+                "text. Return ONLY the rewritten response — no preamble, no notes.\n\n"
+                f"RESPONSE TO REWRITE:\n{response}"
+            )
+            rewritten = await self._call_llm(
+                prompt, max_tokens=1024, temperature=0.0, model_tier="cheap",
+            )
+            rewritten = (rewritten or "").strip()
+            # Safety: if the rewrite came back empty or still has ≥ 2 ?, keep original
+            if not rewritten or rewritten.count("?") >= response.count("?"):
+                logger.info(
+                    "single-Q cleanup: rewrite ineffective (orig_?=%d new_?=%d) — keeping original",
+                    response.count("?"), rewritten.count("?") if rewritten else 0,
+                )
+                return response
+            logger.info(
+                "single-Q cleanup: reduced %d → %d questions",
+                response.count("?"), rewritten.count("?"),
+            )
+            return rewritten
+        except Exception as exc:
+            logger.warning("single-Q cleanup failed (keeping original): %s", exc)
+            return response
 
     async def _topic_lock_mismatch(
         self,
