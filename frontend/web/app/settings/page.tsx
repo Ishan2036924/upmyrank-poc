@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  User, BarChart3, Settings2, SlidersHorizontal,
+  User, BarChart3, Settings2,
   RefreshCw, Lock, AlertTriangle, CheckCircle2, TrendingUp,
   Zap, Target, BookOpen, Star,
 } from 'lucide-react'
@@ -22,7 +22,7 @@ import { SYLLABUS_MAP } from '@/lib/syllabus'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type TabId = 'profile' | 'analytics' | 'preferences'
+type TabId = 'profile' | 'analytics'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -44,15 +44,6 @@ const SUBJECT_CARDS = [
   { name: 'Chemistry' as const, color: '#10b981', bgClass: 'bg-emerald-50', textClass: 'text-emerald-600', borderClass: 'border-emerald-200' },
   { name: 'Maths'     as const, color: '#8b5cf6', bgClass: 'bg-violet-50',  textClass: 'text-violet-600',  borderClass: 'border-violet-200'  },
 ]
-
-const PREF_PREFIX = 'upmyrank_pref_'
-
-// Preference definitions
-const PREF_DEFS = [
-  { key: 'show_hint_badges',    label: 'Show hint level badges',   defaultVal: true  },
-  { key: 'show_confidence_meter', label: 'Show confidence meter',  defaultVal: true  },
-  { key: 'compact_messages',    label: 'Compact message view',      defaultVal: false },
-] as const
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -112,25 +103,6 @@ function adherenceColor(rate: number): string {
   return '#EF4444'
 }
 
-function readPref(key: string, defaultVal: boolean): boolean {
-  if (typeof window === 'undefined') return defaultVal
-  try {
-    const stored = localStorage.getItem(`${PREF_PREFIX}${key}`)
-    if (stored === null) return defaultVal
-    return stored === 'true'
-  } catch {
-    return defaultVal
-  }
-}
-
-function writePref(key: string, val: boolean): void {
-  try {
-    localStorage.setItem(`${PREF_PREFIX}${key}`, String(val))
-  } catch {
-    // localStorage unavailable — silent
-  }
-}
-
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function TabButton({
@@ -153,26 +125,6 @@ function TabButton({
     >
       {icon}
       <span>{label}</span>
-    </button>
-  )
-}
-
-// iOS-style toggle
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none active:scale-95 ${
-        checked ? 'bg-indigo-500' : 'bg-slate-200'
-      }`}
-    >
-      <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-          checked ? 'translate-x-5' : 'translate-x-0.5'
-        }`}
-      />
     </button>
   )
 }
@@ -566,70 +518,6 @@ function AnalyticsTab({ genome, loading }: {
   )
 }
 
-function PreferencesTab() {
-  const [prefs, setPrefs] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {}
-    for (const p of PREF_DEFS) {
-      init[p.key] = readPref(p.key, p.defaultVal)
-    }
-    return init
-  })
-
-  const handleToggle = (key: string, val: boolean) => {
-    writePref(key, val)
-    setPrefs((prev) => ({ ...prev, [key]: val }))
-  }
-
-  return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="space-y-3"
-    >
-      <motion.div
-        variants={cardVariants}
-        className="bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-      >
-        <div className="px-6 py-5 border-b border-slate-100">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-widest flex items-center gap-2">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-indigo-400" />
-            Display Preferences
-          </p>
-          <p className="text-xs text-slate-400 mt-1">Stored locally in your browser. No account sync.</p>
-        </div>
-        <div className="divide-y divide-slate-100/80">
-          {PREF_DEFS.map((p) => (
-            <div key={p.key} className="px-6 py-5 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-800">{p.label}</p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {p.key === 'show_hint_badges'      && 'Shows numbered badges on AI responses indicating hint depth used.'}
-                  {p.key === 'show_confidence_meter' && 'Shows the confidence slider in the chat input area.'}
-                  {p.key === 'compact_messages'      && 'Reduces padding between chat messages for a denser view.'}
-                </p>
-              </div>
-              <Toggle
-                checked={prefs[p.key] ?? p.defaultVal}
-                onChange={(val) => handleToggle(p.key, val)}
-              />
-            </div>
-          ))}
-        </div>
-      </motion.div>
-
-      <motion.div
-        variants={cardVariants}
-        className="bg-slate-50/80 border border-slate-200/60 rounded-2xl px-5 py-4"
-      >
-        <p className="text-xs text-slate-400">
-          Preferences are saved to <code className="text-slate-500 font-mono text-[11px]">localStorage</code> with the key prefix <code className="text-slate-500 font-mono text-[11px]">upmyrank_pref_</code>. Clearing browser data will reset them to defaults.
-        </p>
-      </motion.div>
-    </motion.div>
-  )
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -674,9 +562,8 @@ export default function SettingsPage() {
   }
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'profile',     label: 'Profile',      icon: <User className="h-4 w-4" />              },
-    { id: 'analytics',   label: 'My Analytics', icon: <BarChart3 className="h-4 w-4" />         },
-    { id: 'preferences', label: 'Preferences',  icon: <SlidersHorizontal className="h-4 w-4" /> },
+    { id: 'profile',     label: 'Profile',      icon: <User className="h-4 w-4" />      },
+    { id: 'analytics',   label: 'My Analytics', icon: <BarChart3 className="h-4 w-4" /> },
   ]
 
   const visibleTabs = tabs
@@ -695,7 +582,7 @@ export default function SettingsPage() {
               Settings
             </h1>
             <p className="text-xs text-slate-400 mt-0.5 font-medium uppercase tracking-wide">
-              Profile · Analytics · Preferences
+              Profile · Analytics
             </p>
           </div>
 
@@ -759,17 +646,6 @@ export default function SettingsPage() {
                   </motion.div>
                 )}
 
-                {activeTab === 'preferences' && (
-                  <motion.div
-                    key="preferences"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.25, ease: EASE }}
-                  >
-                    <PreferencesTab />
-                  </motion.div>
-                )}
               </AnimatePresence>
             </div>
           </div>

@@ -209,7 +209,11 @@ async def end_session(
     if result == "UPDATE 0":
         raise HTTPException(status_code=404, detail="Session not found or already ended")
 
-    # Close any open doubt blocks
+    # Close any open doubt blocks via the shared helper so that:
+    #  - engaged-but-abandoned blocks (hint_level >= 1) fire _genome_update_task
+    #    → mastery actually accumulates for unresolved doubts (critical fix)
+    #  - the summarizer fires consistently through one code path
+    from app.api.doubt import _close_doubt_block
     open_blocks = await pool.fetch(
         """
         SELECT doubt_block_id FROM doubt_blocks
@@ -218,14 +222,15 @@ async def end_session(
         session_uuid,
     )
     for block in open_blocks:
-        await pool.execute(
-            "UPDATE doubt_blocks SET ended_at = NOW() WHERE doubt_block_id = $1",
-            block["doubt_block_id"],
-        )
-        # Fire-and-forget summarizer
-        asyncio.create_task(
-            engine.summarize_doubt_block(str(block["doubt_block_id"]))
-        )
+        try:
+            await _close_doubt_block(
+                pool, engine, str(block["doubt_block_id"]), solved=False,
+            )
+        except Exception as exc:
+            logger.warning(
+                "session.end: _close_doubt_block failed for %s (non-fatal): %s",
+                block["doubt_block_id"], exc,
+            )
 
     # ── Memory update: blocking summarize, then background compress ───────────
     try:

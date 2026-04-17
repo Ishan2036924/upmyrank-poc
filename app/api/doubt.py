@@ -137,17 +137,39 @@ async def _create_doubt_block(
 
 
 async def _close_doubt_block(pool, engine, doubt_block_id: str, solved: bool):
-    """Close a doubt block and fire-and-forget the summarizer."""
-    await pool.execute(
+    """Close a doubt block, fire summarizer, and (if student engaged but didn't
+    solve) fire a genome update with give_up_flag=True so mastery captures
+    negative signal from abandoned sessions.
+
+    Why: previously `_genome_update_task` fired ONLY on resolved=True. Students
+    rarely click "Got it!", so 98% of doubt_blocks produced no mastery signal
+    (confirmed: 83/84 concept_mastery rows stuck at 0). Now any block with
+    hint_level >= 1 (student engaged) produces a signal on close.
+    """
+    block = await pool.fetchrow(
         """
         UPDATE doubt_blocks
         SET ended_at = NOW(), solved = $2
         WHERE doubt_block_id = $1
+        RETURNING doubt_session_id, hint_level, misconception_id
         """,
         uuid.UUID(doubt_block_id),
         solved,
     )
     asyncio.create_task(engine.summarize_doubt_block(doubt_block_id))
+
+    # Fire mastery update for abandoned sessions where the student actually
+    # engaged with at least one hint. Resolved=True path already fires its
+    # own genome update at the call site, so skip here to avoid double-writing.
+    if block and not solved and (block["hint_level"] or 0) >= 1:
+        asyncio.create_task(
+            _genome_update_task(
+                pool,
+                str(block["doubt_session_id"]),
+                give_up_flag=True,
+                misconception_id=block["misconception_id"],
+            )
+        )
 
 
 # ── background genome update ──────────────────────────────────────────────────

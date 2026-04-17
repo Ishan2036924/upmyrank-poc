@@ -4,6 +4,7 @@ Feedback API — per-response thumbs up/down collection.
 POST /feedback/response — upsert a thumbs_up/thumbs_down rating for a specific AI message
 """
 import logging
+import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -34,6 +35,26 @@ async def submit_feedback(
     """
     pool = request.app.state.db_pool
 
+    logger.info(
+        "feedback.submit: student=%s session=%s idx=%d rating=%s",
+        student_id, body.doubt_session_id, body.response_idx, body.rating,
+    )
+
+    try:
+        # Explicit UUID casting — asyncpg requires UUID type for UUID columns
+        # even when a valid UUID string is provided for text-typed params.
+        student_uuid = uuid.UUID(student_id)
+        session_uuid = uuid.UUID(body.doubt_session_id)
+    except (ValueError, TypeError) as exc:
+        logger.error(
+            "feedback.submit: invalid UUID — student=%s session=%s (%s)",
+            student_id, body.doubt_session_id, exc,
+        )
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid UUID format: {exc}",
+        ) from exc
+
     try:
         await pool.execute(
             """
@@ -42,14 +63,15 @@ async def submit_feedback(
             ON CONFLICT (student_id, doubt_session_id, response_idx)
             DO UPDATE SET rating = EXCLUDED.rating
             """,
-            student_id,
-            body.doubt_session_id,
+            student_uuid,
+            session_uuid,
             body.response_idx,
             body.rating,
         )
+        logger.info("feedback.submit: inserted OK student=%s", student_id)
     except Exception as exc:
-        logger.error("Failed to save feedback: %s", exc)
-        raise HTTPException(status_code=500, detail="Failed to save feedback")
+        logger.exception("feedback.submit: DB insert failed — %s", exc)
+        raise HTTPException(status_code=500, detail=f"Failed to save feedback: {exc}")
 
     return {"status": "ok"}
 
