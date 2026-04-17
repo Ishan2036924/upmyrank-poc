@@ -152,10 +152,10 @@ export default function AdminPage() {
   useEffect(() => {
     apiGet('/admin/is_admin')
       .then((d: any) => {
-        if (!d.is_admin) router.replace('/dashboard')
+        if (!d.is_admin) router.replace('/')
         else setAuthChecked(true)
       })
-      .catch(() => router.replace('/dashboard'))
+      .catch(() => router.replace('/auth/login'))
   }, [router])
 
   // ── Data loaders ───────────────────────────────────────────────────────────
