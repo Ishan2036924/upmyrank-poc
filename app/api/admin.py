@@ -17,20 +17,23 @@ GET  /admin/quality-report?days=7     — aggregate + worst turns + thumbs (lega
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import math
 import uuid
 from datetime import datetime
 from statistics import mean
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Header, Query, Request
 from pydantic import BaseModel
 
 from app.config import settings
 from app.db.database import get_pool
 from app.middleware.auth import get_current_student_id
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
@@ -40,15 +43,32 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 async def check_admin(
     student_id: str = Depends(get_current_student_id),
     db=Depends(get_pool),
+    authorization: str = Header(None),
 ):
-    """Return whether the authenticated student is a configured admin."""
-    # Check email list (preferred method)
+    """Return whether the authenticated student is a configured admin.
+
+    Checks, in order:
+      1. `students.email` column (fast path — populated for new signups)
+      2. Supabase JWT `user.email` claim (fallback for pre-email-migration users)
+      3. Legacy `admin_student_id` UUID match (backward compat)
+
+    Every decision is logged so Render logs reveal the exact mismatch.
+    """
+    # Parse allowed admin emails from env
     allowed_emails: list[str] = [
         e.strip().lower()
         for e in settings.admin_emails.split(",")
         if e.strip()
     ]
+    logger.info(
+        "is_admin: student_id=%s admin_emails_configured=%d (%r)",
+        student_id, len(allowed_emails), allowed_emails,
+    )
+
     is_admin = False
+    student_email = ""
+
+    # ── 1. Try DB email column ───────────────────────────────────────────────
     if allowed_emails:
         try:
             row = await db.fetchrow(
@@ -56,12 +76,51 @@ async def check_admin(
                 uuid.UUID(str(student_id)),
             )
             student_email = (row["email"] or "").lower() if row else ""
-            is_admin = student_email in allowed_emails
-        except Exception:
-            pass
-    # Backward compat: also allow admin_student_id
+            logger.info(
+                "is_admin: DB email lookup student=%s email=%r",
+                student_id, student_email,
+            )
+            if student_email and student_email in allowed_emails:
+                is_admin = True
+        except Exception as exc:
+            logger.warning("is_admin: DB email lookup failed: %s", exc)
+
+    # ── 2. Fallback: fetch email from Supabase JWT ───────────────────────────
+    # Covers students who signed up before the email-backfill migration —
+    # students.email is NULL for them but the Supabase auth record has it.
+    if not is_admin and allowed_emails and authorization and authorization.startswith("Bearer "):
+        try:
+            from app.middleware.auth import _get_supabase
+            token = authorization.removeprefix("Bearer ").strip()
+            client = _get_supabase()
+            jwt_resp = await asyncio.to_thread(client.auth.get_user, token)
+            jwt_email = (jwt_resp.user.email or "").lower() if jwt_resp and jwt_resp.user else ""
+            logger.info(
+                "is_admin: JWT email fallback student=%s jwt_email=%r",
+                student_id, jwt_email,
+            )
+            if jwt_email and jwt_email in allowed_emails:
+                is_admin = True
+                # Opportunistically backfill the DB so future requests skip the JWT call
+                if not student_email:
+                    try:
+                        await db.execute(
+                            "UPDATE students SET email = $1 WHERE id = $2 AND (email IS NULL OR email = '')",
+                            jwt_email, uuid.UUID(str(student_id)),
+                        )
+                        logger.info("is_admin: backfilled email for student=%s", student_id)
+                    except Exception as exc:
+                        logger.warning("is_admin: email backfill failed (non-fatal): %s", exc)
+        except Exception as exc:
+            logger.warning("is_admin: JWT email fallback failed: %s", exc)
+
+    # ── 3. Legacy: exact UUID match via ADMIN_STUDENT_ID ─────────────────────
     if not is_admin and settings.admin_student_id:
-        is_admin = str(student_id) == settings.admin_student_id
+        if str(student_id) == settings.admin_student_id:
+            is_admin = True
+            logger.info("is_admin: matched via legacy ADMIN_STUDENT_ID")
+
+    logger.info("is_admin: FINAL decision student=%s is_admin=%s", student_id, is_admin)
     return {"is_admin": is_admin}
 
 
