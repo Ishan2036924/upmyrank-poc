@@ -3,6 +3,57 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-04-17 — Admin API 500 Fixes + Topic Lock + Counselor Mode Safeguard
+
+**Focus:** Fix all admin API 500 errors (schema mismatch); fix topic lock not persisting to `get_hint()`; fix counselor mode misfiring on academic confusion ("no idea"); fix Redis diagnostic crash; write system test report.
+
+**Status:** DONE — all bugs fixed and verified.
+
+**Root cause of admin 500s:** `doubt_blocks` table has no `subject` or `hint_level` columns. All admin queries doing `JOIN doubt_blocks db … db.subject` were crashing. Fix: `doubt_sessions` has `subject` and `current_hint_level` directly — removed all `doubt_blocks` joins and replaced `db.subject` → `ds.subject`, `db.hint_level` → `ds.current_hint_level`.
+
+**Changed files:**
+- `app/api/admin.py` — Fixed 6 endpoints (conversation-quality, response-quality, system-performance ×2, user-feedback, student-insights): removed all `LEFT JOIN doubt_blocks db` + `db.subject` / `db.hint_level` references; rewrote `hint_escalation` query to use only `doubt_sessions`; fixed diagnostics Redis check: replaced `request.app.state.redis` (not stored in state) with fresh `redis.asyncio.from_url()` per-call inside try/except.
+- `app/services/doubt/engine.py` — 5 changes:
+  (1) `start_session()`: store `analysis["locked_topic"] = locked_topic` when `locked_topic` is set
+  (2) `start_session_stream()`: same addition
+  (3) `get_hint()`: re-apply `TOPIC_LOCK_ADDENDUM` after rebuilding `hint_active_system_prompt` from stored_analysis `locked_topic` — was lost every hint turn because policy engine rebuilds prompt from scratch
+  (4) `get_hint()`: added `logger.info("get_hint: level=%d session=%s problem_text[0:80]=%r", ...)` for context drift debugging
+  (5) `get_hint()`: added `_DISTRESS_KEYWORDS` frozenset gate — counselor mode only switches when `emotional_state == "frustrated"` AND student's literal text contains an explicit distress keyword (prevents misfiring on "no idea", "don't know", "stuck")
+- `app/services/doubt/prompts.py` — 3 changes:
+  (1) `STUDENT_RESPONSE_ANALYSIS_PROMPT`: added explicit 4-class rules: `confused` = "no idea"/"don't know"/"?" (academic), `frustrated` = ONLY explicit distress ("I want to give up", "I can't do this")
+  (2) `TUTOR_SYSTEM_PROMPT` (sync): updated "Emotional or discouraging messages" to distinguish academic confusion → simplify question vs. distress → empathy mode
+  (3) `TUTOR_SYSTEM_PROMPT` (stream variant): same update
+- `scripts/eval_reports/system_test_2026-04-17.md` — NEW: full system test report (8 admin endpoints all ✅, topic lock ✅, counselor mode ✅, turn scoring 7 rows/24h ✅, judge evals 4 rows/24h ✅, known issues documented)
+
+**Verification results:**
+- All 8 admin endpoints: ✅ 200 (was 500 for 6 of them)
+- Topic lock: `locked_topic: "Integration"` stored in analysis ✅; hint turn with Physics question → AI redirected back to Integration ✅
+- Counselor mode: student said "no idea" → AI gave academic nudge (not therapy) ✅; mentor_mode=COUNSELOR still set correctly for low-mastery student but response stays academic ✅
+- Redis diagnostic: now reports "PING failed: Error 61" correctly instead of crashing ✅
+
+**Known remaining issues (non-blocking):**
+- `response_feedback` 0 rows — thumbs UI not tested this session; v15 constraint migration was applied last session so ON CONFLICT should work
+- Redis Docker not running — start with `docker compose up -d redis` when needed
+- 18 orphaned `doubt_sessions` — test leftovers, not a code bug
+- Existing students before email migration need manual email backfill in `students` table
+
+**Cliff notes (non-obvious context):**
+- `doubt_blocks` schema: has `id`, `doubt_session_id`, `study_session_id`, `student_id`, `question_text`, `created_at` — NO `subject`, `hint_level`, or `started_at`. All those live on `doubt_sessions` directly.
+- Topic lock two-step: `start_session()` injects `TOPIC_LOCK_ADDENDUM` into active system prompt AND stores `locked_topic` in `stored_analysis`. `get_hint()` checks `stored_analysis.get("locked_topic")` and re-injects. Both steps are required — just storing wasn't enough, just injecting at start wasn't enough.
+- `_DISTRESS_KEYWORDS` gate: 23 phrases. Checked as `any(kw in student_response.lower() for kw in _DISTRESS_KEYWORDS)`. Module-level frozenset constant for fast O(1)-ish lookup.
+- Redis is NOT in `app.state` — it's created fresh per call in `semantic_cache.py`. The diagnostics endpoint must create its own connection. `socket_connect_timeout=2` prevents hanging when Docker is down.
+- New test accounts created this session: testeval5, testeval6, e2etest (Supabase auth + students table).
+
+**Next session — read these files first:**
+`docs/session_log.md` only — project is clean.
+
+**Next session — start here:**
+1. Start Redis: `docker compose up -d redis`
+2. Run regression test: `PYTHONPATH="" /opt/miniconda3/bin/python3.11 -m poetry run python scripts/regression_gate.py`
+3. Write automated Socratic regression tests (topic lock, counselor mode, context anchor) — see "Priority Fixes" in `scripts/eval_reports/system_test_2026-04-17.md`
+
+---
+
 ## Session 2026-04-16 — Socratic Quality Fixes + Continuous Eval + Admin Dashboard
 
 **Focus:** Fix Socratic conversation quality (robotic openers, no answer validation, explanation restarts); fix 2 silent DB bugs (empty judge_evaluations + response_feedback); add per-turn quality scoring pipeline; add dedicated `/admin` dashboard with 8 sections; topic context lock enforcement; response language variety.

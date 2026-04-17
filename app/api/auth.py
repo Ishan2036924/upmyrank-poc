@@ -77,12 +77,13 @@ async def signup(body: SignupRequest, request: Request):
     try:
         await pool.execute(
             """
-            INSERT INTO students (id, name, exam_type, target_year)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (id) DO NOTHING
+            INSERT INTO students (id, name, email, exam_type, target_year)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email
             """,
             student_id,
             body.name,
+            body.email,
             body.exam_type,
             body.target_year,
         )

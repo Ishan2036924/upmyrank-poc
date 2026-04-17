@@ -245,11 +245,11 @@ async def platform_health(
     )
     sessions_per_day = [{"date": str(r["day"]), "count": int(r["cnt"])} for r in spd_rows]
 
-    # Subject distribution
+    # Subject distribution — use session_metrics which has the subject column
     subj_rows = await db.fetch(
         """
         SELECT subject, COUNT(*) AS cnt
-        FROM doubt_blocks WHERE subject IS NOT NULL
+        FROM session_metrics WHERE subject IS NOT NULL
         GROUP BY subject
         """
     )
@@ -364,10 +364,9 @@ async def conversation_quality(
         SELECT ctq.doubt_session_id, ctq.turn_index, ctq.student_message, ctq.ai_response,
                ctq.validation_score, ctq.appropriateness, ctq.restart_detected,
                ctq.single_question, ctq.judge_rationale,
-               db.subject, db.hint_level
+               ds.subject, ds.current_hint_level AS hint_level
         FROM conversation_turn_quality ctq
         LEFT JOIN doubt_sessions ds ON ds.id = ctq.doubt_session_id
-        LEFT JOIN doubt_blocks db ON db.doubt_session_id = ds.id
         WHERE ctq.scored_at >= NOW() - INTERVAL '{days} days'
           AND (ctq.validation_score = 0 OR ctq.restart_detected = TRUE OR ctq.appropriateness = 0)
         ORDER BY (COALESCE(ctq.validation_score, 0) + COALESCE(ctq.appropriateness, 0)) ASC,
@@ -383,10 +382,9 @@ async def conversation_quality(
         SELECT ctq.doubt_session_id, ctq.turn_index, ctq.student_message, ctq.ai_response,
                ctq.validation_score, ctq.appropriateness, ctq.restart_detected,
                ctq.single_question, ctq.judge_rationale,
-               db.subject, db.hint_level
+               ds.subject, ds.current_hint_level AS hint_level
         FROM conversation_turn_quality ctq
         LEFT JOIN doubt_sessions ds ON ds.id = ctq.doubt_session_id
-        LEFT JOIN doubt_blocks db ON db.doubt_session_id = ds.id
         WHERE ctq.scored_at >= NOW() - INTERVAL '{days} days'
           AND ctq.validation_score = 2 AND ctq.appropriateness = 2
           AND ctq.restart_detected = FALSE AND ctq.single_question = TRUE
@@ -448,17 +446,16 @@ async def response_quality(
 
     subj_rows = await db.fetch(
         f"""
-        SELECT db.subject,
+        SELECT ds.subject,
                AVG(je.pedagogical_score)::FLOAT AS avg_ped,
                AVG(je.factual_score)::FLOAT AS avg_fac,
                AVG(je.overall_score)::FLOAT AS avg_overall,
                COUNT(*) AS cnt
         FROM judge_evaluations je
         JOIN doubt_sessions ds ON ds.id = je.doubt_session_id
-        JOIN doubt_blocks db ON db.doubt_session_id = ds.id
         WHERE je.evaluated_at >= NOW() - INTERVAL '{days} days' AND je.overall_score >= 0
-          AND db.subject IS NOT NULL
-        GROUP BY db.subject
+          AND ds.subject IS NOT NULL
+        GROUP BY ds.subject
         """
     )
     by_subject: Dict[str, Any] = {}
@@ -538,10 +535,9 @@ async def system_performance(
     # Slowest 5 sessions
     slow_rows = await db.fetch(
         f"""
-        SELECT sm.retrieval_latency_ms, ds.id AS doubt_session_id, db.subject
+        SELECT sm.retrieval_latency_ms, ds.id AS doubt_session_id, ds.subject
         FROM session_metrics sm
         JOIN doubt_sessions ds ON ds.id = sm.doubt_session_id
-        LEFT JOIN doubt_blocks db ON db.doubt_session_id = ds.id
         WHERE sm.created_at >= NOW() - INTERVAL '{days} days'
           AND sm.retrieval_latency_ms IS NOT NULL
         ORDER BY sm.retrieval_latency_ms DESC
@@ -557,15 +553,14 @@ async def system_performance(
     # Per-subject latency
     subj_lat_rows = await db.fetch(
         f"""
-        SELECT db.subject,
+        SELECT ds.subject,
                AVG(sm.retrieval_latency_ms)::INT AS avg_ret,
                AVG(se.response_latency_ms)::INT AS avg_llm
         FROM session_metrics sm
         JOIN doubt_sessions ds ON ds.id = sm.doubt_session_id
-        LEFT JOIN doubt_blocks db ON db.doubt_session_id = ds.id
         LEFT JOIN session_events se ON se.session_id = ds.id
-        WHERE sm.created_at >= NOW() - INTERVAL '{days} days' AND db.subject IS NOT NULL
-        GROUP BY db.subject
+        WHERE sm.created_at >= NOW() - INTERVAL '{days} days' AND ds.subject IS NOT NULL
+        GROUP BY ds.subject
         """
     )
     latency_by_subject: Dict[str, Any] = {
@@ -632,14 +627,13 @@ async def user_feedback(
 
     subj_rows = await db.fetch(
         f"""
-        SELECT db.subject,
+        SELECT ds.subject,
                COUNT(*) FILTER (WHERE rf.rating = 'thumbs_up') AS up,
                COUNT(*) FILTER (WHERE rf.rating = 'thumbs_down') AS down
         FROM response_feedback rf
         JOIN doubt_sessions ds ON ds.id = rf.doubt_session_id
-        LEFT JOIN doubt_blocks db ON db.doubt_session_id = ds.id
-        WHERE rf.created_at >= NOW() - INTERVAL '{days} days' AND db.subject IS NOT NULL
-        GROUP BY db.subject
+        WHERE rf.created_at >= NOW() - INTERVAL '{days} days' AND ds.subject IS NOT NULL
+        GROUP BY ds.subject
         """
     )
     by_subject: Dict[str, Any] = {
@@ -756,12 +750,11 @@ async def student_insights(
     )
     subj_mastery_rows = await db.fetch(
         """
-        SELECT db.subject, AVG(cm.mastery_score)::FLOAT AS avg_mastery
+        SELECT ds.subject, AVG(cm.mastery_score)::FLOAT AS avg_mastery
         FROM concept_mastery cm
         JOIN doubt_sessions ds ON ds.student_id = cm.student_id
-        JOIN doubt_blocks db ON db.doubt_session_id = ds.id
-        WHERE db.subject IS NOT NULL
-        GROUP BY db.subject
+        WHERE ds.subject IS NOT NULL
+        GROUP BY ds.subject
         """
     )
     mastery_by_subject = {r["subject"]: _r(r["avg_mastery"]) for r in subj_mastery_rows}
@@ -816,12 +809,11 @@ async def student_insights(
     # Hint escalation by topic
     esc_rows = await db.fetch(
         f"""
-        SELECT db.topic, AVG(ds.current_hint_level)::FLOAT AS avg_max_hint, COUNT(*) AS cnt
+        SELECT ds.topic, AVG(ds.current_hint_level)::FLOAT AS avg_max_hint, COUNT(*) AS cnt
         FROM doubt_sessions ds
-        JOIN doubt_blocks db ON db.doubt_session_id = ds.id
-        WHERE db.started_at >= NOW() - INTERVAL '{days} days'
-          AND ds.current_hint_level >= 2 AND db.topic IS NOT NULL
-        GROUP BY db.topic
+        WHERE ds.created_at >= NOW() - INTERVAL '{days} days'
+          AND ds.current_hint_level >= 2 AND ds.topic IS NOT NULL
+        GROUP BY ds.topic
         ORDER BY avg_max_hint DESC
         LIMIT 15
         """
@@ -922,11 +914,13 @@ async def run_diagnostics(
         ) or 0)
         return {"status": "warning" if cnt > 5 else "ok", "detail": f"{cnt} sessions with retrieval > 10s in last 7d", "value": cnt}
 
-    # Redis connectivity
+    # Redis connectivity — create a fresh connection (Redis not stored in app.state)
     async def _redis():
         try:
-            redis = request.app.state.redis
-            await redis.ping()
+            import redis.asyncio as aioredis
+            r = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
+            await r.ping()
+            await r.aclose()
             return {"status": "ok", "detail": "Redis responded to PING", "value": True}
         except Exception as exc:
             return {"status": "error", "detail": f"Redis PING failed: {exc}", "value": False}

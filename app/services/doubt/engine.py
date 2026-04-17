@@ -98,6 +98,21 @@ _PROBLEM_SIGNALS: frozenset = frozenset({
     "determine", "compute", "evaluate", "obtain", "show that",
 })
 
+# ── Distress keyword gate for COUNSELOR mode switching ───────────────────────
+# The emotional state classifier sometimes returns "frustrated" for academic
+# confusion ("no idea", "don't know"). We only switch to COUNSELOR mode when
+# the student's own words contain genuine emotional distress signals.
+# Academic confusion ("no idea", "stuck", "confused") is handled by the
+# CONFUSED branch in HINT_LEVEL_1/2_PROMPT — it does NOT trigger COUNSELOR mode.
+_DISTRESS_KEYWORDS: frozenset = frozenset({
+    "give up", "giving up", "can't do this", "cannot do this",
+    "too hard", "too difficult", "hopeless", "useless",
+    "want to quit", "want to drop", "so stressed", "so anxious",
+    "breaking down", "hate this", "hate studying", "hate maths",
+    "hate math", "hate physics", "hate chemistry",
+    "i'm done", "im done", "i quit", "this is pointless",
+})
+
 # ── Solution-seeker pattern (server-side regex, no LLM cost) ─────────────────
 # Catches soft solution-seeking that does NOT trigger the frontend GIVE_UP_RE
 # (which sets jump_to_full=True for explicit give-up phrases).
@@ -369,8 +384,10 @@ class SocraticEngine:
                     "brief_analysis": question,
                 }
 
-        # Store mentor_mode in analysis so get_hint() can retrieve it later
+        # Store mentor_mode + locked_topic in analysis so get_hint() can retrieve them later
         analysis["mentor_mode"] = mentor_mode
+        if locked_topic:
+            analysis["locked_topic"] = locked_topic
 
         # ── 3. Subject classification — pre-seeds the agentic loop ──────────────
         # Short-circuit: if subject is already a known SUPPORTED_SUBJECT (e.g.
@@ -715,6 +732,8 @@ class SocraticEngine:
                     }
 
             analysis["mentor_mode"] = mentor_mode
+            if locked_topic:
+                analysis["locked_topic"] = locked_topic
 
             # ── 3. Subject classification ────────────────────────────────────────
             # Short-circuit: skip gpt-4o-mini call when subject is pre-known
@@ -1013,11 +1032,24 @@ class SocraticEngine:
                     conversation_history=history,
                     student_response=student_response,
                 )
-                # Adapt mentor mode if student seems frustrated
+                # Adapt mentor mode if student shows genuine emotional distress.
+                # Guard: only switch to COUNSELOR when the student's own words contain
+                # explicit distress keywords — NOT for academic confusion ("no idea",
+                # "don't know", "stuck"). Academic confusion is handled by the CONFUSED
+                # branch in HINT_LEVEL_1/2_PROMPT without triggering counselor persona.
                 if response_analysis.get("emotional_state") == "frustrated":
-                    logger.info("Student seems frustrated — switching to COUNSELOR mode.")
-                    mentor_mode = "COUNSELOR"
-                    stored_analysis["mentor_mode"] = "COUNSELOR"
+                    _resp_lower = (student_response or "").lower()
+                    if any(kw in _resp_lower for kw in _DISTRESS_KEYWORDS):
+                        logger.info(
+                            "Student distress confirmed (keyword match) — switching to COUNSELOR mode."
+                        )
+                        mentor_mode = "COUNSELOR"
+                        stored_analysis["mentor_mode"] = "COUNSELOR"
+                    else:
+                        logger.info(
+                            "LLM returned frustrated but no distress keywords found "
+                            "(likely academic confusion) — keeping %s mode.", mentor_mode
+                        )
             except Exception as exc:
                 logger.warning("Response analysis failed (non-fatal): %s", exc)
 
@@ -1202,6 +1234,11 @@ class SocraticEngine:
                 )
 
         # ── 7. Format conversation and student response for prompts ───────────
+        # Log problem_text to verify context lock is anchored to the correct problem.
+        logger.info(
+            "get_hint: level=%d session=%s problem_text[0:80]=%r",
+            new_level, session_id, problem_text[:80],
+        )
         conversation_text = self._format_conversation(history)
         student_response_text = (student_response or "").strip() or "(no response provided)"
         analysis_json = json.dumps(stored_analysis, indent=2)
@@ -1282,6 +1319,21 @@ class SocraticEngine:
                 hint_active_system_prompt = TUTOR_SYSTEM_PROMPT.format(
                     subject_context=_hint_subject_context,
                 )
+
+        # ── 9b. Re-apply topic lock addendum in hint turns ───────────────────
+        # start_session() appended TOPIC_LOCK_ADDENDUM to active_system_prompt but
+        # get_hint() rebuilds the system prompt from scratch via the policy engine.
+        # We store locked_topic in stored_analysis during start_session(); re-apply here.
+        _hint_locked_topic = stored_analysis.get("locked_topic")
+        if _hint_locked_topic and new_level != 3:
+            hint_active_system_prompt += "\n\n" + TOPIC_LOCK_ADDENDUM.format(
+                locked_topic=_hint_locked_topic,
+                subject=_hint_subject,
+            )
+            logger.info(
+                "get_hint: TOPIC_LOCK_ADDENDUM applied for topic=%r subject=%r level=%d",
+                _hint_locked_topic, _hint_subject, new_level,
+            )
 
         # Append max_concepts constraint for HIGH/MEDIUM scaffolding (not LOW = max 5)
         if hint_pedagogy_config is not None and hint_pedagogy_config.max_concepts < 5:
