@@ -168,10 +168,12 @@ const ACTION_CARDS = [
 export default function Home() {
   const { studentId } = useAuth()
   const [genome, setGenome] = useState<StudentGenome | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     if (studentId) {
       apiGet(`/student/${studentId}`).then(setGenome).catch(console.error)
+      apiGet('/admin/is_admin').then((d: any) => setIsAdmin(!!d?.is_admin)).catch(() => {})
     }
   }, [studentId])
 
@@ -369,6 +371,27 @@ export default function Home() {
                     </motion.div>
                   ))}
                 </motion.div>
+              </motion.div>
+            )}
+
+            {/* ── Admin shortcut (admin-only) ───────────────────────── */}
+            {isAdmin && (
+              <motion.div variants={itemVariants}>
+                <Link
+                  href="/admin"
+                  className="group flex items-center justify-between bg-slate-900/5 border border-slate-200/60 rounded-2xl px-5 py-3.5 hover:bg-slate-900/8 hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center">
+                      <BarChart3 className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-slate-700">Admin Dashboard</div>
+                      <div className="text-xs text-slate-400">Platform health · Socratic quality · Diagnostics</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all duration-200" />
+                </Link>
               </motion.div>
             )}
 

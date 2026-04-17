@@ -129,6 +129,7 @@ const PIE_COLORS: Record<string, string> = { Physics: '#6366f1', Chemistry: '#06
 export default function AdminPage() {
   const router = useRouter()
   const [authChecked, setAuthChecked] = useState(false)
+  const [authDenied, setAuthDenied] = useState(false)
   const [activeSection, setActiveSection] = useState<Section>('platform')
 
   // Section data
@@ -152,7 +153,7 @@ export default function AdminPage() {
   useEffect(() => {
     apiGet('/admin/is_admin')
       .then((d: any) => {
-        if (!d.is_admin) router.replace('/')
+        if (!d.is_admin) setAuthDenied(true)
         else setAuthChecked(true)
       })
       .catch(() => router.replace('/auth/login'))
@@ -215,6 +216,34 @@ export default function AdminPage() {
     if (activeSection === 'knowledge' && !kbData)             loadKb()
     if (activeSection === 'students' && !studentsData)        loadStudents()
   }, [activeSection, authChecked]) // eslint-disable-line
+
+  if (authDenied) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full rounded-2xl bg-white border border-red-100 shadow-lg p-8 text-center space-y-4">
+          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto">
+            <XCircle className="w-7 h-7 text-red-500" />
+          </div>
+          <h1 className="text-xl font-semibold text-slate-800">Admin access not configured</h1>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            Your account is not in the admin list. Add your email to Render environment variables:
+          </p>
+          <code className="block bg-slate-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono text-left">
+            ADMIN_EMAILS=srivastava.ish@northeastern.edu
+          </code>
+          <p className="text-xs text-slate-400">
+            Render → upmyrank-api → Environment → Add Variable → Redeploy
+          </p>
+          <button
+            onClick={() => router.replace('/')}
+            className="mt-2 text-sm text-purple-600 hover:underline"
+          >
+            ← Back to dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (!authChecked) {
     return (

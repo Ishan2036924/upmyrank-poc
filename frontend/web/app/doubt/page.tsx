@@ -606,7 +606,8 @@ function DoubtPageInner() {
         response_idx:     msgIdx,
         rating:           newRating,
       })
-    } catch {
+    } catch (err) {
+      console.error('[feedback] POST /feedback/response failed:', err)
       // Revert optimistic update on error
       setMessages(prev => prev.map((m, i) => {
         if (i !== msgIdx) return m
