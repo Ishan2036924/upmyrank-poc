@@ -56,6 +56,7 @@ from app.services.doubt.prompts import (
     SUBJECT_CLASSIFIER_PROMPT,
     SUBJECT_CLASSIFIER_SYSTEM,
     SYSTEM_PROMPT_FORCED_ATTEMPT,
+    TOPIC_LOCK_ADDENDUM,
     TUTOR_SYSTEM_PROMPT,
     build_system_prompt,
     get_subject_context,
@@ -66,6 +67,7 @@ from app.services.policy.engine import select_pedagogy
 from app.services.doubt.misconceptions import check_for_misconception
 from app.services.eval.judge import score_response
 from app.services.eval.logger import log_scaffolding_score
+from app.services.eval.turn_scorer import score_turn
 from app.services.cache.semantic_cache import cache_response, get_cached_response
 from app.services.mastery import update_concept_mastery
 from app.services.rag.retriever import Retriever
@@ -439,6 +441,13 @@ class SocraticEngine:
                 subject_context=_subject_context,
             )
 
+        # ── Topic lock addendum: append scope enforcement when topic is pinned ─
+        if locked_topic:
+            active_system_prompt += "\n\n" + TOPIC_LOCK_ADDENDUM.format(
+                locked_topic=locked_topic,
+                subject=_effective_subject,
+            )
+
         # ── 9. Generate personalised Socratic response ────────────────────────
         logger.info("Generating Socratic response (mentor=%s) …", mentor_mode)
         _llm_t0 = time.monotonic()
@@ -766,6 +775,13 @@ class SocraticEngine:
                     subject_context=_stream_subject_context,
                 )
 
+            # ── 8b. Topic lock addendum (stream) ───────────────────────────────
+            if locked_topic:
+                active_system_prompt += "\n\n" + TOPIC_LOCK_ADDENDUM.format(
+                    locked_topic=locked_topic,
+                    subject=_eff_subject_stream,
+                )
+
             # ── 9. Build messages for streaming LLM call ─────────────────────
             socratic_prompt = SOCRATIC_QUESTION_PROMPT.format(
                 subject=_eff_subject_stream,
@@ -1005,6 +1021,28 @@ class SocraticEngine:
             except Exception as exc:
                 logger.warning("Response analysis failed (non-fatal): %s", exc)
 
+        # ── 2b. Format response_analysis into human-readable assessment ───────
+        # This injects what the student got right/wrong into the LLM's context
+        # explicitly, rather than asking the LLM to infer from raw conversation.
+        _response_assessment_text = ""
+        if response_analysis:
+            understood = response_analysis.get("understood_correctly", [])
+            gaps = response_analysis.get("knowledge_gaps", [])
+            suggestion = response_analysis.get("suggested_next_action", "")
+            emotional = response_analysis.get("emotional_state", "")
+            parts: list[str] = []
+            if understood:
+                parts.append(f"Student correctly understood: {', '.join(understood)}")
+            else:
+                parts.append("Student has not yet demonstrated correct understanding")
+            if gaps:
+                parts.append(f"Gaps to address: {', '.join(gaps)}")
+            if suggestion:
+                parts.append(f"Suggested next step: {suggestion}")
+            if emotional and emotional not in ("uncertain",):
+                parts.append(f"Student emotional state: {emotional}")
+            _response_assessment_text = "\n".join(parts)
+
         # ── 3. Append student response to history ─────────────────────────────
         if student_response and student_response.strip():
             history.append({"role": "student", "content": student_response})
@@ -1178,6 +1216,7 @@ class SocraticEngine:
                 problem=problem_text,                  # Fix 1+4: explicit problem anchor
                 conversation_history=conversation_text,
                 student_response=student_response_text,
+                response_assessment=_response_assessment_text or "(no prior analysis available)",
                 analysis=analysis_json,
                 context=rag["context_text"],
                 genome_injection=genome_injection,
@@ -1193,6 +1232,7 @@ class SocraticEngine:
                 problem=problem_text,                  # Fix 1+4: explicit problem anchor
                 conversation_history=conversation_text,
                 student_response=student_response_text,
+                response_assessment=_response_assessment_text or "(no prior analysis available)",
                 analysis=analysis_json,
                 context=rag["context_text"],
             )
@@ -1377,6 +1417,21 @@ class SocraticEngine:
                     logger.warning("Background judge task failed (non-fatal): %s", exc)
 
             asyncio.create_task(_run_judge())
+
+        # ── 15b. Per-turn quality scorer (levels 1–2 only) ────────────────────
+        # Scores: validation quality, strategy appropriateness, restart detection,
+        # single-question compliance. Fires async — never blocks student response.
+        if new_level in (1, 2) and student_response and student_response.strip():
+            asyncio.create_task(
+                score_turn(
+                    client=self._client,
+                    pool=self._pool,
+                    doubt_session_id=session_id,
+                    turn_index=len(history),  # history already includes student + tutor turns
+                    student_message=student_response,
+                    ai_response=hint_response,
+                )
+            )
 
         logger.info("Hint level %d delivered for session %s", new_level, session_id)
         _hint_subject_for_metrics = stored_analysis.get("detected_subject", subject)

@@ -22,22 +22,7 @@ import { SYLLABUS_MAP } from '@/lib/syllabus'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface TopicMetric {
-  topic: string
-  avg_score: number
-  session_count: number
-  is_drifting: boolean
-}
-
-interface AdminMetrics {
-  period_days: number
-  total_scored: number
-  socratic_adherence_rate: number
-  latency_p95_ms: number | null
-  topics: TopicMetric[]
-}
-
-type TabId = 'profile' | 'analytics' | 'system' | 'preferences'
+type TabId = 'profile' | 'analytics' | 'preferences'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -581,206 +566,6 @@ function AnalyticsTab({ genome, loading }: {
   )
 }
 
-function SystemTab({ isAdmin, metrics, metricsLoading }: {
-  isAdmin: boolean
-  metrics: AdminMetrics | null
-  metricsLoading: boolean
-}) {
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center">
-          <Lock className="h-7 w-7 text-slate-300" />
-        </div>
-        <p className="text-base font-semibold text-slate-600">Admin access required</p>
-        <p className="text-sm text-slate-400">This tab is only visible to platform admins.</p>
-      </div>
-    )
-  }
-
-  if (metricsLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          {[1, 2].map((i) => (
-            <div key={i} className="bg-white/60 rounded-3xl animate-pulse h-32" />
-          ))}
-        </div>
-        <div className="bg-white/60 rounded-3xl animate-pulse h-56" />
-      </div>
-    )
-  }
-
-  if (!metrics) {
-    return (
-      <div className="bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl p-10 text-center text-sm text-slate-400">
-        No metrics data available. Check backend connectivity.
-      </div>
-    )
-  }
-
-  const adherencePct = Math.round(metrics.socratic_adherence_rate * 100)
-  const aColor = adherenceColor(metrics.socratic_adherence_rate)
-  const aAccentBg =
-    adherencePct >= 70 ? 'rgba(34,197,94,0.12)'
-    : adherencePct >= 50 ? 'rgba(245,158,11,0.12)'
-    : 'rgba(239,68,68,0.12)'
-
-  const chartData = [...metrics.topics]
-    .sort((a, b) => b.avg_score - a.avg_score)
-    .map((t) => ({
-      name: (t.is_drifting ? '⚠ ' : '') + (t.topic.length > 22 ? t.topic.slice(0, 21) + '…' : t.topic),
-      score: t.avg_score,
-      isDrifting: t.is_drifting,
-    }))
-
-  const driftingCount = metrics.topics.filter((t) => t.is_drifting).length
-
-  return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="space-y-5"
-    >
-      {/* Status banner */}
-      {driftingCount > 0 ? (
-        <motion.div
-          variants={cardVariants}
-          className="flex items-center gap-3 rounded-2xl bg-red-50/80 border border-red-200 px-5 py-3.5 text-sm text-red-700 font-medium"
-        >
-          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-          <span>
-            <strong>{driftingCount} topic{driftingCount !== 1 ? 's' : ''}</strong> drifting below the 1.5 pedagogy threshold.
-          </span>
-        </motion.div>
-      ) : (
-        <motion.div
-          variants={cardVariants}
-          className="flex items-center gap-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 px-5 py-3.5 text-sm text-emerald-700 font-medium"
-        >
-          <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-          <span>All topics within acceptable Socratic quality range.</span>
-        </motion.div>
-      )}
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Adherence */}
-        <motion.div
-          variants={cardVariants}
-          className="relative bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_16px_48px_rgb(0,0,0,0.08)] transition-all duration-300 overflow-hidden"
-        >
-          <div
-            className="absolute top-0 right-0 w-36 h-36 rounded-full -translate-y-10 translate-x-10 pointer-events-none"
-            style={{ background: `radial-gradient(circle, ${aAccentBg} 0%, transparent 70%)` }}
-          />
-          <div className="relative">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <CheckCircle2 className="h-3.5 w-3.5" style={{ color: aColor }} />
-              Socratic Adherence
-            </p>
-            <p className="text-5xl font-extrabold tracking-tight leading-none mb-2" style={{ color: aColor }}>
-              {adherencePct}<span className="text-2xl font-bold text-slate-300 ml-1">%</span>
-            </p>
-            <p className="text-xs text-slate-400">{metrics.total_scored} scored · last {metrics.period_days}d</p>
-          </div>
-        </motion.div>
-
-        {/* Latency P95 */}
-        <motion.div
-          variants={cardVariants}
-          className="relative bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_16px_48px_rgb(0,0,0,0.08)] transition-all duration-300 overflow-hidden"
-        >
-          <div
-            className="absolute top-0 right-0 w-36 h-36 rounded-full -translate-y-10 translate-x-10 pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(14,165,233,0.10) 0%, transparent 70%)' }}
-          />
-          <div className="relative">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Zap className="h-3.5 w-3.5 text-sky-500" />
-              Latency P95
-            </p>
-            {metrics.latency_p95_ms != null ? (
-              <>
-                <p className="text-5xl font-extrabold text-sky-500 tracking-tight leading-none mb-2 tabular-nums">
-                  {metrics.latency_p95_ms}<span className="text-2xl font-bold text-slate-300 ml-1">ms</span>
-                </p>
-                <p className="text-xs text-slate-400">95th-percentile LLM response time</p>
-              </>
-            ) : (
-              <p className="text-4xl font-extrabold text-slate-300 tracking-tight">—</p>
-            )}
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Per-topic bar chart */}
-      {chartData.length > 0 && (
-        <motion.div
-          variants={cardVariants}
-          className="bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-0.5 hover:shadow-[0_16px_48px_rgb(0,0,0,0.07)] transition-all duration-300"
-        >
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-2">
-            <TrendingUp className="h-3.5 w-3.5 text-indigo-400" />
-            Avg Socratic Score by Topic
-          </p>
-          <p className="text-xs text-slate-400 mb-6">0 = gave answer · 1 = vague hint · 2 = Socratic question. Threshold: 1.5</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 44, left: -10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis
-                dataKey="name"
-                tick={{ fill: '#94a3b8', fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-                angle={-30}
-                textAnchor="end"
-                interval={0}
-              />
-              <YAxis
-                domain={[0, 2]}
-                ticks={[0, 0.5, 1.0, 1.5, 2.0]}
-                tick={{ fill: '#94a3b8', fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip content={<ScoreTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
-              <Bar dataKey="score" radius={[6, 6, 0, 0]}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={scoreColor(entry.score)} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          {/* Legend */}
-          <div className="flex items-center gap-5 mt-2 justify-center flex-wrap">
-            {[
-              { color: '#22C55E', label: 'Good (≥1.5)' },
-              { color: '#F59E0B', label: 'Acceptable (1.0–1.5)' },
-              { color: '#EF4444', label: 'Drifting (<1.0)' },
-            ].map((l) => (
-              <div key={l.label} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: l.color }} />
-                <span className="text-[11px] text-slate-400">{l.label}</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Total scored count */}
-      <motion.div variants={cardVariants}>
-        <MiniStat
-          label="Total Scored"
-          value={String(metrics.total_scored)}
-          sub={`Responses evaluated by Judge LLM over ${metrics.period_days} days`}
-        />
-      </motion.div>
-    </motion.div>
-  )
-}
-
 function PreferencesTab() {
   const [prefs, setPrefs] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {}
@@ -852,8 +637,6 @@ export default function SettingsPage() {
   const [genome, setGenome] = useState<StudentGenome | null>(null)
   const [genomeLoading, setGenomeLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [adminMetrics, setAdminMetrics] = useState<AdminMetrics | null>(null)
-  const [metricsLoading, setMetricsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>('profile')
 
   // Fetch genome on mount
@@ -880,20 +663,6 @@ export default function SettingsPage() {
     }
   }
 
-  // Fetch admin metrics lazily — only when System tab is activated
-  const fetchAdminMetrics = async () => {
-    if (adminMetrics !== null) return // already loaded
-    setMetricsLoading(true)
-    try {
-      const data = await apiGet('/admin/metrics?days=7')
-      setAdminMetrics(data)
-    } catch (e) {
-      console.error('Settings: admin metrics fetch failed', e)
-    } finally {
-      setMetricsLoading(false)
-    }
-  }
-
   useEffect(() => {
     fetchGenome()
     checkAdmin()
@@ -902,19 +671,15 @@ export default function SettingsPage() {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab)
-    if (tab === 'system') {
-      fetchAdminMetrics()
-    }
   }
 
-  const tabs: { id: TabId; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
-    { id: 'profile',     label: 'Profile',           icon: <User className="h-4 w-4" />              },
-    { id: 'analytics',   label: 'My Analytics',       icon: <BarChart3 className="h-4 w-4" />         },
-    { id: 'system',      label: 'System Analytics',   icon: <Settings2 className="h-4 w-4" />, adminOnly: true },
-    { id: 'preferences', label: 'Preferences',        icon: <SlidersHorizontal className="h-4 w-4" /> },
+  const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
+    { id: 'profile',     label: 'Profile',      icon: <User className="h-4 w-4" />              },
+    { id: 'analytics',   label: 'My Analytics', icon: <BarChart3 className="h-4 w-4" />         },
+    { id: 'preferences', label: 'Preferences',  icon: <SlidersHorizontal className="h-4 w-4" /> },
   ]
 
-  const visibleTabs = tabs.filter((t) => !t.adminOnly || isAdmin)
+  const visibleTabs = tabs
 
   return (
     <AuthGuard>
@@ -967,6 +732,18 @@ export default function SettingsPage() {
                       loading={genomeLoading}
                       onRefresh={fetchGenome}
                     />
+                    {isAdmin && (
+                      <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-2xl flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-purple-700">Admin Dashboard</p>
+                          <p className="text-xs text-purple-400 mt-0.5">Full platform metrics, conversation quality, diagnostics</p>
+                        </div>
+                        <a href="/admin"
+                          className="px-4 py-2 bg-purple-600 text-white text-xs font-semibold rounded-xl hover:bg-purple-700 transition-all active:scale-95 shadow-[0_4px_12px_rgba(124,58,237,0.3)]">
+                          Open →
+                        </a>
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
@@ -979,22 +756,6 @@ export default function SettingsPage() {
                     transition={{ duration: 0.25, ease: EASE }}
                   >
                     <AnalyticsTab genome={genome} loading={genomeLoading} />
-                  </motion.div>
-                )}
-
-                {activeTab === 'system' && (
-                  <motion.div
-                    key="system"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.25, ease: EASE }}
-                  >
-                    <SystemTab
-                      isAdmin={isAdmin}
-                      metrics={adminMetrics}
-                      metricsLoading={metricsLoading}
-                    />
                   </motion.div>
                 )}
 

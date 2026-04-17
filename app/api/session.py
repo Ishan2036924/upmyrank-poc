@@ -65,14 +65,16 @@ async def _run_judge_for_session(study_session_id: str, pool, openai_client) -> 
                     continue
 
                 # Find first student message (the question)
+                # roles in engine.py are "student"/"tutor" (not "user"/"assistant")
                 question = next(
-                    (m.get("content", "") for m in history if m.get("role") == "user"),
+                    (m.get("content", "") for m in history
+                     if m.get("role") in ("user", "student")),
                     "",
                 )
                 # Find last AI message (the response to evaluate)
                 ai_response = ""
                 for m in reversed(history):
-                    if m.get("role") == "assistant":
+                    if m.get("role") in ("assistant", "tutor"):
                         ai_response = m.get("content", "")
                         break
 

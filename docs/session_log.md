@@ -3,6 +3,51 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-04-16 — Socratic Quality Fixes + Continuous Eval + Admin Dashboard
+
+**Focus:** Fix Socratic conversation quality (robotic openers, no answer validation, explanation restarts); fix 2 silent DB bugs (empty judge_evaluations + response_feedback); add per-turn quality scoring pipeline; add dedicated `/admin` dashboard with 8 sections; topic context lock enforcement; response language variety.
+
+**Status:** DONE — all 12 steps complete, TypeScript 0 errors, all Python imports clean.
+
+**Changed files:**
+- `app/api/session.py` — Bug fix: `_run_judge_for_session()` now checks `role in ("user","student")` and `role in ("assistant","tutor")` — was silently skipping every row due to role mismatch, leaving `judge_evaluations` empty.
+- `scripts/migrate_v15_feedback_constraint.sql` — NEW: unique constraint `uq_feedback_per_turn` on `response_feedback(student_id, doubt_session_id, response_idx)` (fixes silent ON CONFLICT failure); new `conversation_turn_quality` table for per-turn scoring (validation_score 0-2, appropriateness 0-2, restart_detected bool, single_question bool). Migration applied ✅.
+- `app/services/doubt/prompts.py` — 7 prompt changes: (1) Remove "No worries" hardcoded COUNSELOR example; (2) Add 4-type RESPONSE ASSESSMENT block to HINT_LEVEL_1_PROMPT with `{response_assessment}` placeholder + CORRECT/PARTIALLY_CORRECT/WRONG/CONFUSED classification + SINGLE QUESTION RULE; (3) Same assessment block in HINT_LEVEL_2_PROMPT; (4) Concrete scenario anchoring for mastery < 30% in SOCRATIC_QUESTION_PROMPT; (5) VARIETY CHECK directive in SOCRATIC_QUESTION_PROMPT; (6) RESPONSE VARIETY section in TUTOR_SYSTEM_PROMPT (banned openers, 6 rotation styles); (7) New `TOPIC_LOCK_ADDENDUM` constant; (8) New `TURN_QUALITY_SCORER_PROMPT` constant.
+- `app/services/doubt/engine.py` — 4 changes: (a) Added `_response_assessment_text` formatting block after `_analyze_student_response()` (formats understood/gaps/suggestion/emotional → human-readable text); (b) Pass `response_assessment=_response_assessment_text` to both HINT_LEVEL_1_PROMPT.format() and HINT_LEVEL_2_PROMPT.format(); (c) Inject `TOPIC_LOCK_ADDENDUM` into `active_system_prompt` in both `start_session()` and `start_session_stream()` when `locked_topic` is set; (d) Fire `score_turn()` as `asyncio.create_task()` after hint response at levels 1–2.
+- `app/services/eval/turn_scorer.py` — NEW: `score_turn()` async function; calls gpt-4o-mini with `TURN_QUALITY_SCORER_PROMPT`, parses JSON, inserts into `conversation_turn_quality`. Fire-and-forget, never raises.
+- `app/config.py` — Added `admin_emails: str = ""` (comma-separated admin email list; backward-compat keeps `admin_student_id`).
+- `app/api/admin.py` — REWRITTEN: Updated `is_admin` to check email list; added 10 new endpoints: `/platform-health`, `/conversation-quality`, `/response-quality`, `/system-performance`, `/user-feedback`, `/knowledge-base`, `/student-insights`, `/diagnostics`, `/quality-digest`, `/quality-report`. All existing endpoints preserved.
+- `frontend/web/app/admin/page.tsx` — FULL REWRITE: 8-section admin dashboard with fixed left sidebar nav, auth guard (non-admins → `/dashboard`), lookback day selector (7/14/30d), recharts area/line/bar/pie charts in every section. Sections: Platform Health, Conversation Quality (incl. Generate Digest button), Response Quality, System Performance, User Feedback, Knowledge Base, Student Insights, Diagnostics. Light glassmorphic design per UI_PRO_MAX.md.
+- `frontend/web/app/settings/page.tsx` — Removed System Analytics tab (Tab 3) and all related state/functions/components. Kept Profile + My Analytics + Preferences (3 tabs). Added "Admin Dashboard →" link in Profile tab (shows only when `isAdmin === true`). Dead `SystemTab` function and `AdminMetrics`/`TopicMetric` interfaces fully deleted.
+- `.env` — Added `ADMIN_EMAILS=srivastava.ish@northeastern.edu`.
+
+**Current system state:**
+- TypeScript: `npx tsc --noEmit` → 0 errors
+- DB: migrations v1–v15 applied; `conversation_turn_quality` and `uq_feedback_per_turn` constraint active
+- Backend: all imports clean; turn scorer, topic lock, response assessment all wired
+- Admin: `/admin` loads with auth guard; 8 sections with live data from new endpoints
+- Settings: 3 tabs (Profile / My Analytics / Preferences); admin link in Profile tab for admins
+
+**In progress / half done:**
+Nothing. All 12 steps complete.
+
+**Cliff notes (non-obvious context):**
+- `_response_assessment_text` is initialized to `""` before the `if response_analysis:` block — so if analysis fails or is skipped (level ≥ 3), the prompt gets `"(no prior analysis available)"` gracefully.
+- `TOPIC_LOCK_ADDENDUM` uses `{locked_topic}` and `{subject}` — no `{off_topic}` placeholder (that was dropped; the LLM fills in the off-topic concept naturally from conversation context).
+- `score_turn()` fires only at hint levels 1 and 2 when `student_response` is non-empty. Level 0 (initial Socratic question) is not scored — no student response exists yet.
+- `admin_emails` takes a comma-separated string in `.env`: `ADMIN_EMAILS=email1@x.com,email2@y.com`. The old `admin_student_id` still works for backward compat.
+- The `_run_judge_for_session()` bug fix in session.py means `judge_evaluations` will now populate after each `POST /session/end`. Allow 5–10s for the async task to complete.
+- `response_feedback` ON CONFLICT will now work correctly once v15 migration is applied (it was applied this session).
+- The admin `/diagnostics` endpoint calls Redis via `request.app.state.redis` — if Redis is not in app state under that key, the check returns `error` gracefully (try/except).
+
+**Next session — read these files first:**
+Nothing specific — project is in clean state.
+
+**Next session — start here:**
+Manual test the Socratic conversation improvements: ask "Explain gravitation", reply "no idea", reply "size?", reply "earth?" — verify AI validates "earth?" with "Exactly!" not "No worries". Then navigate to `/admin` and verify all 8 sections load. Run `python scripts/eval_ragas.py` to get a baseline quality score post-fixes.
+
+---
+
 ## Session 2026-04-14 — Feedback Loop + 4-Dim Judge + RAG Metrics + Settings + Multi-Subject Onboarding
 **Focus:** Closed feedback loop for pedagogy quality; 4-dimension LLM judge pipeline; RAG telemetry; `/settings` page; multi-subject onboarding expansion (Chemistry + Maths marks, learning preference, subject_strengths persona); sidebar width fix; offline RAGAS eval script.
 **Status:** DONE — all 13 steps complete, migration applied, TypeScript 0 errors.
