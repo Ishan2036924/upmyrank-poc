@@ -808,7 +808,12 @@ async def get_hint(
     engine = request.app.state.socratic_engine
     pool = request.app.state.db_pool
 
-    # Log student_attempt if provided (for future misconception analysis)
+    # Coalesce student_attempt → student_response. These are two separate fields
+    # on HintRequest for historical reasons (attempt was added later for "Got it!"
+    # logging); but the Socratic engine only looks at student_response. Without
+    # this coalesce, clients sending student_attempt produced empty student_response,
+    # which disabled the response analyzer entirely (including answer_check).
+    _effective_student_response = body.student_response or body.student_attempt
     if body.student_attempt:
         logger.info(
             "Student attempt before full solution (session=%s): %.200s",
@@ -818,7 +823,7 @@ async def get_hint(
     try:
         result = await engine.get_hint(
             session_id=body.session_id,
-            student_response=body.student_response,
+            student_response=_effective_student_response,
             jump_to_full=body.jump_to_full_solution,
             student_resolved=body.student_resolved,
         )

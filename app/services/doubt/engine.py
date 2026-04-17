@@ -43,6 +43,8 @@ from app.services.doubt.prompts import (
     HINT_LEVEL_1_PROMPT,
     HINT_LEVEL_2_PROMPT,
     HINT_LEVEL_3_PROMPT,
+    HINT_LEVEL_3_CORRECT_PROMPT,
+    HINT_LEVEL_3_WRONG_PROMPT,
     INTENT_CLASSIFIER_PROMPT,
     INTENT_CLASSIFIER_SYSTEM,
     META_RESPONSE,
@@ -276,6 +278,66 @@ class SocraticEngine:
         if student_row is None:
             raise ValueError(f"Student not found: {student_id}")
 
+        # ── 0a. Topic lock pre-check (short-circuit off-topic requests) ───────
+        # When the session is locked to a specific topic but the student's
+        # question is clearly about a different subject/topic, bypass the
+        # Socratic engine entirely and return a canonical redirect. This is
+        # more reliable than asking the LLM to refuse mid-generation (the
+        # system-prompt addendum is frequently ignored on long prompts).
+        if locked_topic:
+            is_off_topic = await self._topic_lock_mismatch(
+                question=question,
+                locked_topic=locked_topic,
+                subject=subject,
+            )
+            if is_off_topic:
+                logger.info(
+                    "start_session: topic lock SHORT-CIRCUIT — question %r does NOT match locked_topic=%r",
+                    question[:80], locked_topic,
+                )
+                # Persist a minimal doubt_session so follow-up hints work; but
+                # the response itself is the pure redirect.
+                redirect_text = (
+                    f"That's an interesting question, but this session is locked to "
+                    f"**{locked_topic}**. To explore that other topic, start a new "
+                    f"session from the topic tree and I'll meet you there. "
+                    f"For now, let's continue with {locked_topic} — what part of "
+                    f"{locked_topic} would you like to work on?"
+                )
+                minimal_analysis = {
+                    "subject": subject,
+                    "topic": locked_topic,
+                    "subtopic": locked_topic,
+                    "locked_topic": locked_topic,
+                    "topic_lock_redirect": True,
+                }
+                session_id = await self._create_session(
+                    student_id=student_id,
+                    question=question,
+                    subject=subject,
+                    analysis=minimal_analysis,
+                    socratic_response=redirect_text,
+                    concept_ids=[],
+                )
+                return {
+                    "session_id": str(session_id),
+                    "analysis": minimal_analysis,
+                    "response": redirect_text,
+                    "mentor_mode": "TASKMASTER",
+                    "concepts_involved": [],
+                    "retrieved_context_count": 0,
+                    "out_of_scope": False,
+                    "cache_hit": False,
+                    "_rag_metrics": {
+                        "retrieval_latency_ms": 0,
+                        "agent_steps": 0,
+                        "chunk_count": 0,
+                        "has_similar_problem": False,
+                        "tool_trace": [],
+                        "subject": subject,
+                    },
+                }
+
         # ── 0b. Semantic cache lookup (hint_level=0 only) ─────────────────────
         # Compute query embedding once — reused for cache AND skips LLM if hit.
         # Cache is student-agnostic: same question → same Socratic opener.
@@ -458,11 +520,22 @@ class SocraticEngine:
                 subject_context=_subject_context,
             )
 
-        # ── Topic lock addendum: append scope enforcement when topic is pinned ─
+        # ── Topic lock addendum: PREPEND scope enforcement when topic is pinned
+        # LLMs weight the TOP of the system prompt heavily and often ignore
+        # instructions buried at the end of long prompts. Prepending ensures
+        # the lock is the first thing the model processes.
         if locked_topic:
-            active_system_prompt += "\n\n" + TOPIC_LOCK_ADDENDUM.format(
-                locked_topic=locked_topic,
-                subject=_effective_subject,
+            active_system_prompt = (
+                TOPIC_LOCK_ADDENDUM.format(
+                    locked_topic=locked_topic,
+                    subject=_effective_subject,
+                )
+                + "\n\n"
+                + active_system_prompt
+            )
+            logger.info(
+                "start_session: TOPIC_LOCK_ADDENDUM prepended for topic=%r subject=%r (prompt length=%d)",
+                locked_topic, _effective_subject, len(active_system_prompt),
             )
 
         # ── 9. Generate personalised Socratic response ────────────────────────
@@ -794,11 +867,15 @@ class SocraticEngine:
                     subject_context=_stream_subject_context,
                 )
 
-            # ── 8b. Topic lock addendum (stream) ───────────────────────────────
+            # ── 8b. Topic lock addendum (stream) — PREPEND ─────────────────────
             if locked_topic:
-                active_system_prompt += "\n\n" + TOPIC_LOCK_ADDENDUM.format(
-                    locked_topic=locked_topic,
-                    subject=_eff_subject_stream,
+                active_system_prompt = (
+                    TOPIC_LOCK_ADDENDUM.format(
+                        locked_topic=locked_topic,
+                        subject=_eff_subject_stream,
+                    )
+                    + "\n\n"
+                    + active_system_prompt
                 )
 
             # ── 9. Build messages for streaming LLM call ─────────────────────
@@ -1024,6 +1101,11 @@ class SocraticEngine:
         # an LLM call to detect "frustrated" would route to counselor mode and
         # block the full solution (the "therapist hijack" bug).
         response_analysis: dict = {}
+        logger.info(
+            "analyzer-gate: student_response=%r current_level=%d will_run=%s",
+            (student_response or "")[:60], current_level,
+            bool(student_response and student_response.strip() and current_level < 3),
+        )
         if student_response and student_response.strip() and current_level < 3:
             try:
                 response_analysis = await self._analyze_student_response(
@@ -1057,12 +1139,42 @@ class SocraticEngine:
         # This injects what the student got right/wrong into the LLM's context
         # explicitly, rather than asking the LLM to infer from raw conversation.
         _response_assessment_text = ""
+        _answer_check = None  # exposed below for L3 correctness gate
+        _answer_student_value = None
+        _answer_correct_value = None
         if response_analysis:
             understood = response_analysis.get("understood_correctly", [])
             gaps = response_analysis.get("knowledge_gaps", [])
             suggestion = response_analysis.get("suggested_next_action", "")
             emotional = response_analysis.get("emotional_state", "")
+            _answer_check = response_analysis.get("answer_check")
+            _answer_student_value = response_analysis.get("student_value")
+            _answer_correct_value = response_analysis.get("correct_value")
+            mismatch_note = response_analysis.get("mismatch_note")
             parts: list[str] = []
+            # Answer-check banner (FIX 3): put this FIRST — it's the most actionable
+            # signal the hint prompt needs to decide CORRECT vs WRONG vs CONFUSED.
+            if _answer_check == "correct":
+                parts.append(
+                    f"ANSWER CHECK: ✅ CORRECT — student's value '{_answer_student_value}' matches the expected answer. "
+                    "Validate EXPLICITLY (e.g. 'Exactly — [value] is right.'). Do NOT re-ask or restart."
+                )
+            elif _answer_check == "wrong":
+                parts.append(
+                    f"ANSWER CHECK: ❌ WRONG — student said '{_answer_student_value}'. "
+                    f"The correct value is '{_answer_correct_value}'. "
+                    f"{('Mismatch: ' + mismatch_note + '.') if mismatch_note else ''} "
+                    "Before anything else in your reply, explicitly say which number/expression is wrong and why, "
+                    "then guide (don't just give) the corrected path. Do NOT validate as correct."
+                )
+            elif _answer_check == "partial":
+                parts.append(
+                    f"ANSWER CHECK: ⚠️ PARTIAL — student named a relevant method/concept "
+                    f"('{_answer_student_value or ''}') but has not produced a final answer yet. "
+                    "Validate the method briefly, then push toward the next concrete step."
+                )
+            else:  # not_an_answer or missing
+                parts.append("ANSWER CHECK: — student did not give a numerical/closed-form answer.")
             if understood:
                 parts.append(f"Student correctly understood: {', '.join(understood)}")
             else:
@@ -1278,13 +1390,45 @@ class SocraticEngine:
                 _count = stored_analysis.get("ignored_socratic_count", 1)
                 prompt += SOLUTION_SEEKER_NOTE_REPEAT if _count >= 2 else SOLUTION_SEEKER_NOTE_FIRST
         elif new_level == 3:
-            # Nuclear option: isolated prompt with no analysis or RAG context.
-            # System prompt is also swapped to SYSTEM_PROMPT_FORCED_ATTEMPT,
-            # removing the helpful-tutor persona entirely for this call.
-            prompt = HINT_LEVEL_3_PROMPT.format(
-                conversation_history=conversation_text,
-                student_response=student_response_text,
-            )
+            # FIX 2: at L3, if the student already gave the correct final answer,
+            # validate + derive instead of scolding with the forced-attempt template.
+            # If they gave a WRONG final answer, flag it explicitly (without
+            # revealing the correct value). Otherwise fall back to forced-attempt.
+            if _answer_check == "correct" and _answer_student_value:
+                logger.info(
+                    "get_hint: L3 CORRECT-answer path — validating %r",
+                    _answer_student_value,
+                )
+                prompt = HINT_LEVEL_3_CORRECT_PROMPT.format(
+                    problem=problem_text,
+                    student_value=_answer_student_value,
+                    conversation_history=conversation_text,
+                )
+                # Route L3-correct through FULL_SOLUTION system prompt (not forced-
+                # attempt proctor persona) since we want a complete, warm closure.
+                _l3_short_circuit = "correct"
+            elif _answer_check == "wrong" and _answer_student_value:
+                logger.info(
+                    "get_hint: L3 WRONG-answer path — flagging %r (correct=%r)",
+                    _answer_student_value, _answer_correct_value,
+                )
+                prompt = HINT_LEVEL_3_WRONG_PROMPT.format(
+                    problem=problem_text,
+                    student_value=_answer_student_value,
+                    correct_value=_answer_correct_value or "(see solution)",
+                    mismatch_note=response_analysis.get("mismatch_note") or "Numerical mismatch.",
+                    conversation_history=conversation_text,
+                )
+                _l3_short_circuit = "wrong"
+            else:
+                # Nuclear option: isolated prompt with no analysis or RAG context.
+                # System prompt is also swapped to SYSTEM_PROMPT_FORCED_ATTEMPT,
+                # removing the helpful-tutor persona entirely for this call.
+                prompt = HINT_LEVEL_3_PROMPT.format(
+                    conversation_history=conversation_text,
+                    student_response=student_response_text,
+                )
+                _l3_short_circuit = None
         else:
             prompt = FULL_SOLUTION_PROMPT.format(
                 subject=_hint_subject,
@@ -1300,7 +1444,13 @@ class SocraticEngine:
         # to avoid stale data if infer_scaffolding_level ran since session start).
         hint_active_system_prompt = SYSTEM_PROMPT_FORCED_ATTEMPT  # default for level 3
         hint_pedagogy_config = None
-        if new_level != 3:
+        # FIX 2: when L3 short-circuits to correct/wrong paths, we need the warm
+        # tutor persona (not the proctor) so the model can validate or flag
+        # without falling back to "refuse to teach" instincts.
+        _l3_uses_tutor_persona = (
+            new_level == 3 and locals().get("_l3_short_circuit") in ("correct", "wrong")
+        )
+        if new_level != 3 or _l3_uses_tutor_persona:
             try:
                 import dataclasses
                 hint_persona_profile = await get_persona_profile(str(session_student_id), self._pool)
@@ -1320,18 +1470,25 @@ class SocraticEngine:
                     subject_context=_hint_subject_context,
                 )
 
-        # ── 9b. Re-apply topic lock addendum in hint turns ───────────────────
-        # start_session() appended TOPIC_LOCK_ADDENDUM to active_system_prompt but
+        # ── 9b. Re-apply topic lock addendum in hint turns — PREPEND ─────────
+        # start_session() prepends TOPIC_LOCK_ADDENDUM to active_system_prompt but
         # get_hint() rebuilds the system prompt from scratch via the policy engine.
-        # We store locked_topic in stored_analysis during start_session(); re-apply here.
+        # We store locked_topic in stored_analysis during start_session(); re-apply
+        # AT THE TOP here so the LLM weights it heavily.
         _hint_locked_topic = stored_analysis.get("locked_topic")
-        if _hint_locked_topic and new_level != 3:
-            hint_active_system_prompt += "\n\n" + TOPIC_LOCK_ADDENDUM.format(
-                locked_topic=_hint_locked_topic,
-                subject=_hint_subject,
+        # Apply topic lock on all non-proctor paths: normal L1/L2 hints AND the
+        # L3 short-circuit paths (correct/wrong) that use the warm tutor persona.
+        if _hint_locked_topic and (new_level != 3 or locals().get("_l3_uses_tutor_persona")):
+            hint_active_system_prompt = (
+                TOPIC_LOCK_ADDENDUM.format(
+                    locked_topic=_hint_locked_topic,
+                    subject=_hint_subject,
+                )
+                + "\n\n"
+                + hint_active_system_prompt
             )
             logger.info(
-                "get_hint: TOPIC_LOCK_ADDENDUM applied for topic=%r subject=%r level=%d",
+                "get_hint: TOPIC_LOCK_ADDENDUM prepended for topic=%r subject=%r level=%d",
                 _hint_locked_topic, _hint_subject, new_level,
             )
 
@@ -1351,11 +1508,19 @@ class SocraticEngine:
             new_level, session_id, is_full_solution, mentor_mode,
             "FORCED_ATTEMPT" if new_level == 3 else "TUTOR",
         )
+        # FIX 2: L3-correct path needs room for a full derivation (treat like
+        # full-solution budget); L3-wrong stays short; classic L3 forced-attempt
+        # stays short.
+        _is_l3_correct = new_level == 3 and locals().get("_l3_short_circuit") == "correct"
+        _is_l3_short = new_level == 3 and not _is_l3_correct
         _llm_t0 = time.monotonic()
         hint_response = await self._call_llm(
             prompt,
-            max_tokens=256 if new_level == 3 else (2048 if is_full_solution else 1024),
-            temperature=0.3 if new_level == 3 else 0.5,
+            max_tokens=(
+                2048 if (_is_l3_correct or is_full_solution)
+                else (256 if _is_l3_short else 1024)
+            ),
+            temperature=0.3 if _is_l3_short else 0.5,
             system_prompt=active_system_prompt,
         )
         _response_latency_ms = int((time.monotonic() - _llm_t0) * 1000)
@@ -1853,6 +2018,46 @@ class SocraticEngine:
 
         return overall
 
+    async def _topic_lock_mismatch(
+        self,
+        question: str,
+        locked_topic: str,
+        subject: str,
+    ) -> bool:
+        """Quick cheap-LLM check: is `question` clearly NOT about `locked_topic`?
+
+        Returns True only for clearly off-topic requests (e.g. asking about
+        gravitation when locked to 'Maxima and Minima'). Returns False for
+        ambiguous or within-scope requests — fail open so students are never
+        wrongly blocked.
+        """
+        try:
+            prompt = (
+                f"The student's tutoring session is LOCKED to this topic only:\n"
+                f"  locked_topic = {locked_topic!r}\n"
+                f"  subject      = {subject!r}\n\n"
+                f"The student just asked:\n"
+                f"  {question!r}\n\n"
+                f"Is the question clearly about a DIFFERENT topic/subject that is unrelated to {locked_topic}?\n"
+                f"Consider it related if it's the same topic, a sub-aspect of it, or a prerequisite.\n"
+                f"Consider it off-topic if it names a clearly different chapter/subject/concept\n"
+                f"(e.g. asking about gravitation when locked to Maxima and Minima).\n\n"
+                f"Respond with ONLY one word: 'off_topic' or 'on_topic'."
+            )
+            raw = await self._call_llm(
+                prompt, max_tokens=8, temperature=0.0, model_tier="cheap",
+            )
+            verdict = (raw or "").strip().lower()
+            is_off = "off" in verdict
+            logger.info(
+                "topic-lock-check: locked=%r question=%r → raw=%r is_off=%s",
+                locked_topic, question[:60], verdict[:20], is_off,
+            )
+            return is_off
+        except Exception as exc:
+            logger.warning("topic-lock-check failed (assuming on_topic): %s", exc)
+            return False
+
     async def _analyze_student_response(
         self,
         question: str,
@@ -1860,16 +2065,30 @@ class SocraticEngine:
         conversation_history: list,
         student_response: str,
     ) -> dict:
-        """Analyze the student's response to personalize the next hint."""
+        """Analyze the student's response to personalize the next hint.
+
+        Uses the QUALITY model tier (gpt-4.1-mini) rather than the cheap tier.
+        Rationale: the analyzer now produces `answer_check` + `correct_value`
+        which drive L3 validation routing and WRONG-answer flagging. The cheap
+        model (gpt-4o-mini) was empirically wrong on JEE-level numerical math
+        (e.g. got the Atwood machine acceleration wrong). Accuracy here matters
+        more than cost.
+        """
         prompt = STUDENT_RESPONSE_ANALYSIS_PROMPT.format(
             question=question,
             analysis=json.dumps(analysis),
             conversation_history=self._format_conversation(conversation_history),
             student_response=student_response,
         )
-        raw = await self._call_llm(prompt, max_tokens=300, temperature=0.1, model_tier="cheap")
+        raw = await self._call_llm(prompt, max_tokens=400, temperature=0.0, model_tier="quality")
         try:
-            return _parse_json_response(raw)
+            parsed = _parse_json_response(raw)
+            logger.info(
+                "analyzer: student_response=%r → answer_check=%r student_value=%r correct_value=%r",
+                student_response[:60], parsed.get("answer_check"),
+                parsed.get("student_value"), parsed.get("correct_value"),
+            )
+            return parsed
         except Exception as exc:
             logger.debug("Response analysis parse failed: %s", exc)
             return {"misconceptions": [], "emotional_state": "uncertain"}
