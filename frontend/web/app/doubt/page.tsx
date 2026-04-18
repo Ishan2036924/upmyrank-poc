@@ -20,9 +20,28 @@ import { useAuth } from '@/lib/auth'
 import { ChatMessage as ChatMessageType, ResumeResponse, DoubtBlock, VerificationResult } from '@/lib/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const LS_SESSION_ID  = 'upmyrank_study_session_id'
-const LS_STARTED_AT  = 'upmyrank_session_started_at'
+const LS_SESSION_ID_PREFIX  = 'upmyrank_study_session_id__'
+const LS_STARTED_AT_PREFIX  = 'upmyrank_session_started_at__'
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000 // 2 hours
+
+// FIX B1 (2026-04-18): sessions are now keyed by (subject, chapter, topic)
+// tuple instead of one global id per student. Navigating to a different topic
+// gives a fresh chat with no history bleed. Quick Doubt (no topic params) has
+// its own isolated key.
+function topicSessionKey(
+  subject: string | null,
+  chapter: string | null,
+  topic: string | null,
+): { idKey: string; startedAtKey: string } {
+  const subj = (subject || 'general').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const chap = (chapter || 'any').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const top  = (topic || 'quick').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const suffix = `${subj}__${chap}__${top}`
+  return {
+    idKey:        LS_SESSION_ID_PREFIX + suffix,
+    startedAtKey: LS_STARTED_AT_PREFIX + suffix,
+  }
+}
 
 const GIVE_UP_RE =
   /i give up|skip hints|show.*full solution|reveal.*answer|just give me the answer/i
@@ -40,14 +59,19 @@ function nanoid() {
   return Math.random().toString(36).slice(2)
 }
 
-function getStoredSession(): { id: string; startedAt: string } | null {
+function getStoredSession(
+  subject: string | null,
+  chapter: string | null,
+  topic: string | null,
+): { id: string; startedAt: string } | null {
   try {
-    const id        = localStorage.getItem(LS_SESSION_ID)
-    const startedAt = localStorage.getItem(LS_STARTED_AT)
+    const { idKey, startedAtKey } = topicSessionKey(subject, chapter, topic)
+    const id        = localStorage.getItem(idKey)
+    const startedAt = localStorage.getItem(startedAtKey)
     if (!id || !startedAt) return null
     if (Date.now() - new Date(startedAt).getTime() > SESSION_TTL_MS) {
-      localStorage.removeItem(LS_SESSION_ID)
-      localStorage.removeItem(LS_STARTED_AT)
+      localStorage.removeItem(idKey)
+      localStorage.removeItem(startedAtKey)
       return null
     }
     return { id, startedAt }
@@ -56,14 +80,26 @@ function getStoredSession(): { id: string; startedAt: string } | null {
   }
 }
 
-function saveSession(id: string, startedAt: string) {
-  localStorage.setItem(LS_SESSION_ID,  id)
-  localStorage.setItem(LS_STARTED_AT, startedAt)
+function saveSession(
+  id: string,
+  startedAt: string,
+  subject: string | null,
+  chapter: string | null,
+  topic: string | null,
+) {
+  const { idKey, startedAtKey } = topicSessionKey(subject, chapter, topic)
+  localStorage.setItem(idKey, id)
+  localStorage.setItem(startedAtKey, startedAt)
 }
 
-function clearStoredSession() {
-  localStorage.removeItem(LS_SESSION_ID)
-  localStorage.removeItem(LS_STARTED_AT)
+function clearStoredSession(
+  subject: string | null,
+  chapter: string | null,
+  topic: string | null,
+) {
+  const { idKey, startedAtKey } = topicSessionKey(subject, chapter, topic)
+  localStorage.removeItem(idKey)
+  localStorage.removeItem(startedAtKey)
 }
 
 // ── Rebuild messages from resumed doubt blocks ────────────────────────────────
@@ -148,7 +184,11 @@ function DoubtPageInner() {
   // Keep ref in sync so sendBeacon closure is always fresh
   useEffect(() => { studySessionRef.current = studySessionId }, [studySessionId])
 
-  // ── ON MOUNT: init or resume study session ─────────────────────────────────
+  // ── ON MOUNT + ON TOPIC CHANGE: init or resume study session ──────────────
+  // FIX B2 (2026-04-18): dependency array includes subjectParam/chapterParam/
+  // topicLock so that navigating to a different topic (via TopicTree) triggers
+  // a fresh session init. Combined with FIX B1's per-topic localStorage keys,
+  // each (subject, chapter, topic) tuple has its own isolated chat.
   useEffect(() => {
     let cancelled = false
 
@@ -156,14 +196,23 @@ function DoubtPageInner() {
       const res = await apiPost('/session/start', { student_id: studentId })
       if (cancelled) return
       const startedAt = res.started_at ?? new Date().toISOString()
-      saveSession(res.study_session_id, startedAt)
+      saveSession(res.study_session_id, startedAt, subjectParam, chapterParam, topicLock)
       setStudySessionId(res.study_session_id)
       setSessionStartedAt(startedAt)
       setSessionReady(true)
     }
 
     async function init() {
-      const stored = getStoredSession()
+      // Reset chat state before re-init — otherwise old messages bleed in.
+      setMessages([])
+      setSessionId(null)
+      setCurrentBlockId(null)
+      setCurrentBlockSolved(false)
+      setAnalysis(null)
+      setDoubtCount(0)
+      setSessionReady(false)
+
+      const stored = getStoredSession(subjectParam, chapterParam, topicLock)
       if (!stored) {
         await startFresh()
         return
@@ -171,11 +220,12 @@ function DoubtPageInner() {
       try {
         const res: ResumeResponse = await apiPost('/session/resume', {
           study_session_id: stored.id,
+          topic:            topicLock || undefined,  // FIX B4: server-side topic filter
         })
         if (cancelled) return
 
         if (res.ended_at) {
-          clearStoredSession()
+          clearStoredSession(subjectParam, chapterParam, topicLock)
           await startFresh()
           return
         }
@@ -185,18 +235,36 @@ function DoubtPageInner() {
         setDoubtCount(res.doubt_count)
         setSessionReady(true)
 
-        if (res.doubt_blocks.length > 0) {
-          setMessages(rebuildMessages(res.doubt_blocks))
+        // FIX B3: filter blocks by current topicLock so historical blocks from
+        // other topics don't appear when resuming a topic-scoped session. If no
+        // topicLock is set (Quick Doubt / free chat), show all blocks.
+        const filteredBlocks = topicLock
+          ? res.doubt_blocks.filter((b) =>
+              (b.topic || '').toLowerCase() === topicLock.toLowerCase()
+            )
+          : res.doubt_blocks
+
+        if (filteredBlocks.length > 0) {
+          setMessages(rebuildMessages(filteredBlocks))
 
           if (res.active_block_id) {
-            const active = res.doubt_blocks.find(
+            const active = filteredBlocks.find(
               (b) => b.doubt_block_id === res.active_block_id,
             )
-            setCurrentBlockId(res.active_block_id)
-            setCurrentBlockSolved(active?.solved ?? false)
+            if (active) {
+              setCurrentBlockId(res.active_block_id)
+              setCurrentBlockSolved(active.solved)
+            } else {
+              // Active block is for a different topic — don't pin to it here.
+              const last = filteredBlocks[filteredBlocks.length - 1]
+              if (last) {
+                setCurrentBlockId(last.doubt_block_id)
+                setCurrentBlockSolved(last.solved)
+              }
+            }
           } else {
-            // All blocks closed — point to the last one (read-only)
-            const last = res.doubt_blocks[res.doubt_blocks.length - 1]
+            // All filtered blocks closed — point to the last one (read-only)
+            const last = filteredBlocks[filteredBlocks.length - 1]
             if (last) {
               setCurrentBlockId(last.doubt_block_id)
               setCurrentBlockSolved(last.solved)
@@ -204,7 +272,7 @@ function DoubtPageInner() {
           }
         }
       } catch {
-        clearStoredSession()
+        clearStoredSession(subjectParam, chapterParam, topicLock)
         if (!cancelled) await startFresh()
       }
     }
@@ -212,7 +280,7 @@ function DoubtPageInner() {
     init().catch((err) => { console.error(err); setSessionReady(true) })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [subjectParam, chapterParam, topicLock])
 
   // ── ON UNMOUNT + beforeunload: close study session ─────────────────────────
   useEffect(() => {
@@ -395,6 +463,39 @@ function DoubtPageInner() {
         return
       }
 
+      // FIX A1: if there's an active unresolved doubt session, this reply is
+      // a CONTINUATION — route through /doubt/hint so it enters the hint ladder
+      // and the answer-check pipeline. Previously all replies went to /doubt/ask
+      // which caused the intent classifier to sometimes mis-route continuations
+      // as `explanation` (e.g. "second derivative of f(x)" matching the "second"
+      // pre-filter trigger), dropping the turn entirely with "0 doubts asked".
+      if (sessionId && !currentBlockSolved) {
+        const res = await apiPost('/doubt/hint', {
+          session_id:       sessionId,
+          student_attempt:  text,
+          image_url:        imageUrl || undefined,
+          study_session_id: studySessionId ?? undefined,
+        })
+        const wasFull = res.is_full_solution ?? res.resolved ?? false
+        addMessage({
+          role: 'tutor',
+          content: res.hint ?? res.response ?? JSON.stringify(res),
+          metadata: {
+            hint_level:        res.hint_level,
+            verification:      res.verification as VerificationResult | undefined,
+            is_full_solution:  Boolean(wasFull),
+            is_forced_attempt: Boolean(res.is_forced_attempt),
+            mentor_mode:       res.mentor_mode ?? undefined,
+            intent:            'continuation',
+            doubt_block_id:    res.doubt_block_id ?? currentBlockId ?? undefined,
+          },
+        })
+        if (res.mentor_mode) setMentorMode(res.mentor_mode)
+        if (wasFull) setCurrentBlockSolved(true)
+        return
+      }
+
+      // No active session (or current block is solved) → start a new doubt.
       // All messages → POST /doubt/ask. TypingIndicator shown while isLoading.
       const wasBlockSolved = currentBlockSolved
       const wasBlockId     = currentBlockId

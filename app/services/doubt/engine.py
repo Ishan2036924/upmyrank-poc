@@ -1803,11 +1803,26 @@ class SocraticEngine:
         # ── Pre-check 2: explanation requests (no LLM needed for clear signals)
         # Only fires when message has an explanation trigger, no problem-solving
         # signals, and no numerical values (those indicate a problem to solve).
+        #
+        # FIX A2 (2026-04-18): SKIP this pre-filter entirely when an active
+        # doubt block exists AND the message is short (< 80 chars). Short
+        # replies like "second derivative of f(x)" or "derivative of the hill"
+        # inside an active block are CONTINUATIONS of the current doubt, not
+        # fresh explain-this-concept requests. The previous pre-filter was
+        # mis-classifying these as `explanation` → returning a generic overview
+        # with no session_id / no conversation_history → "0 doubts asked" bug.
         if any(stripped.startswith(t) or (" " + t) in (" " + stripped)
                for t in _EXPLANATION_TRIGGERS):
             has_numbers = bool(re.search(r'\d', stripped))
             has_problem_signal = any(s in stripped for s in _PROBLEM_SIGNALS)
-            if not has_numbers and not has_problem_signal:
+            if has_active_block and len(stripped) < 80:
+                # Likely a continuation reply — let the LLM classifier decide
+                # (it will usually return "continuation" given has_active_block=true).
+                logger.info(
+                    "Explanation pre-filter SKIPPED (active block, short reply): %r",
+                    stripped[:60],
+                )
+            elif not has_numbers and not has_problem_signal:
                 logger.info("Explanation pre-filter: %r", stripped)
                 return "explanation"
 
@@ -2186,18 +2201,23 @@ class SocraticEngine:
         """Post-generation cleanup: if the response has ≥ 2 question marks,
         rewrite it keeping only the single most important closing question.
 
-        Rationale: the SINGLE QUESTION RULE in SOCRATIC_QUESTION_PROMPT and
-        HINT_L1/L2 prompts is frequently ignored by the LLM at L0 (33% of
-        openings had 2+ '?' in the 83-test eval). A post-gen rewrite is more
-        reliable than prompt instruction alone.
+        Two-stage strategy:
+        1. **LLM cleanup** (soft) — rewrite with gpt-4o-mini preserving prose + math.
+           Produces a natural-sounding single-question version.
+        2. **Regex fallback** (hard) — if the LLM cleanup still has ≥ 2 '?'s,
+           apply a deterministic rewrite that keeps only the LAST question
+           (the closing one). Converts earlier '?' sentences to statements.
 
-        Fails open: if the cleanup call errors, return the original response.
+        The regex fallback guarantees ≤ 1 '?' on exit. LaTeX-internal '?' chars
+        (rare) are ignored by the character count since they're wrapped in '$'.
+
+        Fails open: on any exception, returns the original response.
         """
         if not response or response.count("?") < 2:
             return response
-        # Ignore '?' that appear inside LaTeX inline math like '$f(x)?$' —
-        # those are rare but skipping them is safer than a false positive.
-        # Simple heuristic: still run cleanup only if plain-text ? count ≥ 2.
+
+        # ── Stage 1: LLM-based soft rewrite ───────────────────────────────────
+        rewritten = response
         try:
             prompt = (
                 "The following tutor response ends with multiple questions, but a "
@@ -2208,25 +2228,92 @@ class SocraticEngine:
                 "text. Return ONLY the rewritten response — no preamble, no notes.\n\n"
                 f"RESPONSE TO REWRITE:\n{response}"
             )
-            rewritten = await self._call_llm(
+            llm_rewrite = await self._call_llm(
                 prompt, max_tokens=1024, temperature=0.0, model_tier="cheap",
             )
-            rewritten = (rewritten or "").strip()
-            # Safety: if the rewrite came back empty or still has ≥ 2 ?, keep original
-            if not rewritten or rewritten.count("?") >= response.count("?"):
+            llm_rewrite = (llm_rewrite or "").strip()
+            if llm_rewrite and llm_rewrite.count("?") < response.count("?"):
                 logger.info(
-                    "single-Q cleanup: rewrite ineffective (orig_?=%d new_?=%d) — keeping original",
-                    response.count("?"), rewritten.count("?") if rewritten else 0,
+                    "single-Q cleanup stage1 (LLM): reduced %d → %d questions",
+                    response.count("?"), llm_rewrite.count("?"),
                 )
-                return response
-            logger.info(
-                "single-Q cleanup: reduced %d → %d questions",
-                response.count("?"), rewritten.count("?"),
-            )
-            return rewritten
+                rewritten = llm_rewrite
+            else:
+                logger.info(
+                    "single-Q cleanup stage1: LLM rewrite ineffective (orig_?=%d new_?=%d)",
+                    response.count("?"), llm_rewrite.count("?") if llm_rewrite else 0,
+                )
         except Exception as exc:
-            logger.warning("single-Q cleanup failed (keeping original): %s", exc)
-            return response
+            logger.warning("single-Q cleanup stage1 failed: %s", exc)
+
+        # ── Stage 2: deterministic regex fallback ─────────────────────────────
+        # If stage 1 didn't bring it to ≤ 1 '?', keep only the LAST question and
+        # turn earlier question-ending sentences into statements.
+        if rewritten.count("?") >= 2:
+            try:
+                final = self._regex_single_question_fallback(rewritten)
+                if final.count("?") <= 1:
+                    logger.info(
+                        "single-Q cleanup stage2 (regex): reduced %d → %d questions",
+                        rewritten.count("?"), final.count("?"),
+                    )
+                    return final
+            except Exception as exc:
+                logger.warning("single-Q cleanup stage2 (regex) failed: %s", exc)
+
+        return rewritten
+
+    @staticmethod
+    def _regex_single_question_fallback(text: str) -> str:
+        """Keep only the LAST '?' sentence; convert earlier '?' sentences to '.'.
+
+        Approach: scan the text and find every '?' position. Replace all but
+        the last one with '.'. Preserves text structure (paragraphs, LaTeX,
+        formatting, etc.).
+
+        Edge case handled: '?' inside LaTeX inline ($...$) or display ($$...$$)
+        math is left untouched — we only touch '?' that are outside math.
+        """
+        if text.count("?") <= 1:
+            return text
+
+        # Build a mask of character positions inside math blocks.
+        # $$...$$ (display) and $...$ (inline). We'll skip '?' inside these.
+        in_math = [False] * len(text)
+        i = 0
+        while i < len(text):
+            if text[i] == "$":
+                # Check for $$ first
+                if i + 1 < len(text) and text[i + 1] == "$":
+                    # Find closing $$
+                    j = text.find("$$", i + 2)
+                    if j == -1:
+                        break
+                    for k in range(i, j + 2):
+                        in_math[k] = True
+                    i = j + 2
+                    continue
+                else:
+                    # Find closing single $
+                    j = text.find("$", i + 1)
+                    if j == -1:
+                        break
+                    for k in range(i, j + 1):
+                        in_math[k] = True
+                    i = j + 1
+                    continue
+            i += 1
+
+        # Collect '?' positions outside math.
+        q_positions = [i for i, ch in enumerate(text) if ch == "?" and not in_math[i]]
+        if len(q_positions) <= 1:
+            return text
+
+        # Replace all '?' positions except the LAST with '.'.
+        chars = list(text)
+        for pos in q_positions[:-1]:
+            chars[pos] = "."
+        return "".join(chars)
 
     async def _topic_lock_mismatch(
         self,

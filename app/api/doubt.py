@@ -8,6 +8,7 @@ POST /doubt/verify — two-layer solution verification
 import asyncio
 import json
 import logging
+import re
 import uuid
 from typing import Optional
 
@@ -616,6 +617,28 @@ async def ask_doubt(
     else:
         intent = await engine.classify_intent(question, has_active_block, subject=body.subject or "Physics")
         logger.info("Intent classified: %s (active_block=%s)", intent, has_active_block)
+
+    # ── 2c. FIX A3 (2026-04-18): safety net for mis-classified continuations ──
+    # If the student has an active unsolved doubt block AND the message is a
+    # short reply (< 100 chars), and the classifier returned `explanation` or
+    # `subject_doubt`, treat it as a continuation instead. This prevents the
+    # "0 doubts asked" context-loss bug where short replies like
+    # "second derivative of f(x)" got routed to `handle_non_physics_intent`
+    # → no doubt_block, no history, no topic_lock injection.
+    if (
+        has_active_block
+        and active_block
+        and intent in ("explanation", "subject_doubt")
+        and question and len(question.strip()) < 100
+        # "short reply" means: no new problem markers like `find`, `calculate`,
+        # `solve`, no standalone numbers like "5 kg" etc. — it's a hint answer.
+        and not re.search(r'\b(find|calculate|solve|prove|evaluate|compute)\b', question.lower())
+    ):
+        logger.info(
+            "FIX A3 continuation safety net: intent=%s question=%r → routing as continuation",
+            intent, question[:60],
+        )
+        intent = "continuation"
 
     # ── 3. Non-subject intents → immediate response, NO DB writes ─────────────
     if intent in ("greeting", "meta", "meta_identity", "meta_pricing", "meta_competitor",

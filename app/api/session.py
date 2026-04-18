@@ -134,6 +134,10 @@ class EndRequest(BaseModel):
 
 class ResumeRequest(BaseModel):
     study_session_id: str
+    # FIX B4 (2026-04-18): optional topic filter — when set, only return
+    # doubt_blocks matching this topic. Keeps the payload lean when the frontend
+    # only needs per-topic history.
+    topic: Optional[str] = None
 
 
 # ── endpoints ─────────────────────────────────────────────────────────────────
@@ -281,19 +285,37 @@ async def resume_session(
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Fetch all doubt blocks with their conversation history
-    blocks = await pool.fetch(
-        """
-        SELECT db.doubt_block_id, db.topic, db.hint_level, db.solved,
-               db.summary, db.started_at, db.ended_at,
-               ds.conversation_history
-        FROM doubt_blocks db
-        LEFT JOIN doubt_sessions ds ON ds.id = db.doubt_session_id
-        WHERE db.study_session_id = $1
-        ORDER BY db.started_at ASC
-        """,
-        session_uuid,
-    )
+    # Fetch all doubt blocks with their conversation history. FIX B4: when
+    # `body.topic` is provided, filter to only blocks with that topic (case-
+    # insensitive). Frontend still does its own filter for defense-in-depth.
+    if body.topic:
+        blocks = await pool.fetch(
+            """
+            SELECT db.doubt_block_id, db.topic, db.hint_level, db.solved,
+                   db.summary, db.started_at, db.ended_at,
+                   ds.conversation_history
+            FROM doubt_blocks db
+            LEFT JOIN doubt_sessions ds ON ds.id = db.doubt_session_id
+            WHERE db.study_session_id = $1
+              AND LOWER(COALESCE(db.topic, '')) = LOWER($2)
+            ORDER BY db.started_at ASC
+            """,
+            session_uuid,
+            body.topic,
+        )
+    else:
+        blocks = await pool.fetch(
+            """
+            SELECT db.doubt_block_id, db.topic, db.hint_level, db.solved,
+                   db.summary, db.started_at, db.ended_at,
+                   ds.conversation_history
+            FROM doubt_blocks db
+            LEFT JOIN doubt_sessions ds ON ds.id = db.doubt_session_id
+            WHERE db.study_session_id = $1
+            ORDER BY db.started_at ASC
+            """,
+            session_uuid,
+        )
 
     doubt_blocks = []
     active_block_id: Optional[str] = None
