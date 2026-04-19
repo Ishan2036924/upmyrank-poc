@@ -1353,6 +1353,66 @@ class SocraticEngine:
                 "response_analysis": {},
             }
 
+        # ── 4c. L1/L2 NO-INPUT GATE (2026-04-19) ──────────────────────────────
+        # When the student clicks "Give me a hint" WITHOUT answering the AI's
+        # previous question, don't escalate to the next hint level. Return a
+        # deterministic re-prompt that echoes the AI's last question.
+        #
+        # Why: previously, /doubt/hint with null student_response at L1
+        # advanced to L2. The L2 prompt's validator rotation ("Right —",
+        # "Exactly —") then fired even though student_response="(no response
+        # provided)" — the LLM hallucinated a validation of a non-existent
+        # answer, dropped the L1 question, and jumped to a new concept.
+        # The user's screenshot showed exactly this: AI asked "Which functional
+        # group attachment differentiates alcohols from phenols?" then Hint 2
+        # opened with "Right — to set up the key formulas..." skipping the
+        # student's turn entirely.
+        #
+        # L0 → L1 without a reply is still allowed (legit "I don't know where
+        # to start" case). L1 → L2 and L2 → L3 without a reply are gated.
+        if (
+            current_level >= 1
+            and not jump_to_full
+            and not (student_response and student_response.strip())
+        ):
+            # Extract the last '?' sentence from the AI's last message
+            last_ai_question = ""
+            for turn in reversed(history):
+                if turn.get("role") in ("tutor", "assistant"):
+                    _c = turn.get("content", "") or ""
+                    # Find all sentences ending in '?' (outside LaTeX)
+                    _qs = re.findall(r'[^.!?\n]*\?', _c)
+                    if _qs:
+                        last_ai_question = _qs[-1].strip()
+                    break
+            if last_ai_question:
+                gate_msg = (
+                    f"Before I give another hint — take a moment on my last question:\n\n"
+                    f"**{last_ai_question}**\n\n"
+                    f"Even a rough guess or partial thought is fine. I'll build from whatever you share."
+                )
+            else:
+                gate_msg = (
+                    "Before I give another hint — give the current question a try, "
+                    "even a rough guess. I'll build from whatever you share."
+                )
+            logger.info(
+                "L%d→L%d no-input gate fired — re-prompting for answer instead of escalating",
+                current_level, current_level + 1,
+            )
+            return {
+                "session_id": str(session_id),
+                "hint_level": current_level,  # stay at same level, don't advance
+                "hint": gate_msg,
+                "response": gate_msg,
+                "is_full_solution": False,
+                "is_forced_attempt": False,
+                "resolved": False,
+                "verification": None,
+                "mentor_mode": mentor_mode,
+                "response_analysis": {"no_input_reprompt": True},
+            }
+
         # ── 5+6. Agentic RAG context + targeted genome injection (concurrent) ────
         # Nuclear override: hint level 3 (Forced Attempt) receives NO RAG context
         # and NO analysis. Starving the LLM of this material makes solution leakage
