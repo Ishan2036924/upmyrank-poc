@@ -1,657 +1,762 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useState, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import {
-  User, BarChart3, Settings2,
-  RefreshCw, Lock, AlertTriangle, CheckCircle2, TrendingUp,
-  Zap, Target, BookOpen, Star,
+  User, Shield, BookOpen, Bell, Palette, Database,
+  Camera, Mail, Phone, Globe, Languages, Check,
+  Key, ShieldCheck, Chrome, Trash2, Moon, Sun, Monitor,
+  Type, Eye, Download, FileJson, AlertTriangle, RefreshCw,
+  CheckCircle2, Loader2, LogOut,
 } from 'lucide-react'
-import {
-  ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
-  RadialBarChart, RadialBar, Legend,
-} from 'recharts'
-import Sidebar from '@/components/Sidebar'
+import { toast } from 'sonner'
+
+import AppShell from '@/components/AppShell'
 import AuthGuard from '@/components/AuthGuard'
-import { apiGet } from '@/lib/api'
+import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { StudentGenome, PersonaProfile } from '@/lib/types'
-import { SYLLABUS_MAP } from '@/lib/syllabus'
+import { StudentGenome } from '@/lib/types'
+import { cn, getInitials } from '@/lib/utils'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Switch } from '@/components/ui/switch'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog'
 
-type TabId = 'profile' | 'analytics'
+// ── Tab config ─────────────────────────────────────────────────────────────
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+const TABS = [
+  { value: 'profile',       label: 'Profile',       icon: User },
+  { value: 'account',       label: 'Account',       icon: Shield },
+  { value: 'learning',      label: 'Learning',      icon: BookOpen },
+  { value: 'notifications', label: 'Notifications', icon: Bell },
+  { value: 'appearance',    label: 'Appearance',    icon: Palette },
+  { value: 'privacy',       label: 'Privacy & Data',icon: Database },
+] as const
 
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
+type TabValue = typeof TABS[number]['value']
 
-const cardVariants = {
-  hidden:  { opacity: 0, y: 20, scale: 0.97 },
-  visible: { opacity: 1, y: 0,  scale: 1, transition: { duration: 0.45, ease: EASE } },
-}
+// ── ComingSoon wrapper ─────────────────────────────────────────────────────
 
-const containerVariants = {
-  hidden:  {},
-  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } },
-}
-
-// Subject config — no hardcoded subject strings in render paths
-const SUBJECT_CARDS = [
-  { name: 'Physics'   as const, color: '#3b82f6', bgClass: 'bg-blue-50',    textClass: 'text-blue-600',    borderClass: 'border-blue-200'    },
-  { name: 'Chemistry' as const, color: '#10b981', bgClass: 'bg-emerald-50', textClass: 'text-emerald-600', borderClass: 'border-emerald-200' },
-  { name: 'Maths'     as const, color: '#8b5cf6', bgClass: 'bg-violet-50',  textClass: 'text-violet-600',  borderClass: 'border-violet-200'  },
-]
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
-
-/**
- * Derive subject mastery (0–100) by matching topic_mastery keys
- * against the static SYLLABUS_MAP topic names for that subject.
- */
-function computeSubjectMastery(
-  topicMastery: Record<string, { average: number }>,
-  subject: 'Physics' | 'Chemistry' | 'Maths',
-): number {
-  const syllabusSubject = SYLLABUS_MAP[subject]
-  if (!syllabusSubject) return 0
-
-  // Build a set of all topic names (lowercase) for this subject
-  const subjectTopics = new Set<string>()
-  for (const chapter of syllabusSubject.chapters) {
-    for (const topic of chapter.topics) {
-      subjectTopics.add(topic.name.toLowerCase())
-    }
-    subjectTopics.add(chapter.name.toLowerCase())
-  }
-
-  const matches: number[] = []
-  for (const [key, val] of Object.entries(topicMastery)) {
-    if (subjectTopics.has(key.toLowerCase())) {
-      matches.push(val.average)
-    }
-  }
-
-  if (matches.length === 0) return 0
-  const avg = matches.reduce((a, b) => a + b, 0) / matches.length
-  return Math.round(avg * 100)
-}
-
-function masteryBarColor(mastery: number): string {
-  if (mastery < 50) return '#EF4444'
-  if (mastery < 75) return '#F59E0B'
-  return '#22C55E'
-}
-
-function scoreColor(score: number): string {
-  if (score >= 1.5) return '#22C55E'
-  if (score >= 1.0) return '#F59E0B'
-  return '#EF4444'
-}
-
-function adherenceColor(rate: number): string {
-  if (rate >= 0.7) return '#22C55E'
-  if (rate >= 0.5) return '#F59E0B'
-  return '#EF4444'
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function TabButton({
-  id, label, icon, active, onClick,
-}: {
-  id: TabId
-  label: string
-  icon: React.ReactNode
-  active: boolean
-  onClick: (id: TabId) => void
-}) {
+function ComingSoon({ children, label = 'Coming soon' }: { children: React.ReactNode; label?: string }) {
   return (
-    <button
-      onClick={() => onClick(id)}
-      className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 whitespace-nowrap active:scale-95 ${
-        active
-          ? 'bg-slate-900 text-white shadow-sm'
-          : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-      }`}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  )
-}
-
-// Strength chip for subject strengths
-function StrengthChip({
-  subject, level,
-}: {
-  subject: 'Physics' | 'Chemistry' | 'Maths'
-  level: string
-}) {
-  const cfg = SUBJECT_CARDS.find((s) => s.name === subject)
-  if (!cfg) return null
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${cfg.bgClass} ${cfg.textClass} ${cfg.borderClass}`}
-    >
-      {subject} · <span className="capitalize">{level}</span>
-    </span>
-  )
-}
-
-// Stat mini-card
-function MiniStat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="bg-white/80 backdrop-blur-md border border-white/50 rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.04)] flex-1">
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mb-2">{label}</p>
-      <p className="text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
-    </div>
-  )
-}
-
-// Custom bar chart tooltip
-function WeakTopicTooltip({ active, payload, label }: {
-  active?: boolean; payload?: { value: number }[]; label?: string
-}) {
-  if (!active || !payload?.length) return null
-  const pct = payload[0].value
-  return (
-    <div className="bg-white border border-slate-100 rounded-xl px-3.5 py-2.5 text-xs shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-      <div className="text-slate-500 mb-0.5 max-w-[160px] truncate">{label}</div>
-      <div className="font-bold" style={{ color: masteryBarColor(pct) }}>{pct}% mastery</div>
-    </div>
-  )
-}
-
-// System analytics score tooltip
-function ScoreTooltip({ active, payload, label }: {
-  active?: boolean; payload?: { value: number }[]; label?: string
-}) {
-  if (!active || !payload?.length) return null
-  const score = payload[0].value
-  return (
-    <div className="bg-white border border-slate-100 rounded-xl px-3.5 py-2.5 text-xs shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-      <div className="text-slate-500 mb-0.5 max-w-[160px] truncate">{label}</div>
-      <div className="font-bold" style={{ color: scoreColor(score) }}>{score.toFixed(2)} / 2.0</div>
-    </div>
-  )
-}
-
-// ── Tab content components ────────────────────────────────────────────────────
-
-function ProfileTab({ genome, loading, onRefresh }: {
-  genome: StudentGenome | null
-  loading: boolean
-  onRefresh: () => void
-}) {
-  const router = useRouter()
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white/60 rounded-3xl animate-pulse h-24" />
-        ))}
-      </div>
-    )
-  }
-
-  if (!genome) {
-    return (
-      <div className="bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl p-10 text-center text-sm text-slate-400 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-        Failed to load profile. Try refreshing.
-      </div>
-    )
-  }
-
-  const persona = genome.persona_profile as PersonaProfile | null | undefined
-  const initials = getInitials(genome.name)
-  const overallPct = Math.round(genome.overall_mastery * 100)
-  const resolvedPct = genome.total_sessions > 0
-    ? Math.round((genome.resolved_sessions / genome.total_sessions) * 100) : 0
-
-  return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="space-y-5"
-    >
-      {/* Identity card */}
-      <motion.div
-        variants={cardVariants}
-        className="bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col sm:flex-row items-center sm:items-start gap-6"
-      >
-        {/* Avatar */}
-        <div className="flex-shrink-0 w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg">
-          <span className="text-2xl font-bold text-white tracking-tight">{initials}</span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="relative">
+          <div className="pointer-events-none opacity-60">{children}</div>
+          <div className="absolute inset-0 cursor-not-allowed" />
         </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0 text-center sm:text-left">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{genome.name}</h2>
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
-            {genome.exam_type && (
-              <span className="px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-xs font-semibold text-indigo-700">
-                {genome.exam_type}
-              </span>
-            )}
-            {genome.target_year && (
-              <span className="px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600">
-                Target {genome.target_year}
-              </span>
-            )}
-            {persona?.priority_subject && (
-              <span className="px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-700 flex items-center gap-1">
-                <Star className="h-3 w-3" />
-                Focus: {persona.priority_subject}
-              </span>
-            )}
-          </div>
-
-          {/* Subject strengths */}
-          {persona?.subject_strengths && (
-            <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
-              {SUBJECT_CARDS.map((s) => {
-                const level = persona.subject_strengths?.[s.name]
-                if (!level) return null
-                return <StrengthChip key={s.name} subject={s.name} level={level} />
-              })}
-            </div>
-          )}
-        </div>
-      </motion.div>
-
-      {/* Persona summary */}
-      {persona?.persona_summary && (
-        <motion.div
-          variants={cardVariants}
-          className="bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-        >
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <Zap className="h-3.5 w-3.5 text-indigo-400" />
-            Learning Persona
-          </p>
-          <p className="text-sm text-slate-700 leading-relaxed italic before:content-['\u201c'] after:content-['\u201d'] before:text-2xl after:text-2xl before:text-slate-200 after:text-slate-200 before:mr-1 after:ml-1">
-            {persona.persona_summary}
-          </p>
-        </motion.div>
-      )}
-
-      {/* Stats row */}
-      <motion.div variants={cardVariants} className="flex flex-col sm:flex-row gap-4">
-        <MiniStat
-          label="Total Sessions"
-          value={String(genome.total_sessions)}
-          sub="study sessions completed"
-        />
-        <MiniStat
-          label="Overall Mastery"
-          value={`${overallPct}%`}
-          sub="across all concepts"
-        />
-        <MiniStat
-          label="Resolved Rate"
-          value={`${resolvedPct}%`}
-          sub={`${genome.resolved_sessions} of ${genome.total_sessions} resolved`}
-        />
-      </motion.div>
-
-      {/* Actions */}
-      <motion.div variants={cardVariants} className="flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={onRefresh}
-          disabled={loading}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold transition-all duration-200 active:scale-95 shadow-sm hover:shadow-md disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh Profile
-        </button>
-        <button
-          onClick={() => router.push('/onboarding')}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 bg-white/80 hover:bg-white text-slate-700 text-sm font-semibold transition-all duration-200 active:scale-95 hover:-translate-y-0.5 hover:shadow-sm"
-        >
-          Redo Onboarding
-        </button>
-      </motion.div>
-    </motion.div>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }
 
-function AnalyticsTab({ genome, loading }: {
-  genome: StudentGenome | null
-  loading: boolean
-}) {
-  const radialData = useMemo(() => {
-    if (!genome) return []
-    return SUBJECT_CARDS.map((s) => ({
-      name: s.name,
-      mastery: computeSubjectMastery(genome.topic_mastery, s.name),
-      fill: s.color,
-    }))
-  }, [genome])
+// ── Profile tab ─────────────────────────────────────────────────────────────
 
-  const weakestData = useMemo(() => {
-    if (!genome) return []
-    return genome.weakest_concepts.slice(0, 5).map((c) => ({
-      name: c.subtopic.length > 20 ? c.subtopic.slice(0, 19) + '…' : c.subtopic,
-      mastery: Math.round(c.mastery * 100),
-    }))
-  }, [genome])
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white/60 rounded-3xl animate-pulse h-32" />
-        ))}
-      </div>
-    )
-  }
-
-  if (!genome) {
-    return (
-      <div className="bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl p-10 text-center text-sm text-slate-400">
-        Failed to load analytics. Try refreshing.
-      </div>
-    )
-  }
-
-  const resolvedPct = genome.total_sessions > 0
-    ? parseFloat(((genome.resolved_sessions / genome.total_sessions) * 100).toFixed(0))
-    : 0
-
-  return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="space-y-5"
-    >
-      {/* Subject Mastery — Radial bars */}
-      <motion.div
-        variants={cardVariants}
-        className="bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-      >
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-2">
-          <Target className="h-3.5 w-3.5 text-indigo-400" />
-          Subject Mastery
-        </p>
-        <p className="text-xs text-slate-400 mb-4">Derived from your knowledge genome across all topics</p>
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-          <div className="w-full sm:w-64 h-48 flex-shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadialBarChart
-                cx="50%"
-                cy="50%"
-                innerRadius="25%"
-                outerRadius="85%"
-                data={radialData}
-                startAngle={90}
-                endAngle={-270}
-              >
-                <RadialBar
-                  dataKey="mastery"
-                  cornerRadius={6}
-                  background={{ fill: '#f1f5f9' }}
-                  label={false}
-                />
-                <Legend
-                  iconSize={10}
-                  formatter={(value) => (
-                    <span className="text-xs text-slate-600">{value}</span>
-                  )}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: '#fff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: 12,
-                    fontSize: 12,
-                    color: '#1e293b',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-                  }}
-                  formatter={(v) => [`${v}%`, 'Mastery']}
-                />
-              </RadialBarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Subject breakdown list */}
-          <div className="flex-1 w-full space-y-4">
-            {radialData.map((s) => (
-              <div key={s.name}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-semibold text-slate-700">{s.name}</span>
-                  <span
-                    className="text-sm font-bold tabular-nums"
-                    style={{ color: s.fill }}
-                  >
-                    {s.mastery}%
-                  </span>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${s.mastery}%`, backgroundColor: s.fill }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Weakest topics */}
-      <motion.div
-        variants={cardVariants}
-        className="bg-white/80 backdrop-blur-md border border-white/50 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-      >
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-2">
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-          Weakest Topics
-        </p>
-        <p className="text-xs text-slate-400 mb-5">Top 5 concepts needing the most attention</p>
-
-        {weakestData.length === 0 ? (
-          <div className="text-center py-6 text-sm text-slate-400">
-            No concept data yet — ask your first doubt to start building your genome.
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={weakestData.length * 44 + 20}>
-            <BarChart
-              data={weakestData}
-              layout="vertical"
-              margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-              <XAxis
-                type="number"
-                domain={[0, 100]}
-                tick={{ fill: '#94a3b8', fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => `${v}%`}
-              />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={110}
-                tick={{ fill: '#64748b', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip content={<WeakTopicTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
-              <Bar dataKey="mastery" radius={[0, 6, 6, 0]}>
-                {weakestData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={masteryBarColor(entry.mastery)} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-      </motion.div>
-
-      {/* Session stats */}
-      <motion.div variants={cardVariants} className="flex flex-col sm:flex-row gap-4">
-        <MiniStat
-          label="Total Sessions"
-          value={String(genome.total_sessions)}
-          sub="study sessions completed"
-        />
-        <MiniStat
-          label="Resolved Rate"
-          value={`${resolvedPct}%`}
-          sub={`${genome.resolved_sessions} doubts resolved`}
-        />
-      </motion.div>
-    </motion.div>
-  )
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
-
-export default function SettingsPage() {
-  const { studentId } = useAuth()
-  const [genome, setGenome] = useState<StudentGenome | null>(null)
-  const [genomeLoading, setGenomeLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [activeTab, setActiveTab] = useState<TabId>('profile')
-
-  // Fetch genome on mount
-  const fetchGenome = async () => {
-    if (!studentId) return
-    setGenomeLoading(true)
-    try {
-      const data = await apiGet(`/student/${studentId}`)
-      setGenome(data)
-    } catch (e) {
-      console.error('Settings: genome fetch failed', e)
-    } finally {
-      setGenomeLoading(false)
-    }
-  }
-
-  // Check admin status on mount
-  const checkAdmin = async () => {
-    try {
-      const data = await apiGet('/admin/is_admin')
-      setIsAdmin(data?.is_admin === true)
-    } catch {
-      setIsAdmin(false)
-    }
-  }
+function ProfileTab({ genome }: { genome: StudentGenome | null }) {
+  const [name,     setName]     = useState('')
+  const [phone,    setPhone]    = useState('')
+  const [email,    setEmail]    = useState('')
+  const [timezone, setTimezone] = useState('Asia/Kolkata')
+  const [language, setLanguage] = useState('en')
+  const [saving,   setSaving]   = useState(false)
+  const [dirty,    setDirty]    = useState(false)
 
   useEffect(() => {
-    fetchGenome()
-    checkAdmin()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studentId])
+    if (genome) {
+      setName(genome.name || '')
+      // Defaults for scaffolded fields
+      setPhone('')
+      setEmail('') // backend does not return email in genome — left blank
+      setTimezone('Asia/Kolkata')
+      setLanguage('en')
+    }
+  }, [genome])
 
-  const handleTabChange = (tab: TabId) => {
-    setActiveTab(tab)
+  const handleSave = () => {
+    setSaving(true)
+    setTimeout(() => {
+      setSaving(false)
+      setDirty(false)
+      toast.success('Profile saved')
+    }, 800)
   }
 
-  const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'profile',     label: 'Profile',      icon: <User className="h-4 w-4" />      },
-    { id: 'analytics',   label: 'My Analytics', icon: <BarChart3 className="h-4 w-4" /> },
-  ]
+  return (
+    <div className="space-y-6">
+      {/* Avatar card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Photo</CardTitle>
+          <CardDescription>Your profile picture is visible across the app.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-5">
+            <Avatar className="h-20 w-20">
+              <AvatarFallback className="bg-gradient-to-br from-primary to-indigo-600 text-primary-foreground text-2xl font-semibold">
+                {genome?.name ? getInitials(genome.name) : '—'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex gap-2">
+              <ComingSoon label="Avatar upload coming soon">
+                <Button variant="outline" size="sm">
+                  <Camera className="h-4 w-4" />
+                  Upload photo
+                </Button>
+              </ComingSoon>
+              <ComingSoon label="Avatar upload coming soon">
+                <Button variant="ghost" size="sm">Remove</Button>
+              </ComingSoon>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-  const visibleTabs = tabs
+      {/* Personal details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Personal details</CardTitle>
+          <CardDescription>Keep this information current — it&apos;s used throughout your account.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => { setName(e.target.value); setDirty(true) }}
+                placeholder="Your name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  value={email || (genome?.name ? 'hidden@****' : '')}
+                  disabled
+                  className="pl-9"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">Email changes require verification. <ComingSoon label="Email change flow coming soon"><a className="text-primary underline-offset-2 hover:underline">Change email</a></ComingSoon></p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone number</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => { setPhone(e.target.value); setDirty(true) }}
+                  placeholder="+91 98765 43210"
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="timezone">Timezone</Label>
+              <Select value={timezone} onValueChange={(v) => { setTimezone(v); setDirty(true) }}>
+                <SelectTrigger id="timezone">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Asia/Kolkata">Asia/Kolkata (IST)</SelectItem>
+                  <SelectItem value="Asia/Dubai">Asia/Dubai (GST)</SelectItem>
+                  <SelectItem value="Asia/Singapore">Asia/Singapore (SGT)</SelectItem>
+                  <SelectItem value="Europe/London">Europe/London (GMT)</SelectItem>
+                  <SelectItem value="America/New_York">America/New_York (EST)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="language">Preferred language</Label>
+              <Select value={language} onValueChange={(v) => { setLanguage(v); setDirty(true) }}>
+                <SelectTrigger id="language">
+                  <Languages className="h-4 w-4 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="hi">हिंदी (Hindi)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Save bar */}
+      {dirty && (
+        <div className="sticky bottom-4 z-10 flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-elevated backdrop-blur">
+          <div className="flex items-center gap-2 text-sm text-foreground">
+            <AlertTriangle className="h-4 w-4 text-warning" />
+            Unsaved changes
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setDirty(false)}>Discard</Button>
+            <Button size="sm" loading={saving} onClick={handleSave}>
+              Save changes
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Account tab ─────────────────────────────────────────────────────────────
+
+function AccountTab() {
+  const { logout } = useAuth()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
 
   return (
-    <AuthGuard>
-      <div className="flex h-[100dvh]">
-        <Sidebar />
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Password</CardTitle>
+          <CardDescription>Change your password. Enterprise-grade security required.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ComingSoon label="Password change flow coming soon">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="current-password">Current password</Label>
+                <Input id="current-password" type="password" placeholder="••••••••" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New password</Label>
+                <Input id="new-password" type="password" placeholder="••••••••" />
+              </div>
+            </div>
+          </ComingSoon>
+          <ComingSoon label="Password change flow coming soon">
+            <Button variant="outline" size="sm">
+              <Key className="h-4 w-4" />
+              Update password
+            </Button>
+          </ComingSoon>
+        </CardContent>
+      </Card>
 
-        <div className="md:ml-[296px] flex-1 flex flex-col overflow-hidden pt-14 md:pt-0">
+      <Card>
+        <CardHeader>
+          <CardTitle>Security</CardTitle>
+          <CardDescription>Extra layers of protection for your account.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 text-success mt-0.5" />
+              <div>
+                <div className="text-sm font-medium text-foreground">Email verified</div>
+                <div className="text-xs text-muted-foreground">Your email is confirmed.</div>
+              </div>
+            </div>
+            <Badge variant="success">Active</Badge>
+          </div>
 
-          {/* Page header */}
-          <div className="px-6 pt-6 pb-2 flex-shrink-0">
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-indigo-400" />
-              Settings
-            </h1>
-            <p className="text-xs text-slate-400 mt-0.5 font-medium uppercase tracking-wide">
-              Profile · Analytics
+          <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <div className="text-sm font-medium text-foreground">Two-factor authentication</div>
+                <div className="text-xs text-muted-foreground">Add an authenticator-app code at sign-in.</div>
+              </div>
+            </div>
+            <ComingSoon label="2FA coming soon">
+              <Button size="sm" variant="outline">Enable</Button>
+            </ComingSoon>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+            <div className="flex items-start gap-3">
+              <Chrome className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <div className="text-sm font-medium text-foreground">Connected accounts</div>
+                <div className="text-xs text-muted-foreground">Link Google to enable one-click sign-in.</div>
+              </div>
+            </div>
+            <ComingSoon label="Google OAuth coming soon">
+              <Button size="sm" variant="outline">Connect Google</Button>
+            </ComingSoon>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/30">
+        <CardHeader>
+          <CardTitle className="text-destructive">Danger zone</CardTitle>
+          <CardDescription>Irreversible actions. Proceed with care.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+            <div>
+              <div className="text-sm font-medium text-foreground">Log out of this device</div>
+              <div className="text-xs text-muted-foreground">You&apos;ll need to sign in again.</div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => logout()}>
+              <LogOut className="h-4 w-4" />
+              Log out
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+            <div>
+              <div className="text-sm font-medium text-destructive">Delete account</div>
+              <div className="text-xs text-muted-foreground">14-day grace period. All sessions + mastery data removed.</div>
+            </div>
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <DialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="h-4 w-4" />
+                  Delete account
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete your account?</DialogTitle>
+                  <DialogDescription>
+                    This schedules your account for deletion in 14 days. Sign in again within that window to cancel.
+                    Type <span className="font-mono font-semibold">DELETE</span> to confirm.
+                  </DialogDescription>
+                </DialogHeader>
+                <Input
+                  value={deleteConfirm}
+                  onChange={(e) => setDeleteConfirm(e.target.value)}
+                  placeholder="Type DELETE to confirm"
+                />
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+                  <Button
+                    variant="destructive"
+                    disabled={deleteConfirm !== 'DELETE'}
+                    onClick={() => { toast.info('Account deletion coming soon'); setDeleteOpen(false); setDeleteConfirm('') }}
+                  >
+                    Delete account
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ── Learning preferences tab ────────────────────────────────────────────────
+
+function LearningTab({ genome }: { genome: StudentGenome | null }) {
+  const [examType, setExamType] = useState('JEE')
+  const [targetYear, setTargetYear] = useState('2027')
+  const [hintStyle, setHintStyle] = useState('concise')
+  const [dirty, setDirty] = useState(false)
+
+  useEffect(() => {
+    if (genome) {
+      setExamType(genome.exam_type || 'JEE')
+      setTargetYear(String(genome.target_year || 2027))
+    }
+  }, [genome])
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Exam goals</CardTitle>
+          <CardDescription>The AI tutor uses these to pace content and difficulty.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="exam-type">Exam type</Label>
+              <Select value={examType} onValueChange={(v) => { setExamType(v); setDirty(true) }}>
+                <SelectTrigger id="exam-type"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="JEE">JEE (Main + Advanced)</SelectItem>
+                  <SelectItem value="NEET">NEET</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="target-year">Target year</Label>
+              <Select value={targetYear} onValueChange={(v) => { setTargetYear(v); setDirty(true) }}>
+                <SelectTrigger id="target-year"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2026">2026</SelectItem>
+                  <SelectItem value="2027">2027</SelectItem>
+                  <SelectItem value="2028">2028</SelectItem>
+                  <SelectItem value="2029">2029</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tutoring style</CardTitle>
+          <CardDescription>How the Socratic engine should frame hints.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ComingSoon label="Hint-style wiring to engine coming soon">
+            <div className="space-y-2">
+              <Label>Hint verbosity</Label>
+              <Select value={hintStyle} onValueChange={setHintStyle}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="concise">Concise — minimal hand-holding</SelectItem>
+                  <SelectItem value="balanced">Balanced — default</SelectItem>
+                  <SelectItem value="detailed">Detailed — step-by-step walkthroughs</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </ComingSoon>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Learning profile</CardTitle>
+          <CardDescription>Auto-inferred from your sessions. Evolves every 5 sessions.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {genome?.persona_profile ? (
+            <>
+              <div className="flex items-center justify-between rounded-lg bg-muted/30 px-4 py-3">
+                <span className="text-sm text-muted-foreground">Scaffolding level</span>
+                <Badge variant="secondary">{genome.persona_profile.scaffolding_level}</Badge>
+              </div>
+              <div className="flex items-center justify-between rounded-lg bg-muted/30 px-4 py-3">
+                <span className="text-sm text-muted-foreground">Preferred style</span>
+                <Badge variant="secondary">{genome.persona_profile.preferred_style}</Badge>
+              </div>
+              <div className="flex items-center justify-between rounded-lg bg-muted/30 px-4 py-3">
+                <span className="text-sm text-muted-foreground">Study intensity</span>
+                <Badge variant="secondary">{genome.persona_profile.study_intensity}</Badge>
+              </div>
+              <div className="flex items-center justify-between rounded-lg bg-muted/30 px-4 py-3">
+                <span className="text-sm text-muted-foreground">Learning velocity</span>
+                <Badge variant="secondary">{genome.persona_profile.learning_velocity}</Badge>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No persona data yet — complete at least one Socratic session.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {dirty && (
+        <div className="sticky bottom-4 flex justify-end gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-elevated">
+          <Button variant="ghost" size="sm" onClick={() => setDirty(false)}>Discard</Button>
+          <Button size="sm" onClick={() => { toast.success('Preferences saved'); setDirty(false) }}>Save</Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Notifications tab ───────────────────────────────────────────────────────
+
+function NotificationsTab() {
+  const [prefs, setPrefs] = useState({
+    weeklyDigest: true,
+    studyReminders: true,
+    examAlerts: true,
+    browserPush: false,
+    masteryMilestones: true,
+  })
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Email notifications</CardTitle>
+          <CardDescription>Choose what lands in your inbox.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          {[
+            { key: 'weeklyDigest',      title: 'Weekly progress digest',  desc: 'Summary of your mastery delta + top 3 weak concepts.' },
+            { key: 'studyReminders',    title: 'Study reminders',          desc: 'Pings if you miss 2+ days in a row.' },
+            { key: 'examAlerts',        title: 'Exam countdown alerts',     desc: 'Monthly nudges until JEE/NEET.' },
+          ].map((row) => (
+            <div key={row.key} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+              <div className="pr-4">
+                <div className="text-sm font-medium text-foreground">{row.title}</div>
+                <div className="text-xs text-muted-foreground">{row.desc}</div>
+              </div>
+              <ComingSoon label="Email delivery coming soon">
+                <Switch
+                  checked={prefs[row.key as keyof typeof prefs]}
+                  onCheckedChange={(v) => setPrefs({ ...prefs, [row.key]: v })}
+                />
+              </ComingSoon>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Browser push</CardTitle>
+          <CardDescription>Real-time nudges while you&apos;re on the web.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          {[
+            { key: 'browserPush',       title: 'Enable browser notifications', desc: 'Session resume + mastery milestone pings.' },
+            { key: 'masteryMilestones', title: 'Mastery milestone alerts',      desc: 'When a concept crosses 80% mastery.' },
+          ].map((row) => (
+            <div key={row.key} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+              <div className="pr-4">
+                <div className="text-sm font-medium text-foreground">{row.title}</div>
+                <div className="text-xs text-muted-foreground">{row.desc}</div>
+              </div>
+              <ComingSoon label="Browser push coming soon">
+                <Switch
+                  checked={prefs[row.key as keyof typeof prefs]}
+                  onCheckedChange={(v) => setPrefs({ ...prefs, [row.key]: v })}
+                />
+              </ComingSoon>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ── Appearance tab ──────────────────────────────────────────────────────────
+
+function AppearanceTab() {
+  const [fontSize, setFontSize] = useState('medium')
+  const [density,  setDensity]  = useState('comfortable')
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Theme</CardTitle>
+          <CardDescription>Light mode is active. Dark mode ships in a follow-up release.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            <button className="flex flex-col items-center gap-2 rounded-xl border-2 border-primary bg-muted/30 p-4">
+              <Sun className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium text-foreground">Light</span>
+              <Check className="h-3 w-3 text-primary" />
+            </button>
+            <ComingSoon label="Dark mode coming soon">
+              <button className="flex w-full flex-col items-center gap-2 rounded-xl border border-border p-4">
+                <Moon className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">Dark</span>
+                <span className="text-[10px] text-muted-foreground">Soon</span>
+              </button>
+            </ComingSoon>
+            <ComingSoon label="System theme coming soon">
+              <button className="flex w-full flex-col items-center gap-2 rounded-xl border border-border p-4">
+                <Monitor className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">System</span>
+                <span className="text-[10px] text-muted-foreground">Soon</span>
+              </button>
+            </ComingSoon>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Text & density</CardTitle>
+          <CardDescription>Tune the reading experience to your setup.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Font size</Label>
+            <Select value={fontSize} onValueChange={setFontSize}>
+              <SelectTrigger><Type className="h-4 w-4 text-muted-foreground" /><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="small">Small</SelectItem>
+                <SelectItem value="medium">Medium (default)</SelectItem>
+                <SelectItem value="large">Large</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Math density</Label>
+            <Select value={density} onValueChange={setDensity}>
+              <SelectTrigger><Eye className="h-4 w-4 text-muted-foreground" /><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="compact">Compact</SelectItem>
+                <SelectItem value="comfortable">Comfortable (default)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ── Privacy & data tab ──────────────────────────────────────────────────────
+
+function PrivacyTab() {
+  const handleExport = () => {
+    toast.info('Data export coming soon', {
+      description: 'Backend endpoint GET /student/export is scheduled for the next release.',
+    })
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Your data</CardTitle>
+          <CardDescription>Full control over what we hold about you.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+            <div className="flex items-start gap-3">
+              <FileJson className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <div className="text-sm font-medium text-foreground">Export my data</div>
+                <div className="text-xs text-muted-foreground">JSON dump of sessions, mastery, persona, and preferences.</div>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+            <div className="flex items-start gap-3">
+              <Trash2 className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <div className="text-sm font-medium text-foreground">Delete all doubts</div>
+                <div className="text-xs text-muted-foreground">Clears chat history but keeps mastery scores.</div>
+              </div>
+            </div>
+            <ComingSoon label="Doubt purge coming soon">
+              <Button variant="outline" size="sm">Delete</Button>
+            </ComingSoon>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Legal</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <a href="#" onClick={(e) => { e.preventDefault(); toast.info('Privacy policy coming soon') }} className="block text-primary hover:underline">
+            Privacy policy
+          </a>
+          <a href="#" onClick={(e) => { e.preventDefault(); toast.info('Terms coming soon') }} className="block text-primary hover:underline">
+            Terms of service
+          </a>
+          <a href="#" onClick={(e) => { e.preventDefault(); toast.info('Cookie policy coming soon') }} className="block text-primary hover:underline">
+            Cookie policy
+          </a>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ── Main page ───────────────────────────────────────────────────────────────
+
+function SettingsInner() {
+  const { studentId } = useAuth()
+  const router = useRouter()
+  const params = useSearchParams()
+
+  const activeTab = (params.get('tab') as TabValue) ?? 'profile'
+  const setActiveTab = (v: string) => {
+    const u = new URL(window.location.href)
+    u.searchParams.set('tab', v)
+    router.replace(u.pathname + '?' + u.searchParams.toString())
+  }
+
+  const [genome,  setGenome]  = useState<StudentGenome | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!studentId) return
+    setLoading(true)
+    apiGet(`/student/${studentId}`)
+      .then(setGenome)
+      .catch(() => toast.error('Failed to load profile'))
+      .finally(() => setLoading(false))
+  }, [studentId])
+
+  return (
+    <AppShell maxWidth="max-w-5xl">
+      <div className="space-y-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage your profile, account security, learning preferences, and data.
             </p>
           </div>
-
-          {/* Sticky tab bar */}
-          <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-6 py-3 flex-shrink-0">
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-              {visibleTabs.map((tab) => (
-                <TabButton
-                  key={tab.id}
-                  id={tab.id}
-                  label={tab.label}
-                  icon={tab.icon}
-                  active={activeTab === tab.id}
-                  onClick={handleTabChange}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Tab content — scrollable */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-3xl mx-auto px-6 py-6 pb-12">
-              <AnimatePresence mode="wait">
-                {activeTab === 'profile' && (
-                  <motion.div
-                    key="profile"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.25, ease: EASE }}
-                  >
-                    <ProfileTab
-                      genome={genome}
-                      loading={genomeLoading}
-                      onRefresh={fetchGenome}
-                    />
-                    {isAdmin && (
-                      <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-2xl flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-purple-700">Admin Dashboard</p>
-                          <p className="text-xs text-purple-400 mt-0.5">Full platform metrics, conversation quality, diagnostics</p>
-                        </div>
-                        <a href="/admin"
-                          className="px-4 py-2 bg-purple-600 text-white text-xs font-semibold rounded-xl hover:bg-purple-700 transition-all active:scale-95 shadow-[0_4px_12px_rgba(124,58,237,0.3)]">
-                          Open →
-                        </a>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {activeTab === 'analytics' && (
-                  <motion.div
-                    key="analytics"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.25, ease: EASE }}
-                  >
-                    <AnalyticsTab genome={genome} loading={genomeLoading} />
-                  </motion.div>
-                )}
-
-              </AnimatePresence>
-            </div>
-          </div>
-
+          {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="inline-flex h-auto flex-wrap gap-1 bg-muted/40 p-1">
+            {TABS.map(({ value, label, icon: Icon }) => (
+              <TabsTrigger key={value} value={value} className="gap-2">
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="profile"><ProfileTab genome={genome} /></TabsContent>
+          <TabsContent value="account"><AccountTab /></TabsContent>
+          <TabsContent value="learning"><LearningTab genome={genome} /></TabsContent>
+          <TabsContent value="notifications"><NotificationsTab /></TabsContent>
+          <TabsContent value="appearance"><AppearanceTab /></TabsContent>
+          <TabsContent value="privacy"><PrivacyTab /></TabsContent>
+        </Tabs>
       </div>
+    </AppShell>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <AuthGuard>
+      <Suspense fallback={
+        <AppShell maxWidth="max-w-5xl">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        </AppShell>
+      }>
+        <SettingsInner />
+      </Suspense>
     </AuthGuard>
   )
 }

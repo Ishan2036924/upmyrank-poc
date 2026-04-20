@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Lock, Timer, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Sidebar from '@/components/Sidebar'
+import AppShell from '@/components/AppShell'
 import MathText from '@/components/MathText'
 import PostMortem from '@/components/PostMortem'
 import { apiPost } from '@/lib/api'
@@ -138,16 +138,13 @@ export default function MockPage() {
   if (phase === 'done') {
     return (
       <AuthGuard>
-      <div className="flex h-[100dvh]">
-        <Sidebar />
-        <div className="md:ml-[296px] flex-1 overflow-y-auto pt-14 md:pt-0">
-          <PostMortem
-            records={records}
-            onRetake={() => setPhase('setup')}
-            onPracticeWeak={() => window.location.href = '/practice'}
-          />
-        </div>
-      </div>
+      <AppShell maxWidth="max-w-4xl">
+        <PostMortem
+          records={records}
+          onRetake={() => setPhase('setup')}
+          onPracticeWeak={() => window.location.href = '/practice'}
+        />
+      </AppShell>
       </AuthGuard>
     )
   }
@@ -156,9 +153,8 @@ export default function MockPage() {
   if (phase === 'test') {
     return (
       <AuthGuard>
-      <div className="flex h-[100dvh]">
-        <Sidebar />
-        <div className="md:ml-[296px] flex-1 flex overflow-hidden">
+      <AppShell fullHeight>
+        <div className="flex h-full overflow-hidden">
 
           {/* LEFT PANE: Question */}
           <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-100">
@@ -327,7 +323,7 @@ export default function MockPage() {
             </div>
           </div>
         </div>
-      </div>
+      </AppShell>
       </AuthGuard>
     )
   }
@@ -335,10 +331,8 @@ export default function MockPage() {
   // ── Phase: setup ──────────────────────────────────────────────────────────────
   return (
     <AuthGuard>
-    <div className="flex h-[100dvh]">
-      <Sidebar />
-      <div className="md:ml-[296px] flex-1 overflow-y-auto pt-14 md:pt-0">
-        <div className="max-w-lg mx-auto px-6 py-10 space-y-7">
+    <AppShell maxWidth="max-w-lg">
+        <div className="space-y-7">
 
           {/* Header */}
           <div className="flex items-center gap-3">
@@ -443,8 +437,7 @@ export default function MockPage() {
           </div>
 
         </div>
-      </div>
-    </div>
+    </AppShell>
     </AuthGuard>
   )
 }

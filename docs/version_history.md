@@ -20,6 +20,7 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.19](#v019--enterprise-ui-phases-2-6--appshell-auth-settings-doubt-admin-2026-04-19) | 2026-04-19 | Enterprise UI Phases 2–6 — AppShell, auth, settings, doubt, admin polish |
 | [v0.18](#v018--enterprise-ui-phase-1--design-tokens--ui-primitives-2026-04-18) | 2026-04-18 | Enterprise UI Phase 1 — design tokens + 18 shadcn-pattern primitives |
 | [v0.17](#v017--version-history-doc--hard-no-commit-rule-2026-04-19) | 2026-04-19 | Version history doc + hard no-commit rule for Claude |
 | [v0.16](#v016--preemptive-14-fix-hardening-batch-2026-04-19) | 2026-04-19 | Preemptive 14-fix hardening batch |
@@ -38,6 +39,65 @@
 | [v0.3](#v03--analytics-dashboard-pro-max--nuclear-l3--latex-sanitizer-2026-03-30) | 2026-03-30 | Analytics Bento Box + Confidence Meter + nuclear L3 + LaTeX sanitizer |
 | [v0.2](#v02--glassmorphic-ui-overhaul--taxonomy-api-2026-03-22) | 2026-03-22 | Glassmorphic UI overhaul + Taxonomy API + syllabus selector |
 | [v0.1](#v01--initial-commit--render--vercel-deployment-2026-03-17) | 2026-03-17 | Initial commit + Render + Vercel deployment + OpenAI embeddings |
+
+---
+
+## v0.19 — Enterprise UI Phases 2–6 — AppShell, auth, settings, doubt, admin polish (2026-04-19)
+
+**Status:** shipped (Phases 2–6 of 6-phase enterprise UI overhaul)
+**Commits:** *(staged — commit by user)*
+
+### What shipped
+
+**Phase 2 — Global layout shell**
+- **`components/AppShell.tsx`** (NEW) — single layout shell wrapping every logged-in page. Left sidebar (260px): brand + primary nav (Home/Doubts/Practice/Mock Test/Progress) + syllabus tree + Settings + Admin (conditional) + profile card with logout. Top bar: page title + ⌘K search placeholder + notifications + help + avatar menu. Mobile: drawer. Supports `fullHeight` + `rightPanel` props for chat-style pages.
+- **All pages migrated**: `app/page.tsx`, `app/progress/page.tsx`, `app/practice/page.tsx`, `app/mock/page.tsx`, `app/doubt/page.tsx`, `app/settings/page.tsx` — all now use `<AppShell>` wrapper. Consistent nav, topbar, profile across every page. Old `components/Sidebar.tsx` remains (legacy; admin still uses its own).
+- All scaffolded actions (command palette, notifications, help) show "coming soon" toast with explanation — no dead clicks per locked decision #4.
+
+**Phase 3 — Auth + onboarding**
+- **`app/auth/login/page.tsx`** — rewritten split-screen: marketing hero (stats grid, copy) left, form right. Email + password icons, show/hide toggle, Caps-Lock warning, forgot-password link, Google OAuth button (disabled with "Coming soon" tooltip), toast on success/error.
+- **`app/auth/signup/page.tsx`** — rewritten split-screen with password strength meter (weak/decent/strong), feature bullets, exam + year selects, disabled Google OAuth placeholder.
+- **`app/auth/forgot-password/page.tsx`** (NEW) — dedicated route. Email form → success state with support link fallback since email delivery is scaffolded.
+
+**Phase 4 — Doubt page enhancements**
+- Migrated to `AppShell fullHeight`.
+- **`components/ChatMessage.tsx`** — added action row under every AI response: thumbs-up/down (existing), **copy-to-clipboard** (real, uses `navigator.clipboard`, toast on success), **regenerate** (scaffolded with "Coming soon" tooltip until `POST /doubt/regenerate` is wired).
+
+**Phase 5 — Settings 6-tab expansion**
+- **`app/settings/page.tsx`** — complete rewrite. URL-param tab state (`?tab=profile`). Tabs: Profile / Account / Learning / Notifications / Appearance / Privacy & Data.
+  - **Profile** — avatar (upload scaffolded), name editable, email read-only (change-flow scaffolded), **phone** (new field), timezone select (IST/GST/SGT/GMT/EST), preferred language (English/Hindi). Dirty-state bar with Save/Discard.
+  - **Account** — password change (scaffolded), email-verified badge, 2FA enable (scaffolded), Google OAuth connect (scaffolded), log-out device, **delete account with modal confirmation** (requires typing "DELETE").
+  - **Learning** — exam type, target year (editable), hint verbosity (scaffolded), auto-inferred learning profile readout (scaffolding/style/intensity/velocity from `persona_profile`).
+  - **Notifications** — 5 toggles (weekly digest, study reminders, exam alerts, browser push, mastery milestones) — all scaffolded with tooltip.
+  - **Appearance** — theme cards (Light active; Dark + System disabled with "Coming soon"), font size, math density.
+  - **Privacy & Data** — export my data (scaffolded, calls toast), delete all doubts (scaffolded), legal links (scaffolded).
+
+**Phase 6 — Admin polish**
+- **URL hash routing** — `#platform-health`, `#conv-quality`, etc. Sections bookmarkable; browser back/forward works.
+- **Error handling** — every loader wrapped in shared `tryLoad()` helper: try/catch → toast.error with description. No more silent failures.
+- **Last-updated timestamp** — relative-time badge ("Updated 12s ago") next to every section title.
+- **CSV export** — `exportCSV()` utility + "Export CSV" button on Platform Health (pattern extendable to other tables).
+- **Auto-refresh toggle** — sidebar toggle, polls active section every 30s when on.
+- **Knowledge Base lookback fix** — `/admin/knowledge-base` now honors the `days` param (was previously ignored per audit).
+
+### Quality gates passed
+- `cd frontend/web && npx tsc --noEmit` → 0 errors
+- `cd frontend/web && npm run build` → ✓ Compiled successfully in 2.7s, 14 routes static-prerendered (up from 13 — new `/auth/forgot-password`)
+- No dead clicks — every scaffolded button/toggle has a tooltip or toast explaining what's missing.
+- Mobile drawer works; sidebar collapses properly at <md breakpoint.
+
+### Deferred (intentional — per locked decisions)
+- **Dark mode** — tokens scaffolded in `globals.css` `.dark` block, `darkMode: 'class'` in Tailwind config. Enabling is a 1-file change when we're ready. Per locked decision #1.
+- **Chat history sidebar** — skipped. Per-topic localStorage isolation (v0.15) is sufficient. Per locked decision #2.
+- **Backend endpoints** (still scaffolded in UI): `POST /doubt/regenerate`, `GET /student/export`, Google OAuth, 2FA, email notification delivery, password change flow, avatar upload (base64 PATCH scaffolded).
+- **Migration `v16_student_profile.sql`** (phone/avatar_url/timezone/language columns) — not yet applied. UI has fields but save is a no-op toast until migration lands.
+- **Onboarding redesign** — left as-is; glassmorphic pattern still acceptable. Will restyle in a follow-up commit.
+
+### What's next
+- Write + run `scripts/migrate_v16_student_profile.sql` to wire profile saves.
+- Build `POST /doubt/regenerate` so the regenerate button goes live.
+- Implement dark mode toggle.
+- Onboarding restyle on new primitives.
 
 ---
 

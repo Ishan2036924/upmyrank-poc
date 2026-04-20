@@ -1,10 +1,13 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ThumbsUp, ThumbsDown } from 'lucide-react'
+import { useState } from 'react'
+import { ThumbsUp, ThumbsDown, Copy, Check, RotateCw } from 'lucide-react'
 import MathText from './MathText'
 import VerificationBadge from './VerificationBadge'
 import { ChatMessage as ChatMessageType } from '@/lib/types'
+import { toast } from 'sonner'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 interface Props {
   message: ChatMessageType
@@ -33,6 +36,18 @@ const EASE_OUT_EXPO: [number, number, number, number] = [0.16, 1, 0.3, 1]
 export default function ChatMessage({ message, dimmed = false, isStreaming = false, msgIdx, onFeedback }: Props) {
   const { role, content, metadata } = message
   const streaming = isStreaming || message.isStreaming === true
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopied(true)
+      toast.success('Copied to clipboard')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('Failed to copy')
+    }
+  }
 
   // ── Divider ───────────────────────────────────────────────────────────────
   if (role === 'divider') {
@@ -181,31 +196,53 @@ export default function ChatMessage({ message, dimmed = false, isStreaming = fal
           </div>
         )}
 
-        {/* Thumbs feedback — AI non-streaming messages only */}
-        {!isStudent && !streaming && onFeedback != null && msgIdx != null && (
+        {/* Action row — AI non-streaming messages only */}
+        {!isStudent && !streaming && (
           <div className="flex items-center gap-0.5 mt-1.5 pl-1">
+            {onFeedback != null && msgIdx != null && (
+              <>
+                <button
+                  onClick={() => onFeedback(msgIdx, 'thumbs_up')}
+                  title="Helpful"
+                  className={`p-1 rounded-lg transition-colors duration-150 ${
+                    message.feedback === 'thumbs_up'
+                      ? 'text-emerald-500'
+                      : 'text-slate-300 hover:text-slate-500'
+                  }`}
+                >
+                  <ThumbsUp size={13} />
+                </button>
+                <button
+                  onClick={() => onFeedback(msgIdx, 'thumbs_down')}
+                  title="Not helpful"
+                  className={`p-1 rounded-lg transition-colors duration-150 ${
+                    message.feedback === 'thumbs_down'
+                      ? 'text-red-400'
+                      : 'text-slate-300 hover:text-slate-500'
+                  }`}
+                >
+                  <ThumbsDown size={13} />
+                </button>
+              </>
+            )}
             <button
-              onClick={() => onFeedback(msgIdx, 'thumbs_up')}
-              title="Helpful"
-              className={`p-1 rounded-lg transition-colors duration-150 ${
-                message.feedback === 'thumbs_up'
-                  ? 'text-emerald-500'
-                  : 'text-slate-300 hover:text-slate-500'
-              }`}
+              onClick={handleCopy}
+              title="Copy"
+              className="p-1 rounded-lg text-slate-300 hover:text-slate-500 transition-colors duration-150"
             >
-              <ThumbsUp size={13} />
+              {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
             </button>
-            <button
-              onClick={() => onFeedback(msgIdx, 'thumbs_down')}
-              title="Not helpful"
-              className={`p-1 rounded-lg transition-colors duration-150 ${
-                message.feedback === 'thumbs_down'
-                  ? 'text-red-400'
-                  : 'text-slate-300 hover:text-slate-500'
-              }`}
-            >
-              <ThumbsDown size={13} />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => toast.info('Regenerate coming soon', { description: 'Backend endpoint /doubt/regenerate is in progress.' })}
+                  className="p-1 rounded-lg text-slate-300 hover:text-slate-500 transition-colors duration-150"
+                >
+                  <RotateCw size={13} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Regenerate — coming soon</TooltipContent>
+            </Tooltip>
           </div>
         )}
       </div>

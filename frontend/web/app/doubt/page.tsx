@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ArrowLeft, RotateCcw, Target, BookOpen } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Sidebar from '@/components/Sidebar'
+import AppShell from '@/components/AppShell'
 import ChatMessage from '@/components/ChatMessage'
 import ChatInput from '@/components/ChatInput'
 import ConfidenceMeter, { ConfidenceLevel } from '@/components/ConfidenceMeter'
@@ -752,11 +752,8 @@ function DoubtPageInner() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-[100dvh] p-3 gap-3 pt-[calc(56px+12px)] md:pt-3">
-      <Sidebar />
-
-      {/* ── Floating glassmorphic main window ─────────────────────────────── */}
-      <div className="md:ml-[296px] flex-1 flex gap-3 min-w-0">
+    <AppShell fullHeight>
+      <div className="flex h-full p-3 gap-3 min-w-0">
 
         {/* ── Center chat panel ─────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden min-w-0">
@@ -1096,7 +1093,7 @@ function DoubtPageInner() {
           </div>
         </div>
       </div>
-    </div>
+    </AppShell>
   )
 }
 

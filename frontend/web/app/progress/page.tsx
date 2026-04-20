@@ -11,7 +11,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts'
-import Sidebar from '@/components/Sidebar'
+import AppShell from '@/components/AppShell'
 import { apiGet } from '@/lib/api'
 import { StudentGenome, ConceptMastery } from '@/lib/types'
 import AuthGuard from '@/components/AuthGuard'
@@ -171,10 +171,8 @@ export default function AnalyticsPage() {
 
   return (
     <AuthGuard>
-    <div className="flex h-[100dvh]">
-      <Sidebar />
-      <div className="md:ml-[296px] flex-1 overflow-y-auto pt-14 md:pt-0">
-        <div className="max-w-5xl mx-auto px-6 py-8 pb-4 md:pb-10 space-y-10">
+    <AppShell maxWidth="max-w-5xl">
+        <div className="space-y-10">
 
           {/* ── Header ─────────────────────────────────────────────────────── */}
           <div className="flex items-center justify-between">
@@ -415,8 +413,7 @@ export default function AnalyticsPage() {
             </motion.div>
           )}
         </div>
-      </div>
-    </div>
+    </AppShell>
     </AuthGuard>
   )
 }

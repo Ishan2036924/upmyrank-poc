@@ -14,6 +14,25 @@ import {
   LineChart, Line, AreaChart, Area, Legend, PieChart, Pie, Cell, RadialBarChart, RadialBar,
 } from 'recharts'
 import { apiGet, apiPost } from '@/lib/api'
+import { toast } from 'sonner'
+
+// ── CSV export utility ──────────────────────────────────────────────────────
+function exportCSV(filename: string, rows: Record<string, unknown>[]) {
+  if (!rows.length) { toast.info('Nothing to export'); return }
+  const cols = Object.keys(rows[0])
+  const esc = (v: unknown) => {
+    const s = v == null ? '' : String(v)
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const csv = [cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename
+  document.body.appendChild(a); a.click(); a.remove()
+  URL.revokeObjectURL(url)
+  toast.success(`Exported ${rows.length} rows`)
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -130,7 +149,21 @@ export default function AdminPage() {
   const router = useRouter()
   const [authChecked, setAuthChecked] = useState(false)
   const [authDenied, setAuthDenied] = useState(false)
-  const [activeSection, setActiveSection] = useState<Section>('platform')
+  const [activeSection, setActiveSectionState] = useState<Section>('platform')
+  const [lastUpdated, setLastUpdated] = useState<Record<string, number>>({})
+  const [autoRefresh, setAutoRefresh] = useState(false)
+
+  // URL hash sync — bookmarkable admin sections
+  useEffect(() => {
+    const h = (typeof window !== 'undefined' ? window.location.hash.slice(1) : '') as Section
+    const valid: Section[] = ['platform','conv-quality','response-quality','system-perf','feedback','knowledge','students','diagnostics']
+    if (h && valid.includes(h)) setActiveSectionState(h)
+  }, [])
+  const setActiveSection = useCallback((s: Section) => {
+    setActiveSectionState(s)
+    if (typeof window !== 'undefined') window.history.replaceState(null, '', '#' + s)
+  }, [])
+  const stampUpdated = (key: string) => setLastUpdated(p => ({ ...p, [key]: Date.now() }))
 
   // Section data
   const [platformData, setPlatformData]     = useState<any>(null)
@@ -160,50 +193,22 @@ export default function AdminPage() {
   }, [router])
 
   // ── Data loaders ───────────────────────────────────────────────────────────
-  const loadPlatform = useCallback(async () => {
-    setLoad('platform', true)
-    try { setPlatformData(await apiGet(`/admin/platform-health?days=${days}`)) } finally { setLoad('platform', false) }
-  }, [days])
+  const tryLoad = async <T,>(key: string, fn: () => Promise<T>, setter: (v: T) => void, label: string) => {
+    setLoad(key, true)
+    try { const d = await fn(); setter(d); stampUpdated(key) }
+    catch (e: any) { toast.error(`${label} failed`, { description: e?.message ?? 'Check server logs.' }) }
+    finally { setLoad(key, false) }
+  }
 
-  const loadConvQuality = useCallback(async () => {
-    setLoad('conv', true)
-    try { setConvQuality(await apiGet(`/admin/conversation-quality?days=${days}`)) } finally { setLoad('conv', false) }
-  }, [days])
-
-  const loadRespQuality = useCallback(async () => {
-    setLoad('resp', true)
-    try { setRespQuality(await apiGet(`/admin/response-quality?days=${days}`)) } finally { setLoad('resp', false) }
-  }, [days])
-
-  const loadSysPerf = useCallback(async () => {
-    setLoad('sys', true)
-    try { setSysPerf(await apiGet(`/admin/system-performance?days=${days}`)) } finally { setLoad('sys', false) }
-  }, [days])
-
-  const loadFeedback = useCallback(async () => {
-    setLoad('feed', true)
-    try { setFeedbackData(await apiGet(`/admin/user-feedback?days=${days}`)) } finally { setLoad('feed', false) }
-  }, [days])
-
-  const loadKb = useCallback(async () => {
-    setLoad('kb', true)
-    try { setKbData(await apiGet('/admin/knowledge-base')) } finally { setLoad('kb', false) }
-  }, [])
-
-  const loadStudents = useCallback(async () => {
-    setLoad('students', true)
-    try { setStudentsData(await apiGet(`/admin/student-insights?days=30`)) } finally { setLoad('students', false) }
-  }, [])
-
-  const runDiagnostics = useCallback(async () => {
-    setLoad('diag', true)
-    try { setDiagnosticsData(await apiPost('/admin/diagnostics', {})) } finally { setLoad('diag', false) }
-  }, [])
-
-  const runDigest = useCallback(async () => {
-    setLoad('digest', true)
-    try { setDigestData(await apiPost('/admin/quality-digest', {})) } finally { setLoad('digest', false) }
-  }, [])
+  const loadPlatform     = useCallback(() => tryLoad('platform', () => apiGet(`/admin/platform-health?days=${days}`),     setPlatformData, 'Platform health'),    [days])
+  const loadConvQuality  = useCallback(() => tryLoad('conv',     () => apiGet(`/admin/conversation-quality?days=${days}`),setConvQuality,  'Conversation quality'), [days])
+  const loadRespQuality  = useCallback(() => tryLoad('resp',     () => apiGet(`/admin/response-quality?days=${days}`),   setRespQuality,  'Response quality'),   [days])
+  const loadSysPerf      = useCallback(() => tryLoad('sys',      () => apiGet(`/admin/system-performance?days=${days}`), setSysPerf,      'System performance'), [days])
+  const loadFeedback     = useCallback(() => tryLoad('feed',     () => apiGet(`/admin/user-feedback?days=${days}`),       setFeedbackData, 'User feedback'),      [days])
+  const loadKb           = useCallback(() => tryLoad('kb',       () => apiGet(`/admin/knowledge-base?days=${days}`),      setKbData,       'Knowledge base'),     [days])
+  const loadStudents     = useCallback(() => tryLoad('students', () => apiGet(`/admin/student-insights?days=30`),         setStudentsData, 'Student insights'),   [])
+  const runDiagnostics   = useCallback(() => tryLoad('diag',     () => apiPost('/admin/diagnostics', {}),                 setDiagnosticsData, 'Diagnostics'),     [])
+  const runDigest        = useCallback(() => tryLoad('digest',   () => apiPost('/admin/quality-digest', {}),              setDigestData,   'Digest'),             [])
 
   // Load data when section changes
   useEffect(() => {
@@ -216,6 +221,21 @@ export default function AdminPage() {
     if (activeSection === 'knowledge' && !kbData)             loadKb()
     if (activeSection === 'students' && !studentsData)        loadStudents()
   }, [activeSection, authChecked]) // eslint-disable-line
+
+  // Auto-refresh every 30s when toggled on
+  useEffect(() => {
+    if (!autoRefresh || !authChecked) return
+    const t = setInterval(() => {
+      if (activeSection === 'platform')         loadPlatform()
+      else if (activeSection === 'conv-quality')    loadConvQuality()
+      else if (activeSection === 'response-quality') loadRespQuality()
+      else if (activeSection === 'system-perf')     loadSysPerf()
+      else if (activeSection === 'feedback')        loadFeedback()
+      else if (activeSection === 'knowledge')       loadKb()
+      else if (activeSection === 'students')        loadStudents()
+    }, 30_000)
+    return () => clearInterval(t)
+  }, [autoRefresh, authChecked, activeSection, loadPlatform, loadConvQuality, loadRespQuality, loadSysPerf, loadFeedback, loadKb, loadStudents])
 
   if (authDenied) {
     return (
@@ -323,6 +343,15 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
+          <div className="mt-4 flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-400 uppercase tracking-wider">Auto-refresh</span>
+            <button
+              onClick={() => setAutoRefresh(v => !v)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${autoRefresh ? 'bg-purple-600' : 'bg-slate-200'}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${autoRefresh ? 'translate-x-5' : 'translate-x-1'}`} />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -333,7 +362,8 @@ export default function AdminPage() {
 
             {/* ── PLATFORM HEALTH ──────────────────────────────────────────── */}
             {activeSection === 'platform' && (
-              <Section title="Platform Health" icon={Globe} onRefresh={loadPlatform} loading={!!loading.platform}>
+              <Section title="Platform Health" icon={Globe} onRefresh={loadPlatform} loading={!!loading.platform} updatedAt={lastUpdated.platform}
+                onExport={platformData ? () => exportCSV('platform-health.csv', [platformData]) : undefined}>
                 {platformData ? (
                   <>
                     <motion.div variants={stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
@@ -849,10 +879,19 @@ export default function AdminPage() {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+function relativeTime(ts?: number): string {
+  if (!ts) return 'never'
+  const diff = Date.now() - ts
+  if (diff < 60_000) return `${Math.max(1, Math.floor(diff / 1000))}s ago`
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
+  return `${Math.floor(diff / 3_600_000)}h ago`
+}
+
 function Section({
-  title, icon: Icon, children, onRefresh, loading,
+  title, icon: Icon, children, onRefresh, loading, updatedAt, onExport,
 }: {
   title: string; icon: React.ElementType; children: React.ReactNode; onRefresh: () => void; loading: boolean
+  updatedAt?: number; onExport?: () => void
 }) {
   return (
     <>
@@ -861,13 +900,27 @@ function Section({
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
             <Icon className="w-5 h-5 text-purple-600" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900">{title}</h1>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">{title}</h1>
+            {updatedAt && (
+              <p className="text-[11px] text-slate-400 mt-0.5">Updated {relativeTime(updatedAt)}</p>
+            )}
+          </div>
         </div>
-        <button onClick={onRefresh} disabled={loading}
-          className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-all active:scale-95 disabled:opacity-40 shadow-[0_2px_8px_rgb(0,0,0,0.04)]">
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {onExport && (
+            <button onClick={onExport}
+              className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-all active:scale-95 shadow-[0_2px_8px_rgb(0,0,0,0.04)]">
+              <Database className="w-3.5 h-3.5" />
+              Export CSV
+            </button>
+          )}
+          <button onClick={onRefresh} disabled={loading}
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-all active:scale-95 disabled:opacity-40 shadow-[0_2px_8px_rgb(0,0,0,0.04)]">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </motion.div>
       {children}
     </>
