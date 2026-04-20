@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/lib/auth'
 import QuickDoubtFAB from '@/components/QuickDoubtFAB'
+import { Toaster } from '@/components/ui/sonner'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -21,9 +23,12 @@ export default function RootLayout({
       <body className={`${inter.className} h-full text-slate-900 antialiased`}>
         <div className="mesh-bg" />
         <AuthProvider>
-          {children}
-          {/* FAB rendered globally — hides itself on /doubt, /auth, /onboarding */}
-          <QuickDoubtFAB />
+          <TooltipProvider delayDuration={200}>
+            {children}
+            {/* FAB rendered globally — hides itself on /doubt, /auth, /onboarding */}
+            <QuickDoubtFAB />
+          </TooltipProvider>
+          <Toaster />
         </AuthProvider>
       </body>
     </html>
