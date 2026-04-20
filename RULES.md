@@ -33,8 +33,18 @@ Never use `gpt-4o` for text generation — cost is 10x with no quality gain for 
 `_sanitize_latex()` must run on **every** LLM response before it is returned to the frontend.
 If you add a new response path in `engine.py`, the sanitizer must be called. Missing it breaks KaTeX silently — no error, just broken rendering.
 
-## 7. No Git Operations
-Never run `git add`, `git commit`, or `git push` unless explicitly instructed in the prompt.
+## 7. No Git Operations — Claude Never Commits or Pushes
+Claude **never** runs `git add`, `git commit`, `git push`, `git reset`, `git rebase`, or any other git command that mutates history or the index. Even when the user says "commit this" or "push it", Claude only **prints the shell commands** for the user to copy and run themselves. No exceptions — not for small fixes, not for typos, not for documentation-only changes.
+
+What Claude DOES do:
+- Edit files (staged in working tree only)
+- Print the exact `git add …` + `git commit -m "…"` + `git push origin …` commands
+- Print them in separate code blocks so the user can copy one at a time
+- Explain what each command will do
+
+Read-only git commands are allowed (`git status`, `git log`, `git diff`, `git show`) for inspection.
+
+Rationale: keeping the human in the loop for every commit prevents accidental pushes of half-finished work, ensures the user reviews the diff, and keeps the commit ritual intentional.
 
 ## 8. DB Migrations are Files
 Every schema change must be written to a new `scripts/migrate_vX_name.sql` file.

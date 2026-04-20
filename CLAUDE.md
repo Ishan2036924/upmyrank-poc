@@ -1,8 +1,20 @@
 # Claude Code Instructions — UpMyRank
 
-**FIRST ACTION EVERY SESSION: Read `docs/session_log.md` before anything else.**
+**FIRST ACTION EVERY SESSION: Read `docs/version_history.md` AND `docs/session_log.md` before anything else.**
+
+- `docs/version_history.md` is the **10,000-ft view** — every version shipped, what changed, bugs fixed, metrics, known issues. Read first to understand where the project is now and how it got here.
+- `docs/session_log.md` is the **tactical view** — what's half-done in the last session, what files are in flight. Read second to know what to pick up.
 
 ALWAYS read `MEMORY.md` and `RULES.md` at the start of any new session. `RULES.md` contains hard invariants — violating them creates silent bugs. `MEMORY.md` has the current project state. Whenever you complete a major feature or make an architectural decision, update `MEMORY.md` to reflect the new state.
+
+## Version History Rule
+
+Every commit that ships a user-visible change, fix, or architectural shift must append a new entry to `docs/version_history.md` **before committing**. Use the template at the bottom of that file. Increment version:
+- **patch (`v0.X.Y`)** — pure bug fix, no new features
+- **minor (`v0.X+1`)** — new feature, significant refactor, or eval-quality improvement
+- **major (`v1+`)** — not yet; still pre-v1
+
+New entries go at the **TOP** of `docs/version_history.md` (reverse-chronological) and the version index table gets updated in the same commit. Never edit old entries — if history needs a correction, append a new entry explaining it.
 
 ## Project Overview
 UpMyRank is an AI-powered JEE/NEET tutoring platform covering **Physics, Chemistry, and Maths** (NCERT Class 11 & 12). Core architecture follows the PTB (Python Tutor Bot) educational AI framework: Customization layer (global rules) + Personalization layer (student model) + Golden Dataset (truth control). The LLM is a composer — not the source of knowledge. The system architecture is the product.
@@ -44,7 +56,7 @@ UpMyRank is an AI-powered JEE/NEET tutoring platform covering **Physics, Chemist
 
 See `RULES.md` for the full invariant list. Summary:
 
-1. **Never `git commit` or `git push`** unless explicitly asked.
+1. **Claude never runs `git add`, `git commit`, `git push`, `git reset`, or `git rebase` — ever.** Even when the user says "commit this" or "push it", Claude's job is to (a) print the exact `git add …` / `git commit -m "…"` / `git push origin …` commands in separate code blocks for copy-paste, and (b) explain what each will do. Read-only git (`status`, `log`, `diff`, `show`) is allowed. See RULES.md #7 for full details.
 2. **`_genome_update_task` is the sole mastery writer** — never add a second EMA update elsewhere in the codebase.
 3. **`summarize_session()` must always be awaited** on `/session/end` — never wrap in `create_task()`.
 4. **Redis errors must never propagate** — always catch and log as warning, never raise.
@@ -127,7 +139,7 @@ frontend/web/
 
 ## Auto-Read Rules (for Claude Code sessions)
 
-- **Every session, always:** Read `docs/session_log.md` — it's small (~30 lines) and tells you exactly what was happening last time, what's half-done, and what files matter right now. Never skip it.
+- **Every session, always:** Read `docs/version_history.md` (10k-ft view of all shipped versions) + `docs/session_log.md` (tactical what's-in-flight). Read the version history first — it tells you where the project is, what's been built, what's been fixed, and known issues carried forward. Read session log second for the half-done work. Never skip either.
 - **Default (any coding task):** CLAUDE.md + `docs/session_log.md`. Nothing else unless triggered below.
 - **"fix" / "bug" / "broken" / "error" / "failing" / "not working" in my prompt:** Also read `docs/bugs.md`
 - **"new feature" / "build" / "implement" / "add" / "create" in my prompt (for a feature):** Also read `docs/decisions.md` + `docs/bugs.md`
