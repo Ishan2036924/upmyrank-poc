@@ -68,6 +68,8 @@ class HintRequest(BaseModel):
     mistake_tag: Optional[str] = None   # e.g. 'sign_error', 'wrong_formula'
     student_resolved: bool = False      # True when student clicks "Got it!" — triggers genome update
     student_attempt: Optional[str] = None  # Optional attempt text before full solution
+    student_confidence: Optional[str] = None  # low / medium / high — flows into confidence-weighted mastery update
+    image_url: Optional[str] = None     # base64/data URL for student image upload in hint reply
 
 
 class VerifyRequest(BaseModel):
@@ -844,6 +846,21 @@ async def get_hint(
             body.session_id, body.student_attempt,
         )
 
+    # FIX #1 (2026-04-19): image_url on /doubt/hint — if the student uploads an
+    # image (e.g. handwritten attempt) without text, OCR it to populate their
+    # response. Previously HintRequest didn't declare image_url → silently dropped.
+    if body.image_url and not (_effective_student_response and _effective_student_response.strip()):
+        try:
+            extracted = await engine.extract_question_from_image(body.image_url)
+            if extracted and extracted.strip():
+                _effective_student_response = extracted.strip()
+                logger.info(
+                    "hint: OCR'd image (session=%s): %.120s",
+                    body.session_id, _effective_student_response,
+                )
+        except Exception as exc:
+            logger.warning("hint: image OCR failed (non-fatal): %s", exc)
+
     try:
         result = await engine.get_hint(
             session_id=body.session_id,
@@ -889,13 +906,17 @@ async def get_hint(
                 await _close_doubt_block(
                     pool, engine, str(block["doubt_block_id"]), solved=True,
                 )
-                # Genome update fires asynchronously after the response is sent
+                # Genome update fires asynchronously after the response is sent.
+                # FIX #2 (2026-04-19): plumb student_confidence through so the
+                # confidence-weighted mastery modifier (engine _genome_update_task)
+                # fires on hint-path resolutions too, not just on /doubt/ask.
                 background_tasks.add_task(
                     _genome_update_task,
                     pool,
                     body.session_id,
                     body.give_up_flag,
                     body.mistake_tag,
+                    student_confidence=body.student_confidence,
                     misconception_id=block.get("misconception_id") or _mc_id_hint,
                 )
             result["doubt_block_id"] = str(block["doubt_block_id"])

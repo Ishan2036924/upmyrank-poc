@@ -423,15 +423,19 @@ function DoubtPageInner() {
       return
     }
 
-    // Optimistic user message
-    addMessage({
+    // FIX #4 (2026-04-19): track the optimistic student message id so we can
+    // surface an error-recovery tutor bubble on API failure instead of leaving
+    // the student's message orphaned in the chat with no AI reply.
+    const optimisticId = nanoid()
+    setMessages((prev) => [...prev, {
+      id: optimisticId,
       role: 'student',
       content: text,
       metadata: {
         doubt_block_id: currentBlockId ?? undefined,
         image_url:      imageUrl ?? undefined,
       },
-    })
+    }])
     setIsLoading(true)
 
     try {
@@ -439,10 +443,15 @@ function DoubtPageInner() {
       // Backend may override jump_to_full if current_level < 3 (progressive
       // disclosure gate), so we MUST read is_full_solution from the response.
       if (jumpToFull && sessionId) {
+        // FIX #9 (2026-04-19): also flag give_up_flag=true so the backend
+        // genome update applies the give-up performance penalty (lower
+        // mastery signal) rather than treating the forced solution request
+        // as a neutral resolution.
         const res = await apiPost('/doubt/hint', {
           session_id:            sessionId,
           student_response:      text,
           jump_to_full_solution: true,
+          give_up_flag:          true,
           study_session_id:      studySessionId ?? undefined,
         })
         const wasFull = res.is_full_solution ?? false
@@ -571,6 +580,12 @@ function DoubtPageInner() {
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
+      // FIX #4: append a tutor error bubble so the optimistic student message
+      // isn't orphaned. Also surface the banner via setChatError for retry.
+      addMessage({
+        role: 'tutor',
+        content: `⚠️ I couldn't send that — ${msg}. Please try again.`,
+      })
       setChatError(msg)
     } finally {
       setIsLoading(false)

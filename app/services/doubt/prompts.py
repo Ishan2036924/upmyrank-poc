@@ -256,6 +256,28 @@ Few-shot examples:
 "what is 2+2" → subject_doubt
 "2+2" → subject_doubt
 "solve 5 times 3" → subject_doubt
+// Numeric-only replies (with active block) are continuations — student is answering a problem:
+"42" (active_block=true) → continuation
+"a = 2.5 m/s^2" (active_block=true) → continuation
+"x = 3" (active_block=true) → continuation
+"F = 20 N" (active_block=true) → continuation
+"2.5 m/s" (active_block=true) → continuation
+// Numeric-only without active block → subject_doubt (student posing a calc):
+"42" (active_block=false) → subject_doubt
+// Short ambiguous replies inside an active block are continuations, NOT conversational:
+"idk" (active_block=true) → continuation
+"not sure" (active_block=true) → continuation
+"maybe" (active_block=true) → continuation
+"something like that" (active_block=true) → continuation
+"kind of" (active_block=true) → continuation
+// Hindi / Hinglish replies inside active block are continuations:
+"haan samajh gaya" (active_block=true) → continuation
+"haan thoda samjha nahi" (active_block=true) → continuation
+"nahi samjha" (active_block=true) → continuation
+"matlab kya hai" (active_block=true) → continuation
+// Hindi emotional signals → emotional:
+"stress ho raha hai" → emotional
+"ghabrahat ho rahi hai" → emotional
 "I'm feeling stressed" → emotional
 "explain photosynthesis" → out_of_scope
 "what is the capital of France" → out_of_scope
@@ -401,7 +423,11 @@ TONE SIGNAL above:
   → Do NOT gush back. Move straight to content.
 
 • TONE SIGNAL = "default" or missing / neutral question:
-  → No tone-adapting opener. Go straight to the structured overview.
+  → FORBIDDEN opener phrases (do NOT use ANY of these):
+     "Great question", "That's a great question", "Let me explain", "Here's a great way",
+     "This is fascinating", "Happy to explain", "Sure", "Absolutely", "Of course".
+  → Start IMMEDIATELY with the first bold heading `**Concept overview**`. No preamble,
+     no warm-up sentence, no acknowledgment of the student's message.
 
 Provide a clear, direct explanation. Structure it as:
 

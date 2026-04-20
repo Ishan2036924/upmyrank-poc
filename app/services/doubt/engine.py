@@ -281,6 +281,12 @@ class SocraticEngine:
         if student_row is None:
             raise ValueError(f"Student not found: {student_id}")
 
+        # FIX #14 (2026-04-19): normalize locked_topic — strip whitespace and
+        # treat empty/whitespace-only as no lock. Prevents the
+        # TOPIC_LOCK_ADDENDUM template from rendering "pinned to ''" nonsense.
+        if locked_topic is not None:
+            locked_topic = locked_topic.strip() or None
+
         # ── 0a. Topic lock pre-check (short-circuit off-topic requests) ───────
         # When the session is locked to a specific topic but the student's
         # question is clearly about a different subject/topic, bypass the
@@ -722,6 +728,10 @@ class SocraticEngine:
             except ValueError as exc:
                 yield {"error": f"Invalid student ID: {student_id}", "done": True}
                 return
+
+            # FIX #14 (2026-04-19): normalize locked_topic in stream variant too.
+            if locked_topic is not None:
+                locked_topic = locked_topic.strip() or None
 
             student_row = await self._pool.fetchrow(
                 "SELECT id FROM students WHERE id = $1", student_uuid
@@ -1237,6 +1247,25 @@ class SocraticEngine:
             if emotional and emotional not in ("uncertain",):
                 parts.append(f"Student emotional state: {emotional}")
             _response_assessment_text = "\n".join(parts)
+
+        # FIX #5 (2026-04-19): when there's no student response at all (e.g.
+        # student clicked "give me a hint" at L0 without attempting), inject an
+        # explicit "no-attempt-yet" banner. Without this, HINT_LEVEL_1's
+        # CORRECT/PARTIAL/WRONG/CONFUSED classifier defaults to CONFUSED and
+        # instructs "simplify the SAME question" — but the LLM then hallucinates
+        # a simplification based on non-existent confusion. Explicit signal
+        # lets the prompt treat this as "re-pose the question with a concrete
+        # anchor", not "simplify the student's confused answer".
+        if not (student_response and student_response.strip()):
+            _response_assessment_text = (
+                "ANSWER CHECK: — student has NOT attempted the opening question yet "
+                "(clicked 'give me a hint' without typing).\n"
+                "Behavior: do NOT use any validator opener ('Exactly', 'Right —', 'Yes —', "
+                "'Correct', 'Good —', 'Nice —'). Do NOT pretend the student answered.\n"
+                "Instead: re-pose the SAME opening question, but with one extra concrete "
+                "anchor (a specific physical object / smaller numbers / analogy). End with "
+                "exactly one question that matches the original intent."
+            )
 
         # ── 3. Append student response to history ─────────────────────────────
         if student_response and student_response.strip():
@@ -1856,7 +1885,13 @@ class SocraticEngine:
         stripped = message.strip().lower()
 
         # ── Pre-check 1: short conversational tokens (no LLM needed) ──────────
-        if len(stripped) <= 20 and stripped in _CONVERSATIONAL_TOKENS:
+        # FIX #8 (2026-04-19): gate the conversational pre-filter on
+        # has_active_block=False. Inside an active doubt, tokens like "idk",
+        # "maybe", "ok", "yes" are CONTINUATIONS (student expressing confusion
+        # or confirming), not greetings. Previously they got routed as
+        # conversational → "Ask me a question!" response, silently dropping
+        # their turn out of the hint ladder.
+        if len(stripped) <= 20 and stripped in _CONVERSATIONAL_TOKENS and not has_active_block:
             logger.info("Conversational pre-filter: %r", stripped)
             return "conversational"
 

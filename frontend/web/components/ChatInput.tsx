@@ -21,10 +21,18 @@ const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
     const fileInputRef = useRef<HTMLInputElement>(null)
     const ref = (forwardedRef as React.RefObject<HTMLTextAreaElement>) || internalRef
 
+    // FIX #3 (2026-04-19): synchronous re-entry guard. Enter-key + click or
+    // rapid double-click previously slipped two handleSend() calls through
+    // because setUploading(true) is async (state update doesn't fire until
+    // the next render). Using a ref gives us a truly synchronous lock.
+    const inFlightRef = useRef(false)
+
     const handleSend = async () => {
+      if (inFlightRef.current) return
       const trimmed = value.trim()
       if ((!trimmed && !imageFile) || disabled || uploading) return
 
+      inFlightRef.current = true
       setUploading(true)
       setUploadError(null)
       let imageUrl: string | undefined
@@ -45,6 +53,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
           const msg = err instanceof Error ? err.message : String(err)
           setUploadError(`Image read failed: ${msg}`)
           setUploading(false)
+          inFlightRef.current = false
           return
         }
       }
@@ -55,6 +64,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, Props>(
       setImageFile(null)
       setImagePreview(null)
       setUploading(false)
+      inFlightRef.current = false
       if (ref.current) ref.current.style.height = 'auto'
     }
 

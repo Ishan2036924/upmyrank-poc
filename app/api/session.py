@@ -218,17 +218,27 @@ async def end_session(
     #    → mastery actually accumulates for unresolved doubts (critical fix)
     #  - the summarizer fires consistently through one code path
     from app.api.doubt import _close_doubt_block
+    # FIX #6 (2026-04-19): fetch hint_level alongside id so we can distinguish
+    # "student abandoned after seeing full solution" (mark solved=True) from
+    # "student gave up early or stalled" (solved=False, fires give-up signal
+    # via _close_doubt_block's internal gate).
     open_blocks = await pool.fetch(
         """
-        SELECT doubt_block_id FROM doubt_blocks
+        SELECT doubt_block_id, hint_level
+        FROM doubt_blocks
         WHERE study_session_id = $1 AND ended_at IS NULL
         """,
         session_uuid,
     )
     for block in open_blocks:
         try:
+            # hint_level > 3 means the student reached the full-solution reveal
+            # before walking away — treat this as a soft-solved closure so the
+            # mastery pipeline doesn't double-penalize them as a give-up.
+            _reached_solution = (block["hint_level"] or 0) > 3
             await _close_doubt_block(
-                pool, engine, str(block["doubt_block_id"]), solved=False,
+                pool, engine, str(block["doubt_block_id"]),
+                solved=_reached_solution,
             )
         except Exception as exc:
             logger.warning(
