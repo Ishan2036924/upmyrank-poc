@@ -2,32 +2,36 @@
 
 > **Maintainers:** Update this file whenever a major feature ships or an architectural decision is made.
 > **Claude sessions:** Read this file at the start of every new session — after `docs/version_history.md` and `docs/session_log.md`.
-> **Current version:** v0.20 (2026-04-20) — dual-loop architecture shipped.
+> **Current version:** v0.20.2 (2026-04-21) — prod patches + admin Study Path panel + synthetic test harness shipped.
 
 ---
 
-## 🎯 Current architecture (v0.20) — the 60-second summary
+## 🎯 Current architecture (v0.20.2) — the 60-second summary
 
 **Dual-loop product** feeding one Knowledge Genome:
 
-- **Mode 1 — Study Path** (`/study`, `/study/[subject]/[chapter]/[topic]`): structured concept cards. Each card = Notes (top-3 NCERT chunks) + Practice (3 problems) + PYQs + Mastery snapshot. Zero LLM cost to assemble. Files: `app/api/study.py`, `app/services/study/card_composer.py`, `frontend/web/app/study/...`.
-- **Mode 2 — Ask Anything** (`/doubt`): free-form inbox. Backend auto-segments doubt_blocks on topic shift (via `_detect_topic_shift` in `app/api/doubt.py`, which demotes `continuation` → `subject_doubt` when the message shape + classifier agree a new topic started). Mastery attributes to the correct concept. Files: `app/api/doubt.py`, `app/services/doubt/engine.py`.
-- Shared: `_genome_update_task` (sole mastery writer, Rule #2), persona evolution every 5 sessions, misconception library, Socratic L0→L3 ladder. Unchanged from v0.19.
+- **Mode 1 — Study Path** (`/study`, `/study/[subject]/[chapter]/[topic]`): structured concept cards. Each card = Notes (top-3 NCERT chunks, deduped + heading-diversity, optional hand-polished override) + Practice (3 problems) + PYQs + Mastery snapshot. Zero LLM cost to assemble. Files: `app/api/study.py`, `app/services/study/card_composer.py`, `scripts/concept_card_overrides.json`, `frontend/web/app/study/...`.
+- **Mode 2 — Ask Anything** (`/doubt`): free-form inbox. Backend auto-segments doubt_blocks on topic shift (via `_detect_topic_shift` in `app/api/doubt.py`). v0.20.2 widened the trigger regex to catch contractions + math verbs + symbol-only pivots. Mastery attributes to the correct concept. Manual `+ New doubt` lever via `POST /doubt/new` for explicit segmentation. Files: `app/api/doubt.py`, `app/services/doubt/engine.py`.
+- **Backstop** (v0.20.2): `_reclassify_block_topic` runs at every block close, logs `drift_topic` into `session_events.payload` if the dominant topic from conversation_history differs from session.topic stamp. Currently logging-only — flag for v0.21 to wire concept_id re-derivation if beta shows >5% drift.
+- Shared: `_genome_update_task` (sole mastery writer, Rule #2), persona evolution every 5 sessions, misconception library, Socratic L0→L3 ladder.
+- **Admin observability** (v0.20.2): `/admin/study-path` panel surfaces top-viewed cards, override hit-rate, drift count, daily views sparkline, CSV export.
 
-## ✅ Recently shipped (last 3 versions)
+## ✅ Recently shipped (last 4 versions)
 
-- **v0.20 (2026-04-20)** — dual-loop architecture (see current architecture above). Topic-shift detection in `/doubt/ask` + `/doubt/ask/stream`. New `GET /study/card` endpoint. New `/study` navigator + concept card pages. Home restructured with primary CTAs.
+- **v0.20.2 (2026-04-21)** — prod bug patches (regex too narrow for `"what's the integral…"`, Notes dup) + reliability (block-close drift backstop, `POST /doubt/new`, `+ New doubt` UI button) + admin Study Path panel + 5 hand-polished concept-card overrides (Projectile Motion, Newton's Laws, SHM, Chemical Bonding, Differentiation) + `PATCH /student/{id}` with schema-drift handling + cold-start toast + `scripts/synthetic_beta.py` (19/19 PASS local).
+- **v0.20 (2026-04-20)** — dual-loop architecture. Topic-shift detection. New `GET /study/card` endpoint. New `/study` navigator + concept card pages. Home restructured with primary CTAs.
 - **v0.19 (2026-04-19)** — enterprise UI Phases 2–6: `AppShell`, split-screen auth, `/settings` 6-tab, admin URL-hash routing + CSV export + auto-refresh + error toasts.
 - **v0.18 (2026-04-18)** — enterprise UI Phase 1: design tokens + 18 shadcn-pattern primitives + Toaster wiring.
 
-## 🚧 Next up (deferred from v0.20)
+## 🚧 Next up (deferred from v0.20.2)
 
-1. **Beta with 30 students** — monitor `topic_shift` log lines, card render errors.
-2. **Hand-curated Notes overrides** for top-30 topics (~2.5 h editorial; no code change; `scripts/concept_card_overrides.json` when ready).
-3. **Admin Study Path usage panel** — single endpoint `/admin/study-path` + section in `app/admin/page.tsx`.
-4. **Migration `v16_student_profile.sql`** — add `phone`, `avatar_url`, `timezone`, `preferred_language` columns. Wire settings-save no-ops to real updates.
+1. **Apply migration v16** — `./scripts/run_migration.sh scripts/migrate_v16_student_profile.sql` (file shipped, not yet applied to prod). Settings phone/timezone save will start persisting once applied.
+2. **Beta with 30 students** — monitor Render logs for `v0.20 topic-shift:` and `block-close drift detected:` lines. After 3 days, query `session_events WHERE event_type='study_card_view'` to identify the next 25 topics to hand-polish overrides for.
+3. **Onboarding restyle** on new primitives (deferred from v0.20 + v0.20.2 — current works, low marginal pre-beta value).
+4. **Drift backstop concept_id re-derivation** — currently logging-only. If beta `block-close drift` rate > 5%, wire EMA shift to dominant-topic concepts.
 5. **Dark mode activation** — tokens already in `globals.css` `.dark` block; enable toggle in `/settings?tab=appearance`.
 6. **Render deployment fix** — set Docker Command field to `uvicorn app.main:app --host 0.0.0.0 --port 10000` (remove `--reload` from prod).
+7. **Render upgrade off free tier** — kills cold start entirely. v0.20.2 cold-start toast is a UX bandaid until the upgrade.
 
 ---
 

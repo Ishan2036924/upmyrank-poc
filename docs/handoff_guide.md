@@ -14,16 +14,20 @@
 
 AI-powered JEE/NEET tutoring platform covering Physics, Chemistry, and Maths (NCERT Class 11 & 12). Architecture: PTB educational-AI framework — Customization layer (global rules) + Personalization layer (student model) + Golden Dataset (truth control). **The LLM is a composer, not the source of knowledge.** The architecture is the product.
 
-## Dual-loop architecture (v0.20, current)
+## Dual-loop architecture (v0.20.2, current)
 
 Two coexisting product modes, **one shared Knowledge Genome**:
 
 | Mode | Route | When to use | Primary files |
 |---|---|---|---|
-| **Study Path** | `/study`, `/study/[subject]/[chapter]/[topic]` | Student wants structure — pick a topic, study concept cards (notes + practice + PYQs) | `app/api/study.py`, `app/services/study/card_composer.py`, `frontend/web/app/study/...` |
-| **Ask Anything** | `/doubt` (free-form) | Student has a spontaneous doubt; doesn't want to pre-classify | `app/api/doubt.py`, `app/services/doubt/engine.py`, `frontend/web/app/doubt/page.tsx` |
+| **Study Path** | `/study`, `/study/[subject]/[chapter]/[topic]` | Student wants structure — pick a topic, study concept cards (notes + practice + PYQs) | `app/api/study.py`, `app/services/study/card_composer.py`, `scripts/concept_card_overrides.json`, `frontend/web/app/study/...` |
+| **Ask Anything** | `/doubt` (free-form) | Student has a spontaneous doubt; doesn't want to pre-classify. v0.20.2 added a manual `+ New doubt` button (chat header) that calls `POST /doubt/new` for explicit segmentation. | `app/api/doubt.py`, `app/services/doubt/engine.py`, `frontend/web/app/doubt/page.tsx` |
 
 Both modes feed the same `concept_mastery` table. Both use the same Socratic engine when chatting. Both preserve persona evolution + misconception detection.
+
+**Topic-shift safety net** (v0.20.2): every block close runs `_reclassify_block_topic` on the conversation history. If the dominant topic differs from the stamped topic, `drift_topic` is logged into `session_events.payload` for admin auditing (currently logging-only; v0.21 may wire concept_id re-derivation if beta data shows >5% drift).
+
+**Hand-polished overrides:** the Notes section of any concept card can be replaced by an editorial entry in `scripts/concept_card_overrides.json`. Key format: `<subject-slug>__<topic-slug>`. Composer prefers overrides over auto-assembled chunks. v0.20.2 ships 5 seed overrides (Projectile Motion, Newton's Laws, SHM, Chemical Bonding, Differentiation).
 
 ## Stack map
 
@@ -73,6 +77,8 @@ After those four are up to date, Claude prints the exact `git add / git commit -
 - **"Why does topic-lock leak sometimes?"** → `app/services/doubt/engine.py` `TOPIC_LOCK_ADDENDUM` + `docs/version_history.md` v0.15/v0.16/v0.20. Prompt-level enforcement has known limits; v0.20 added structural auto-segmentation for the Ask Anything path.
 - **"How do I add a new /admin panel?"** → `app/api/admin.py` (endpoint), `frontend/web/app/admin/page.tsx` (section). Use the `tryLoad()` wrapper pattern from v0.19 for errors/toasts.
 - **"How is a new concept card built?"** → `app/services/study/card_composer.py`. Add a new section by writing a new `_compose_X()` fn and including it in the final dict. Zero LLM cost is the policy — do not regress.
+- **"How do I add a hand-polished concept card?"** → append to `scripts/concept_card_overrides.json` with key `<subject-slug>__<topic-slug>` and value `{heading, source, notes_markdown}`. Composer auto-prefers it. No code change needed.
+- **"How do I run the synthetic test suite?"** → `BACKEND=http://localhost:8000 PYTHONPATH="" PYTHONHOME="" /opt/miniconda3/bin/python3.11 -m poetry run python scripts/synthetic_beta.py --personas 2`. 19 invariants per persona. Runs in ~5 min. Use against prod by changing BACKEND to the Render URL.
 - **"UI style guide?"** → `UI_PRO_MAX.md` + `frontend/web/tailwind.config.ts` for tokens + `frontend/web/components/ui/*` for primitives (shadcn pattern).
 
 ## Quality gates (every change must pass)
@@ -85,9 +91,10 @@ After those four are up to date, Claude prints the exact `git add / git commit -
 - [ ] Mobile responsive — sidebars become drawers at <md.
 - [ ] Backend eval doesn't regress — if you changed prompts or engine logic, run `scripts/regression_gate.py`.
 
-## What's next (as of v0.20, 2026-04-20)
+## What's next (as of v0.20.2, 2026-04-21)
 
-- Beta with 30 students — monitor topic-shift classifier accuracy, card render errors.
-- Optional V1.1: hand-curated Notes overrides for top-30 topics (2.5 h of editorial time, no code change).
-- Optional V1.2: admin Study Path usage panel.
-- Deferred: teacher dashboard, syllabus editing UI, dark-mode activation (tokens already in `globals.css` `.dark` block), migration `v16_student_profile.sql` for phone/timezone profile fields.
+- **Apply migration v16** — `./scripts/run_migration.sh scripts/migrate_v16_student_profile.sql` so settings save persists phone/timezone. Idempotent.
+- **Beta with 30 students** — monitor Render logs for `v0.20 topic-shift:` and `block-close drift detected:` lines. After 3 days, run the SQL in MEMORY.md "Next up" #2 to identify the next 25 topics for hand-polished overrides.
+- **Onboarding restyle** on new primitives — deferred from v0.20 + v0.20.2.
+- **Drift backstop concept_id re-derivation** — wire if beta data shows >5% drift rate in `block-close drift` log lines.
+- Deferred: teacher dashboard, syllabus editing UI, dark-mode activation (tokens already in `globals.css` `.dark` block), Render upgrade off free tier (kills cold start; v0.20.2 toast is a bandaid).
