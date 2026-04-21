@@ -175,6 +175,35 @@ def _parse_json_response(raw: str) -> dict:
     raise ValueError(f"Could not parse JSON from LLM response:\n{raw[:300]}")
 
 
+# ── v0.20.5: bound conversation_history growth ────────────────────────────────
+#
+# Prior to this version, conversation_history JSONB grew unbounded inside a
+# single doubt_session — top sessions in prod were 13 KB / 14 turns and on
+# track for O(turns²) token cost as students go deeper.
+#
+# Strategy: keep the FIRST turn (preserves the original problem context that
+# the AI references throughout the ladder) + the last MAX_HISTORY_TAIL turns.
+# When trimming kicks in, prepend a synthetic separator so the AI knows
+# context was elided.
+
+_MAX_HISTORY_TAIL = 10  # turns retained after the first turn
+
+
+def _bound_history(history: list) -> list:
+    """Return history bounded to first turn + last _MAX_HISTORY_TAIL turns."""
+    if not isinstance(history, list) or len(history) <= _MAX_HISTORY_TAIL + 1:
+        return history
+    head = history[:1]
+    elided_count = len(history) - 1 - _MAX_HISTORY_TAIL
+    separator = {
+        "role": "tutor",
+        "content": f"[… {elided_count} earlier turns elided to bound context …]",
+        "_meta": {"elided": True, "elided_count": elided_count},
+    }
+    tail = history[-_MAX_HISTORY_TAIL:]
+    return head + [separator] + tail
+
+
 # ── main engine ───────────────────────────────────────────────────────────────
 
 class SocraticEngine:
@@ -1140,7 +1169,7 @@ class SocraticEngine:
                     SET conversation_history = $1::jsonb
                     WHERE id = $2
                     """,
-                    json.dumps(history),
+                    json.dumps(_bound_history(history)),
                     uuid.UUID(session_id),
                 )
                 return {
@@ -1314,7 +1343,7 @@ class SocraticEngine:
                         analysis             = $2::jsonb
                     WHERE id = $3
                     """,
-                    json.dumps(history),
+                    json.dumps(_bound_history(history)),
                     json.dumps(stored_analysis),
                     uuid.UUID(session_id),
                 )
@@ -1728,7 +1757,7 @@ class SocraticEngine:
             WHERE id = $4
             """,
             new_level,
-            json.dumps(history),
+            json.dumps(_bound_history(history)),
             resolved,
             uuid.UUID(session_id),
             json.dumps(stored_analysis),

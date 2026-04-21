@@ -371,6 +371,22 @@ export default function AppShell({
       .catch(() => {})
   }, [studentId])
 
+  // v0.20.5 — universal onboarding gate. The diagnostic on 2026-04-21
+  // surfaced 26 of 45 students bypassed onboarding entirely (60% drop-off).
+  // The login redirect handles fresh signups but does not catch students
+  // who navigate directly to / or /doubt before completing it.
+  useEffect(() => {
+    if (!studentId) return
+    if (pathname.startsWith('/onboarding') || pathname.startsWith('/auth')) return
+    apiGet('/onboarding/status')
+      .then((d: any) => {
+        if (d && d.onboarding_completed === false) {
+          router.replace('/onboarding')
+        }
+      })
+      .catch(() => {/* non-fatal: don't block app on transient failure */})
+  }, [studentId, pathname, router])
+
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false) }, [pathname])
 

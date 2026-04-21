@@ -277,6 +277,98 @@ class VerifyRequest(BaseModel):
 
 # ── doubt-block helpers ───────────────────────────────────────────────────────
 
+_INACTIVE_BLOCK_THRESHOLD_MIN = 30  # v0.20.5: blocks idle >30 min are auto-closed
+
+
+async def _autoclose_idle_blocks(pool, engine, student_id: str) -> int:
+    """v0.20.5 — fire mastery for sessions students never explicitly closed.
+
+    The Knowledge Genome was effectively broken in prod: only 7% of
+    study_sessions ever ended (students close the tab, no /session/end
+    fires), so _genome_update_task was almost never called → 44 of 45
+    real users had zero mastery data despite real activity.
+
+    This helper runs at the top of every /doubt/ask + /doubt/hint call.
+    For the calling student, it finds doubt_blocks that:
+      - belong to study_sessions still marked open
+      - have not had their `started_at` updated in > _INACTIVE_BLOCK_THRESHOLD_MIN
+      - are not solved + not ended
+    and force-closes them (which fires _genome_update_task with
+    give_up_flag=True via _close_doubt_block's existing branch).
+
+    Best-effort: failures are logged + swallowed so a stuck close doesn't
+    block the user's new request.
+    """
+    try:
+        rows = await pool.fetch(
+            """
+            SELECT db.doubt_block_id
+            FROM doubt_blocks db
+            JOIN study_sessions ss ON ss.study_session_id = db.study_session_id
+            WHERE db.student_id = $1
+              AND db.ended_at IS NULL
+              AND db.solved = FALSE
+              AND db.started_at < NOW() - ($2 || ' minutes')::interval
+              AND ss.ended_at IS NULL
+            """,
+            uuid.UUID(student_id),
+            str(_INACTIVE_BLOCK_THRESHOLD_MIN),
+        )
+        if not rows:
+            return 0
+        for r in rows:
+            try:
+                await _close_doubt_block(pool, engine, str(r["doubt_block_id"]), solved=False)
+                logger.info(
+                    "autoclose_idle_blocks: closed block=%s for student=%s",
+                    str(r["doubt_block_id"])[:8], student_id[:8],
+                )
+            except Exception as exc:
+                logger.warning(
+                    "autoclose_idle_blocks: close failed for %s: %s",
+                    str(r["doubt_block_id"])[:8], exc,
+                )
+        return len(rows)
+    except Exception as exc:
+        logger.warning("autoclose_idle_blocks: query failed: %s", exc)
+        return 0
+
+
+async def _autoclose_idle_study_sessions(pool, student_id: str) -> int:
+    """Same idea but at the study_session level — for sessions where ALL
+    blocks have been closed but the parent session is still marked open.
+    Sets ended_at + writes a placeholder summary so admin dashboards see
+    the session as terminated."""
+    try:
+        rows = await pool.fetch(
+            """
+            UPDATE study_sessions
+            SET ended_at = NOW(),
+                session_summary = COALESCE(session_summary, '[auto-closed after inactivity]')
+            WHERE student_id = $1
+              AND ended_at IS NULL
+              AND started_at < NOW() - ($2 || ' minutes')::interval
+              AND NOT EXISTS (
+                  SELECT 1 FROM doubt_blocks db
+                  WHERE db.study_session_id = study_sessions.study_session_id
+                    AND db.ended_at IS NULL
+              )
+            RETURNING study_session_id
+            """,
+            uuid.UUID(student_id),
+            str(_INACTIVE_BLOCK_THRESHOLD_MIN),
+        )
+        if rows:
+            logger.info(
+                "autoclose_idle_study_sessions: closed %d session(s) for student=%s",
+                len(rows), student_id[:8],
+            )
+        return len(rows)
+    except Exception as exc:
+        logger.warning("autoclose_idle_study_sessions: failed: %s", exc)
+        return 0
+
+
 async def _get_active_doubt_block(pool, study_session_id: str) -> Optional[dict]:
     """Get the latest unsolved, unclosed doubt block for a study session.
 
@@ -812,6 +904,17 @@ async def ask_doubt(
     engine = request.app.state.socratic_engine
     pool = request.app.state.db_pool
 
+    # ── v0.20.5: opportunistic mastery-update for tab-closers ─────────────────
+    # Before processing this request, close any idle-too-long blocks/sessions
+    # so their _genome_update_task fires. Best-effort, never blocks.
+    try:
+        n = await _autoclose_idle_blocks(pool, engine, current_student_id)
+        if n:
+            logger.info("ask_doubt: pre-close fired for %d idle block(s)", n)
+        await _autoclose_idle_study_sessions(pool, current_student_id)
+    except Exception as exc:
+        logger.warning("ask_doubt: pre-close skipped (non-fatal): %s", exc)
+
     # ── Vision AI: extract question from image if no text question ────────────
     question = body.question
     if not question and body.image_url:
@@ -1076,7 +1179,7 @@ async def get_hint(
     body: HintRequest,
     request: Request,
     background_tasks: BackgroundTasks,
-    _: str = Depends(get_current_student_id),
+    current_student_id: str = Depends(get_current_student_id),
 ):
     """
     Request the next progressive hint for an existing doubt session.
@@ -1091,6 +1194,14 @@ async def get_hint(
     """
     engine = request.app.state.socratic_engine
     pool = request.app.state.db_pool
+
+    # v0.20.5 — autoclose stale blocks for this student before processing
+    # (so accumulated mastery from abandoned earlier sessions actually fires).
+    try:
+        await _autoclose_idle_blocks(pool, engine, current_student_id)
+        await _autoclose_idle_study_sessions(pool, current_student_id)
+    except Exception as exc:
+        logger.warning("get_hint: pre-close skipped (non-fatal): %s", exc)
 
     # Coalesce student_attempt → student_response. These are two separate fields
     # on HintRequest for historical reasons (attempt was added later for "Got it!"

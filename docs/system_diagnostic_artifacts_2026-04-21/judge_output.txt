@@ -1,0 +1,30 @@
+Sampling 15 sessions for Judge scoring
+
+  [1/15] e4a213cf Physics   | socratic=0/2 single_q=False
+  [2/15] 37a70761 Physics   | socratic=2/2 single_q=True
+  [3/15] bd637a3a Physics   | socratic=1/2 single_q=True
+  [4/15] 96f4a212 Chemistry | socratic=0/2 single_q=False
+  [5/15] 7f54d157 Physics   | socratic=2/2 single_q=True
+  [6/15] c328fe14 Maths     | socratic=2/2 single_q=True
+  [7/15] 37d2a340 Physics   | socratic=0/2 single_q=False
+  [8/15] 4ffe4bb6 Physics   | socratic=2/2 single_q=True
+  [9/15] 8da3c497 Physics   | socratic=2/2 single_q=True
+  [10/15] 89150bf4 Physics   | socratic=2/2 single_q=True
+  [11/15] 7b9ee4cc Maths     | socratic=2/2 single_q=True
+  [12/15] 6efc8fd5 Physics   | socratic=2/2 single_q=True
+  [13/15] cc702a66 Maths     | socratic=1/2 single_q=True
+  [14/15] b11be813 Chemistry | socratic=2/2 single_q=True
+  [15/15] acaea78b Physics   | socratic=2/2 single_q=True
+
+=== AGGREGATE ===
+  socratic_score avg: 1.47/2 (≥1.5 is good)
+  single-question:    80%
+  on-topic:           93%
+  would help student: 93%
+
+=== WORST 3 ===
+  e4a213cf Physics Thermodynamics: The AI response does not ask any question, instead it requests a final calculated answer and reasoning unrelated to stating the first law of thermodynamics. It does not guide the student toward unders
+  96f4a212 Chemistry Stoichiometry: The AI confirms the correct answer and provides a clear, detailed explanation, but does not ask any guiding question.
+  37d2a340 Physics Projectile Motion: The AI confirms the correct answer and provides a clear, detailed step-by-step explanation, but does not ask any guiding question.
+
+  full results → /tmp/diag/judge_results.json

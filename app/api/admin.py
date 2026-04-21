@@ -26,7 +26,7 @@ from datetime import datetime
 from statistics import mean
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Header, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from app.config import settings
@@ -35,6 +35,79 @@ from app.middleware.auth import get_current_student_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+# ── v0.20.5 admin gate (CRITICAL security fix) ────────────────────────────────
+#
+# Until this version, admin endpoints used `_: str = Depends(get_current_student_id)`
+# which only required ANY authenticated user — NOT an admin. Diagnostic on
+# 2026-04-21 confirmed all 14 /admin/* endpoints leaked PII to non-admin users.
+#
+# `require_admin` is now the dependency for every admin route except
+# /admin/is_admin (which intentionally answers for non-admins too — a
+# false response is itself the answer). It returns the student_id so
+# downstream handlers don't need to re-resolve it.
+
+async def _is_admin(student_id: str, db, authorization: Optional[str]) -> bool:
+    """Pure boolean version of the /is_admin endpoint logic — sharable.
+
+    Identical 3-stage check: email column → JWT email fallback → legacy UUID.
+    """
+    allowed_emails = [
+        e.strip().lower() for e in settings.admin_emails.split(",") if e.strip()
+    ]
+    if not allowed_emails and not settings.admin_student_id:
+        # No admin allowlist configured at all — fail closed.
+        return False
+
+    # 1. DB email
+    if allowed_emails:
+        try:
+            row = await db.fetchrow(
+                "SELECT email FROM students WHERE id = $1",
+                uuid.UUID(str(student_id)),
+            )
+            email = (row["email"] or "").lower() if row else ""
+            if email and email in allowed_emails:
+                return True
+        except Exception as exc:
+            logger.warning("require_admin: DB email lookup failed: %s", exc)
+
+    # 2. JWT email fallback
+    if allowed_emails and authorization and authorization.startswith("Bearer "):
+        try:
+            from app.middleware.auth import _get_supabase
+            token = authorization.removeprefix("Bearer ").strip()
+            client = _get_supabase()
+            jwt_resp = await asyncio.to_thread(client.auth.get_user, token)
+            jwt_email = (jwt_resp.user.email or "").lower() if jwt_resp and jwt_resp.user else ""
+            if jwt_email and jwt_email in allowed_emails:
+                return True
+        except Exception as exc:
+            logger.warning("require_admin: JWT email fallback failed: %s", exc)
+
+    # 3. Legacy UUID
+    if settings.admin_student_id and str(student_id) == settings.admin_student_id:
+        return True
+
+    return False
+
+
+async def require_admin(
+    student_id: str = Depends(get_current_student_id),
+    db=Depends(get_pool),
+    authorization: str = Header(None),
+) -> str:
+    """FastAPI dependency that 403s any non-admin caller. Use in place of
+    `Depends(get_current_student_id)` on every admin-only endpoint."""
+    ok = await _is_admin(student_id, db, authorization)
+    if not ok:
+        logger.warning(
+            "require_admin: REJECTED student=%s (not in admin allowlist)",
+            student_id,
+        )
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return student_id
 
 
 # ── Admin gate ────────────────────────────────────────────────────────────────
@@ -150,7 +223,7 @@ class AdminMetrics(BaseModel):
 async def get_admin_metrics(
     days: int = Query(7, ge=1, le=90),
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     global_row = await db.fetchrow(
         f"""
@@ -225,7 +298,7 @@ async def get_admin_metrics(
 async def get_judge_metrics(
     days: int = Query(7, ge=1, le=90),
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     row = await db.fetchrow(
         f"""
@@ -261,7 +334,7 @@ async def get_judge_metrics(
 async def platform_health(
     days: int = Query(7, ge=1, le=90),
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """Platform-level health metrics: student counts, sessions, retention, subject distribution."""
 
@@ -382,7 +455,7 @@ async def platform_health(
 async def conversation_quality(
     days: int = Query(7, ge=1, le=90),
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """Per-turn quality metrics from conversation_turn_quality table."""
 
@@ -486,7 +559,7 @@ def _turn_row(r) -> dict:
 async def response_quality(
     days: int = Query(7, ge=1, le=90),
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """4-dim judge evaluation breakdown + per-subject analysis + trend."""
 
@@ -553,7 +626,7 @@ async def response_quality(
 async def system_performance(
     days: int = Query(7, ge=1, le=90),
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """Latency percentiles, agent steps distribution, slowest sessions."""
 
@@ -667,7 +740,7 @@ async def system_performance(
 async def user_feedback(
     days: int = Query(7, ge=1, le=90),
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """Thumbs up/down sentiment from response_feedback."""
 
@@ -748,7 +821,7 @@ async def user_feedback(
 @router.get("/knowledge-base")
 async def knowledge_base(
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """Knowledge chunk counts and JEE problem coverage."""
 
@@ -799,7 +872,7 @@ async def knowledge_base(
 async def study_path_usage(
     days: int = Query(7, ge=1, le=90),
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """v0.20.2: Study Path usage rollup for the admin dashboard.
 
@@ -900,7 +973,7 @@ async def study_path_usage(
 async def student_insights(
     days: int = Query(30, ge=1, le=180),
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """Mastery averages, stuck students, hint escalation by topic."""
 
@@ -998,7 +1071,7 @@ async def student_insights(
 async def run_diagnostics(
     request: Request,
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """Run all system health checks. Never raises."""
     checks = []
@@ -1114,7 +1187,7 @@ async def run_diagnostics(
 async def quality_digest(
     request: Request,
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """LLM-generated diagnosis from worst conversation turns."""
     worst_rows = await db.fetch(
@@ -1177,7 +1250,7 @@ async def quality_digest(
 async def quality_report(
     days: int = Query(7, ge=1, le=90),
     db=Depends(get_pool),
-    _: str = Depends(get_current_student_id),
+    _: str = Depends(require_admin),
 ):
     """Aggregate quality report: per-turn scores + thumbs feedback."""
     agg = await db.fetchrow(

@@ -1,0 +1,241 @@
+{
+  "01.migrations_applied": {
+    "v16_phone": true,
+    "v16_avatar": true,
+    "v16_timezone": true,
+    "v16_lang": true,
+    "v17_check_allows_study": true,
+    "check_def": "CHECK ((session_type = ANY (ARRAY['doubt'::text, 'practice'::text, 'mock'::text, 'study'::text])))"
+  },
+  "02.orphan_doubt_sessions": {
+    "_error": "column ds.study_session_id does not exist"
+  },
+  "03.orphan_doubt_blocks": {
+    "orphan_count": 0
+  },
+  "04.concept_mastery_orphans": {
+    "orphan_count": 0
+  },
+  "05.concept_mastery_dead_concept": {
+    "dead_concept_pointers": 0
+  },
+  "06.stale_unended_study_sessions": {
+    "_error": "column \"id\" does not exist"
+  },
+  "07.conversation_history_bloat": {
+    "top_10": [
+      {
+        "session_id": "43ba683e",
+        "bytes": 13126,
+        "turns": 14
+      },
+      {
+        "session_id": "3ed7cb79",
+        "bytes": 10200,
+        "turns": 14
+      },
+      {
+        "session_id": "39d6d4bb",
+        "bytes": 6730,
+        "turns": 6
+      },
+      {
+        "session_id": "9f3d1e8a",
+        "bytes": 6244,
+        "turns": 6
+      },
+      {
+        "session_id": "9cc54e69",
+        "bytes": 5677,
+        "turns": 7
+      },
+      {
+        "session_id": "33fd81f3",
+        "bytes": 5655,
+        "turns": 7
+      },
+      {
+        "session_id": "ca213767",
+        "bytes": 4888,
+        "turns": 4
+      },
+      {
+        "session_id": "74bbf287",
+        "bytes": 4605,
+        "turns": 10
+      },
+      {
+        "session_id": "bd1aeefb",
+        "bytes": 4539,
+        "turns": 5
+      },
+      {
+        "session_id": "5f095cbb",
+        "bytes": 4478,
+        "turns": 6
+      }
+    ]
+  },
+  "08.zero_mastery_with_attempts": {
+    "count": 0,
+    "sample": []
+  },
+  "09.stale_persona_profiles": {
+    "stale_count": 0,
+    "sample": []
+  },
+  "10.drift_topic_distribution": {
+    "total_session_terminals_7d": 3,
+    "drift_detected_7d": 0,
+    "drift_pct": 0.0
+  },
+  "11.event_type_distribution": {
+    "events_last_7d": [
+      {
+        "event_type": "hint_requested",
+        "n": 633
+      },
+      {
+        "event_type": "question_asked",
+        "n": 383
+      },
+      {
+        "event_type": "study_card_view",
+        "n": 5
+      },
+      {
+        "event_type": "solution_revealed",
+        "n": 3
+      },
+      {
+        "event_type": "session_terminal",
+        "n": 3
+      }
+    ]
+  },
+  "12.dead_concept_ids_in_sessions": {
+    "dead_pointer_count": 0,
+    "sample": []
+  },
+  "13.signups_without_onboarding": {
+    "count": 26
+  },
+  "14.response_feedback_count": {
+    "last_30d": 0,
+    "all_time": 0
+  },
+  "15.table_sizes": {
+    "tables": [
+      {
+        "table_name": "knowledge_chunks",
+        "total_size": "265 MB",
+        "bytes": 277667840,
+        "rows_estimate": 14384
+      },
+      {
+        "table_name": "problems",
+        "total_size": "162 MB",
+        "bytes": 169639936,
+        "rows_estimate": 10305
+      },
+      {
+        "table_name": "doubt_sessions",
+        "total_size": "1456 kB",
+        "bytes": 1490944,
+        "rows_estimate": 439
+      },
+      {
+        "table_name": "session_events",
+        "total_size": "1184 kB",
+        "bytes": 1212416,
+        "rows_estimate": 1144
+      },
+      {
+        "table_name": "session_metrics",
+        "total_size": "1048 kB",
+        "bytes": 1073152,
+        "rows_estimate": 1009
+      },
+      {
+        "table_name": "concepts",
+        "total_size": "632 kB",
+        "bytes": 647168,
+        "rows_estimate": 199
+      },
+      {
+        "table_name": "conversation_turn_quality",
+        "total_size": "616 kB",
+        "bytes": 630784,
+        "rows_estimate": 418
+      },
+      {
+        "table_name": "jee_problems",
+        "total_size": "512 kB",
+        "bytes": 524288,
+        "rows_estimate": 20
+      },
+      {
+        "table_name": "doubt_blocks",
+        "total_size": "256 kB",
+        "bytes": 262144,
+        "rows_estimate": 409
+      },
+      {
+        "table_name": "users",
+        "total_size": "208 kB",
+        "bytes": 212992,
+        "rows_estimate": 44
+      },
+      {
+        "table_name": "study_sessions",
+        "total_size": "192 kB",
+        "bytes": 196608,
+        "rows_estimate": 469
+      },
+      {
+        "table_name": "refresh_tokens",
+        "total_size": "168 kB",
+        "bytes": 172032,
+        "rows_estimate": 130
+      },
+      {
+        "table_name": "sessions",
+        "total_size": "128 kB",
+        "bytes": 131072,
+        "rows_estimate": 85
+      },
+      {
+        "table_name": "identities",
+        "total_size": "112 kB",
+        "bytes": 114688,
+        "rows_estimate": 44
+      },
+      {
+        "table_name": "one_time_tokens",
+        "total_size": "112 kB",
+        "bytes": 114688,
+        "rows_estimate": 1
+      }
+    ]
+  },
+  "16.rls_enabled_tables": {
+    "enabled": [
+      "concept_mastery",
+      "concepts",
+      "conversation_turn_quality",
+      "doubt_blocks",
+      "doubt_sessions",
+      "jee_problems",
+      "judge_evaluations",
+      "knowledge_chunks",
+      "problems",
+      "response_feedback",
+      "session_events",
+      "session_metrics",
+      "student_memory",
+      "students",
+      "study_sessions"
+    ],
+    "disabled": []
+  }
+}

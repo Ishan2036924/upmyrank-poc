@@ -54,10 +54,15 @@ def _parse_student_uuid(student_id: str) -> uuid.UUID:
 async def get_student(
     student_id: str,
     request: Request,
-    _: str = Depends(get_current_student_id),
+    current: str = Depends(get_current_student_id),
 ):
     """
     Return the full knowledge genome for a student.
+
+    v0.20.5 SECURITY FIX: previously, any authenticated user could read any
+    other user's full genome. Diagnostic on 2026-04-21 confirmed the leak.
+    Now: a student can only fetch their own row. Admins can fetch anyone
+    (admin check inlined to avoid circular import with app.api.admin).
 
     Includes:
       - Per-topic mastery breakdown (Relations vs Functions)
@@ -67,6 +72,22 @@ async def get_student(
     """
     pool = request.app.state.db_pool
     s_uuid = _parse_student_uuid(student_id)
+
+    # ── v0.20.5 cross-student access guard ──────────────────────────────────
+    # Allow: own row, OR admin reading any row.
+    if student_id != current:
+        # Lazy import to avoid circular: admin.py imports student.py types.
+        from app.api.admin import _is_admin
+        from fastapi import Header
+        # Re-read auth header from request scope (FastAPI normalises it).
+        auth_hdr = request.headers.get("authorization") or request.headers.get("Authorization")
+        is_admin_caller = await _is_admin(current, pool, auth_hdr)
+        if not is_admin_caller:
+            logger.warning(
+                "get_student: REJECTED cross-student read student=%s by caller=%s",
+                student_id, current,
+            )
+            raise HTTPException(status_code=403, detail="Cannot access another student's data")
 
     try:
         # ── 1. Fetch student ──────────────────────────────────────────────────

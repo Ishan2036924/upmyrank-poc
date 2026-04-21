@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import uuid
+from collections import defaultdict, deque
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
@@ -18,6 +20,43 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+# ── v0.20.5: in-memory rate limiter for /auth/login ──────────────────────────
+#
+# Diagnostic 2026-04-21 confirmed no rate limiting — 10 brute-force attempts
+# returned 401 with no throttling. Until Redis is provisioned in prod, use
+# a per-IP in-memory sliding window. Resets when the worker restarts (every
+# few hours on Render free tier — fine for now). When Redis lands, swap.
+#
+# Limit: 10 failed attempts per IP per 5 min. Successful logins don't count.
+
+_LOGIN_WINDOW_SEC = 300
+_LOGIN_MAX_ATTEMPTS = 10
+_login_attempts: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=_LOGIN_MAX_ATTEMPTS + 5))
+
+
+def _rate_limit_check(ip: str) -> None:
+    """Raise 429 if this IP has exceeded the login attempt window."""
+    now = time.time()
+    bucket = _login_attempts[ip]
+    # Drop expired
+    while bucket and now - bucket[0] > _LOGIN_WINDOW_SEC:
+        bucket.popleft()
+    if len(bucket) >= _LOGIN_MAX_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Too many login attempts. Try again in "
+                f"{int(_LOGIN_WINDOW_SEC - (now - bucket[0]))}s."
+            ),
+            headers={"Retry-After": str(int(_LOGIN_WINDOW_SEC - (now - bucket[0])))},
+        )
+
+
+def _record_login_attempt(ip: str) -> None:
+    """Record a failed login attempt against the rate-limit bucket."""
+    _login_attempts[ip].append(time.time())
 
 
 # ── Supabase client helper ────────────────────────────────────────────────────
@@ -111,8 +150,18 @@ async def signup(body: SignupRequest, request: Request):
 
 
 @router.post("/login")
-async def login(body: LoginRequest):
-    """Sign in with email + password, return JWT."""
+async def login(body: LoginRequest, request: Request):
+    """Sign in with email + password, return JWT.
+
+    v0.20.5: rate-limited to 10 failed attempts per IP per 5 minutes.
+    Successful logins don't count toward the limit.
+    """
+    # X-Forwarded-For from Render's proxy contains the client IP; fall back
+    # to the direct peer.
+    fwd = request.headers.get("x-forwarded-for") or ""
+    ip = fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+    _rate_limit_check(ip)
+
     try:
         client = _get_supabase()
         response = await asyncio.to_thread(
@@ -121,9 +170,11 @@ async def login(body: LoginRequest):
         )
     except Exception as exc:
         logger.warning("Supabase login failed: %s", exc)
+        _record_login_attempt(ip)
         raise HTTPException(status_code=401, detail="Invalid email or password") from exc
 
     if response.user is None or response.session is None:
+        _record_login_attempt(ip)
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     return {

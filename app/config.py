@@ -3,7 +3,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    # extra='ignore' — diagnostic/script env vars (RENDER_API_KEY,
+    # RENDER_SERVICE_ID, etc.) live in .env but aren't used by the app.
+    # Without this, pydantic-settings raises ValidationError at import,
+    # crashing backend startup. Caught by Phase 2 of the 2026-04-21 audit.
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     database_url: str = "postgresql://upmyrank:upmyrank@localhost:5432/upmyrank"
     redis_url: str = "redis://localhost:6379"

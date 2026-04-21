@@ -1,0 +1,106 @@
+=== schema: study_sessions ===
+  study_session_id: uuid
+  student_id: uuid
+  started_at: timestamp with time zone
+  ended_at: timestamp with time zone
+  doubt_count: integer
+  session_summary: text
+  topics_covered: ARRAY
+  weak_signals: jsonb
+
+=== schema: doubt_sessions ===
+  id: uuid
+  student_id: uuid
+  problem_text: text
+  subject: text
+  topic: text
+  difficulty: double precision
+  current_hint_level: integer
+  resolved: boolean
+  conversation_history: jsonb
+  concepts_involved: ARRAY
+  analysis: jsonb
+  created_at: timestamp with time zone
+  resolved_at: timestamp with time zone
+
+=== schema: doubt_blocks ===
+  doubt_block_id: uuid
+  study_session_id: uuid
+  student_id: uuid
+  doubt_session_id: uuid
+  topic: character varying
+  hint_level: integer
+  solved: boolean
+  summary: text
+  started_at: timestamp with time zone
+  ended_at: timestamp with time zone
+  student_confidence: character varying
+  misconception_detected: boolean
+  misconception_id: character varying
+
+=== CRITICAL: session lifecycle stats (all-time) ===
+study_sessions total: 469
+study_sessions ended: 34  (7.2%)
+doubt_blocks total: 409
+doubt_blocks ended: 96  (23.5%)
+doubt_blocks solved: 15  (3.7%)
+
+=== session_events all-time by event_type ===
+  hint_requested                : 671
+  question_asked                : 432
+  solution_revealed             : 20
+  session_terminal              : 16
+  study_card_view               : 5
+
+=== concept_mastery: how many rows have non-zero mastery ===
+  total rows: 84
+  nonzero:    1  (1.2%)
+  bucket 0: 83
+  bucket 0-0.3: 1
+
+=== students ===
+  total:                45
+  onboarding_completed: 18
+  with study_sessions:  42
+  with concept_mastery: 1
+
+=== session duration (when ended) ===
+  min=0.0m, avg=6.4m, max=39.6m
+
+=== sample: a recent active student's last doubt_blocks ===
+  student: 8c36d5f0
+Traceback (most recent call last):
+  File "/tmp/diag/critical_session_audit.py", line 92, in <module>
+    asyncio.run(main())
+  File "/opt/miniconda3/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/tmp/diag/critical_session_audit.py", line 81, in main
+    rows = await pool.fetch("""
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ishansrivastava/Desktop/upmyrank/.venv/lib/python3.11/site-packages/asyncpg/pool.py", line 629, in fetch
+    return await con.fetch(
+           ^^^^^^^^^^^^^^^^
+  File "/Users/ishansrivastava/Desktop/upmyrank/.venv/lib/python3.11/site-packages/asyncpg/connection.py", line 694, in fetch
+    return await self._execute(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ishansrivastava/Desktop/upmyrank/.venv/lib/python3.11/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ishansrivastava/Desktop/upmyrank/.venv/lib/python3.11/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ishansrivastava/Desktop/upmyrank/.venv/lib/python3.11/site-packages/asyncpg/connection.py", line 2013, in _do_execute
+    stmt = await self._get_statement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ishansrivastava/Desktop/upmyrank/.venv/lib/python3.11/site-packages/asyncpg/connection.py", line 443, in _get_statement
+    statement = await self._protocol.prepare(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 165, in prepare
+asyncpg.exceptions.UndefinedColumnError: column "id" does not exist
