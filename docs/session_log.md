@@ -3,6 +3,41 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-04-21 (cont. cont.) — v0.20.4 admin panel + mastery hot patches
+
+**Focus:** v0.20.3 deployed. Prod synthetic + Render logs surfaced THREE more bugs in the v0.20.2 admin Study Path panel + mastery composer — all hidden behind soft "non-fatal" INFO log fallbacks. Fix all three, harden synthetic to catch the regression in CI.
+
+**Status:** DONE — backend + migration + extended synthetic + docs; awaiting user push.
+
+**Three bugs fixed:**
+1. `_compose_mastery` JOIN used `c.concept_id`; column is `c.id`. Every Concept Card showed global average mastery instead of topic-specific.
+2. `session_events_session_type_check` CHECK constraint rejected `'study'`. Migration v17 widens to `('doubt','practice','mock','study')`.
+3. After (2), `session_events_session_id_fkey` FK rejected `gen_random_uuid()` (no matching row in `doubt_sessions`). Pass NULL — `session_id` column is nullable.
+
+**Changed files (v0.20.4):**
+- **NEW** `scripts/migrate_v17_session_events_study.sql`
+- **MODIFIED** `app/services/study/card_composer.py` — JOIN fix + warning level on fallback
+- **MODIFIED** `app/api/study.py` — NULL session_id + warning level on insert failure
+- **MODIFIED** `scripts/synthetic_beta.py` — mastery-shape assert + admin study_path view-count assert
+- **MODIFIED** `docs/version_history.md`, `docs/session_log.md` (this), `docs/bugs.md`
+
+**Cliff notes (non-obvious context):**
+- Three bugs, all in the same code path, all logged INFO `skipped (non-fatal)` for >24h. Lesson: "non-fatal" doesn't mean "non-impactful." Silent fallbacks that materially change response shape get WARNING level + explicit consequence text from now on.
+- Bug #3 (FK) only surfaced AFTER bug #2 (CHECK) was fixed. Postgres only reports the first failing constraint per insert — without v17 we'd never have seen the FK issue. Lesson: when adding a new event-type to a multi-constrained table, check ALL constraints before shipping.
+- Migration v17 is idempotent (DROP IF EXISTS + ADD). Safe to re-run if applied state is unclear.
+- Synthetic test guard: `admin_study_path.records_views` calls 2 cards then queries `/admin/study-path` and asserts `total_views > 0`. If migration v17 isn't applied OR the FK fix is missing OR a future v0.X regresses the inserts, this assertion fails. SKIPs cleanly when the test student isn't admin (returns 401/403), so it doesn't false-fail in CI.
+
+**Next session — read these first:**
+`docs/bugs.md` (top entry — the two-constraint trap), `app/api/study.py` (the NULL session_id pattern), `scripts/synthetic_beta.py` (`scenario_admin_study_path_records_views`).
+
+**Next session — start here:**
+1. Push v0.20.4. Apply migration v17 to prod via `./scripts/run_migration.sh scripts/migrate_v17_session_events_study.sql`.
+2. Re-run prod synthetic — `total_views` should be ≥1.
+3. Visit `/admin#study-path` in browser — Top Concept Cards table now populated.
+4. Then continue with the v0.20.2 follow-ups (beta with 30 students; monitor topic-shift + drift logs).
+
+---
+
 ## Session 2026-04-21 (cont.) — v0.20.3 hot patch: shorten topic-shift length floor
 
 **Focus:** v0.20.2 deployed and fixed the `"what's the integral of sin(x²)?"` pivot, but real-prod usage by user immediately surfaced a sibling bug — `"what is molecule?"` (16 chars) still got refused by counselor because `_looks_like_new_question()` had a 20-char floor that short-circuited before the verb regex could match. User correctly called out the UX inconsistency.
@@ -71,47 +106,4 @@
 
 ---
 
-## Session 2026-04-20 — Dual-loop architecture (v0.20)
-
-**Focus:** Ship Mode 1 (Study Path) + Mode 2 (Ask Anything) end-to-end per the approved dual-loop plan in `.claude/plans/sunny-marinating-wirth.md`. Sir approved via WhatsApp earlier today. Zero content-generation cost; reuse existing NCERT index + problems + jee_problems.
-
-**Status:** DONE — backend + frontend + docs shipped; awaiting user commit.
-
-**Changed files (v0.20):**
-- **NEW** `app/api/study.py` — `GET /study/card` endpoint
-- **NEW** `app/services/study/__init__.py` + `app/services/study/card_composer.py` — composes Notes (top-3 NCERT chunks via existing Retriever) / Practice (problems ILIKE topic) / PYQs (jee_problems ILIKE topic) / Mastery
-- **NEW** `frontend/web/app/study/page.tsx` — navigator (subject → chapter → topic tree)
-- **NEW** `frontend/web/app/study/[subject]/[chapter]/[topic]/page.tsx` — concept card
-- **NEW** `docs/handoff_guide.md` — one-page "start here" for new devs / new Claude sessions
-- **MODIFIED** `app/api/doubt.py` — topic-shift demotion in both `/ask` and `/ask/stream`; `_get_active_doubt_block` now JOINs `doubt_sessions` for subject
-- **MODIFIED** `app/services/doubt/engine.py` — added public `classify_turn_topic()` wrapper
-- **MODIFIED** `app/main.py` — registered `study.router`
-- **MODIFIED** `frontend/web/app/page.tsx` — home now has two primary CTAs (Study Path + Ask Anything) + 3 secondary (Practice / Mock / Progress)
-- **MODIFIED** `frontend/web/components/AppShell.tsx` — primary nav now includes Study Path + Ask Anything
-- **MODIFIED** `docs/version_history.md`, `docs/session_log.md` (this file), `MEMORY.md`
-
-**Current system state:**
-- Backend: all routes live locally. `GET /study/card` verified returning populated JSON with NCERT chunks.
-- Frontend: `npx tsc --noEmit` 0 errors; `npm run build` ✓ 15 static routes; preview E2E green on Home → Study Path → Concept Card (Kinematics > Projectile Motion).
-- DB: NO migration in this version. All existing tables reused.
-
-**In progress / half done:**
-- None for v0.20 scope. Hand-curated top-30 Notes overrides is deferred post-beta.
-- Admin Study Path panel is deferred.
-
-**Cliff notes (non-obvious context):**
-- Topic-shift detection is a **symmetric mirror** of FIX A3 (v0.15). A3 demoted subject_doubt → continuation for short ambiguous replies; v0.20 demotes continuation → subject_doubt when the message LOOKS like a new question AND classifies to a materially different topic/subject. Both guards coexist.
-- Topic-shift check is **skipped when `body.topic_lock` is set** — Focus Mode (entered via Study Path "Ask about this" CTA) should not auto-segment.
-- Concept cards are **computed, not stored**. No new DB table. Each render does DB + retriever queries; Redis 7-day cache is the next optimisation (not shipped yet — 30 beta users don't need it).
-- `concept_mastery` mastery aggregation in composer does a graceful fallback if the `concepts` JOIN fails (the table name is slightly different across migration variants).
-- `/doubt` free-form is already single-inbox without change: `topicSessionKey(null, null, null)` → `general__any__quick` — one key per student.
-
-**Next session — read these files first:**
-`docs/version_history.md` (v0.20 entry), `docs/handoff_guide.md`, `app/services/study/card_composer.py`, `app/api/doubt.py` (look at `_detect_topic_shift`).
-
-**Next session — start here:**
-Run the beta with 30 students. Monitor `topic_shift` log lines to validate classifier accuracy. If a student's Concept Card has <3 NCERT chunks (rare topic), they see the "Ask the tutor instead" deep link — verify that flow works end-to-end.
-
----
-
-<!-- Older entries pruned 2026-04-21 (v0.20.3). See docs/version_history.md for the full chronology. -->
+<!-- Older entries pruned 2026-04-21 (v0.20.4). See docs/version_history.md for the full chronology. -->

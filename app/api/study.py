@@ -62,6 +62,10 @@ async def get_concept_card(
 
     # v0.20.2: log a study_card_view event so admin dashboard can rank topics
     # by real usage. Best-effort — never blocks card delivery.
+    #
+    # v0.20.4: pass NULL for session_id (was gen_random_uuid() which violated
+    # the FK to doubt_sessions). study_card_view isn't tied to a doubt_session
+    # — the event stands alone. session_id is nullable in the schema.
     try:
         await pool.execute(
             """
@@ -69,7 +73,7 @@ async def get_concept_card(
                 (session_id, event_type, student_id, session_type,
                  time_to_solve_seconds, max_hint_level_used,
                  mistake_forensics_tag, give_up_flag, misconception_detected, payload)
-            VALUES (gen_random_uuid(), $1, $2, $3,
+            VALUES (NULL, $1, $2, $3,
                     NULL, 0, NULL, FALSE, FALSE, $4::jsonb)
             """,
             "study_card_view",
@@ -86,6 +90,10 @@ async def get_concept_card(
             }),
         )
     except Exception as exc:
-        logger.info("study_card_view event-log skipped (non-fatal): %s", exc)
+        # Bumped INFO → WARNING per v0.20.4 lesson: silent fallbacks hide bugs.
+        logger.warning(
+            "study_card_view event-log skipped (admin panel will lack data): %s",
+            exc,
+        )
 
     return card

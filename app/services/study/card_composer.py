@@ -231,26 +231,31 @@ async def _compose_mastery(
     Matches `concept_mastery` rows whose `subtopic` ILIKEs the topic. If
     multiple match, returns the average + most-recent last_reviewed.
     """
+    # v0.20.4: the v0.20 first pass used `c.concept_id` which doesn't exist —
+    # the column is just `id` on `concepts` (verifiable in app/api/student.py
+    # line 79: `JOIN concepts c ON c.id = cm.concept_id`). Prod log on
+    # 2026-04-21 caught the silent fallback to global-average mastery.
     try:
         row = await pool.fetchrow(
             """
             SELECT AVG(mastery_score)::float AS avg_score,
                    MAX(updated_at)           AS last_reviewed,
                    SUM(attempt_count)::int   AS attempts
-            FROM concept_mastery
-            WHERE student_id = $1
-              AND EXISTS (
-                  SELECT 1
-                  FROM concepts c
-                  WHERE c.concept_id = concept_mastery.concept_id
-                    AND c.subtopic ILIKE '%' || $2 || '%'
-              )
+            FROM concept_mastery cm
+            JOIN concepts c ON c.id = cm.concept_id
+            WHERE cm.student_id = $1
+              AND (c.subtopic ILIKE '%' || $2 || '%'
+                   OR c.topic ILIKE '%' || $2 || '%')
             """,
             uuid.UUID(student_id), topic,
         )
     except Exception as exc:
-        # concepts table may be named differently in some migrations; fall back.
-        logger.info("mastery lookup via concepts JOIN failed (%s), falling back", exc)
+        # concepts schema variation — fall back to overall average + log a
+        # warning (NOT info) so this isn't silently masking a real schema drift.
+        logger.warning(
+            "mastery lookup via concepts JOIN failed (%s), falling back to "
+            "OVERALL average — value shown will not be topic-specific", exc,
+        )
         try:
             row = await pool.fetchrow(
                 """

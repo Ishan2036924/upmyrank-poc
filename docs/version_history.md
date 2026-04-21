@@ -20,6 +20,7 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.20.4](#v0204--mastery-join-fix--migration-v17-allow-study-event-type-2026-04-21) | 2026-04-21 | Mastery JOIN fix + migration v17 allow `study` session_type for admin panel |
 | [v0.20.3](#v0203--lower-topic-shift-length-floor--regression-guard-2026-04-21) | 2026-04-21 | Lower topic-shift length floor (20→12) so "what is molecule?" opens a new doubt block + regression test |
 | [v0.20.2](#v0202--prod-bug-patches--reliability--admin-study-path-panel--synthetic-tests-2026-04-21) | 2026-04-21 | Prod bug patches + reliability + admin Study Path panel + synthetic tests |
 | [v0.20](#v020--dual-loop-architecture--study-path--ask-anything-2026-04-20) | 2026-04-20 | Dual-loop architecture — Study Path (Mode 1) + Ask Anything (Mode 2) |
@@ -42,6 +43,44 @@
 | [v0.3](#v03--analytics-dashboard-pro-max--nuclear-l3--latex-sanitizer-2026-03-30) | 2026-03-30 | Analytics Bento Box + Confidence Meter + nuclear L3 + LaTeX sanitizer |
 | [v0.2](#v02--glassmorphic-ui-overhaul--taxonomy-api-2026-03-22) | 2026-03-22 | Glassmorphic UI overhaul + Taxonomy API + syllabus selector |
 | [v0.1](#v01--initial-commit--render--vercel-deployment-2026-03-17) | 2026-03-17 | Initial commit + Render + Vercel deployment + OpenAI embeddings |
+
+---
+
+## v0.20.4 — Mastery JOIN fix + migration v17 allow `study` event type + FK fix (2026-04-21)
+
+**Status:** shipped (2 backend files + 1 migration + extended synthetic + docs; awaiting user push)
+**Commits:** *(staged — commit by user)*
+
+### Why
+v0.20.3 deployed and the prod synthetic run + Render logs surfaced **three** more bugs that v0.20.2's quick-shipped admin panel + mastery composer hid behind soft fallbacks:
+
+1. `app/services/study/card_composer.py` `_compose_mastery()` JOINed `concepts c ON c.concept_id = …`, but the column on `concepts` is `id`, not `concept_id`. Every Concept Card's mastery score was silently falling through to "OVERALL average across all concepts for this student" instead of the topic-specific value. Symptom: every card shows the same number.
+2. `/study/card` now logs a `study_card_view` event into `session_events` for the admin panel, with `session_type='study'`. The existing `session_events_session_type_check` constraint only allowed `('doubt','practice','mock')`. Postgres rejected every insert.
+3. After fixing the CHECK constraint, a SECOND constraint surfaced: `session_id` is a FOREIGN KEY → `doubt_sessions(id)` ON DELETE CASCADE. The endpoint was passing `gen_random_uuid()` for `session_id` — random UUIDs don't exist in `doubt_sessions`, so the FK rejected every insert. Found by manual curl + INFO-level backend log.
+
+All three logged "skipped (non-fatal)" and returned the card normally — but the entire admin Study Path usage panel showed zero data because no events ever landed.
+
+### Fix
+- **`app/services/study/card_composer.py` `_compose_mastery()`** — corrected the JOIN to `concepts c ON c.id = cm.concept_id` (matches the established pattern in `app/api/student.py` line 79). Now matches the topic via `c.subtopic ILIKE '%topic%' OR c.topic ILIKE '%topic%'` so cards return per-topic mastery. Fallback path now logs at WARNING level (not INFO) so future schema drift is visible.
+- **`app/api/study.py`** — `study_card_view` insert now passes `NULL` for `session_id` (was `gen_random_uuid()` — violated the FK to `doubt_sessions`). The event isn't tied to a doubt_session; the column is nullable. Fallback log bumped INFO → WARNING per the same lesson.
+- **`scripts/migrate_v17_session_events_study.sql` (NEW)** — drops + re-adds the CHECK constraint with `'study'` added: `('doubt','practice','mock','study')`. Idempotent.
+- **`scripts/synthetic_beta.py`** — extended `scenario_study_card` to assert `mastery` shape on every card (key + sub-keys must be present). Added new `scenario_admin_study_path_records_views` that hits 2 cards then queries `/admin/study-path` and asserts `total_views > 0` (gracefully SKIPs if test student isn't admin). If migration v17 isn't applied OR the FK fix is missing, this scenario will catch the regression.
+
+### Verification
+- Migration v17 applied to Supabase pool successfully (`./scripts/run_migration.sh scripts/migrate_v17_session_events_study.sql` → "Migration applied successfully.").
+- Local synthetic suite results in commit message before push.
+- Manual prod re-test post-push: open any Concept Card, mastery section should display a sensible per-topic number (or "—" for fresh student) rather than the global average from before.
+
+### Lessons
+- "Non-fatal" log levels can hide real functional bugs. The mastery JOIN was logging INFO and falling back silently — admin panel was silently broken. Going forward: any fallback that materially changes the response shape is logged at WARNING with explicit text noting the consequence.
+- The CHECK constraint failure was visible in prod logs only because the user pasted them. There was no automated alert. Proper observability (or a simple synthetic invariant) would have caught this in the same hour the v0.20.2 deploy went live. v0.20.4 adds the synthetic invariant — going forward this regression is permanent-blocked.
+
+### Files changed
+- **NEW** `scripts/migrate_v17_session_events_study.sql`
+- **MODIFIED** `app/services/study/card_composer.py` (`_compose_mastery` JOIN + warning level)
+- **MODIFIED** `app/api/study.py` (`study_card_view` insert: NULL session_id + warning log)
+- **MODIFIED** `scripts/synthetic_beta.py` (mastery-shape assert + admin study_path view-count assert)
+- **MODIFIED** `docs/version_history.md`, `docs/session_log.md`, `docs/bugs.md`
 
 ---
 
