@@ -3,6 +3,48 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-04-21 — v0.20.2 patches + admin Study Path + synthetic tests
+
+**Focus:** Fix two bugs surfaced by Render-prod logs (regex too narrow → topic-shift didn't fire on `"what's the integral…"`; Notes section duplicated chunks). Bundle with remaining v0.20 plan items: block-close drift backstop, manual `+ New doubt` lever, admin Study Path usage panel, hand-curated 5 seed concept-card overrides, profile-save wire-up, cold-start toast, synthetic LLM test harness.
+
+**Status:** DONE — backend + frontend + tests + docs shipped; awaiting user push. Onboarding restyle deferred to v0.21 (works, low marginal pre-beta value).
+
+**Changed files (v0.20.2):**
+- **NEW** `app/services/study/__init__.py` already shipped in v0.20; no change here.
+- **NEW** `scripts/concept_card_overrides.json` — 5 hand-polished concept cards (Projectile Motion, Newton's Laws, SHM, Chemical Bonding, Differentiation).
+- **NEW** `scripts/migrate_v16_student_profile.sql` — phone/avatar_url/timezone/preferred_language; idempotent.
+- **NEW** `scripts/synthetic_beta.py` — async test harness, 19 invariants per persona-run, validates topic-shift fix end-to-end.
+- **MODIFIED** `app/api/doubt.py` — widened `_NEW_QUESTION_MARKERS` regex + math-symbol fallback; added `_reclassify_block_topic` block-close drift backstop; new `POST /doubt/new` endpoint; threaded `engine` kwarg through every `_genome_update_task` call site; topic-shift demote log now includes old_subject + old_topic.
+- **MODIFIED** `app/services/study/card_composer.py` — Notes dedup (sha1 of normalised first-200-chars + heading-diversity); override-loader prefers hand-polished cards; **fixed path bug** (`parents[3]` not `parents[2]`).
+- **MODIFIED** `app/api/study.py` — logs `study_card_view` event into `session_events` for admin panel.
+- **MODIFIED** `app/api/student.py` — new `PATCH /student/{student_id}` with graceful schema-drift (returns `updated`/`ignored` lists).
+- **MODIFIED** `app/api/admin.py` — new `GET /admin/study-path` endpoint.
+- **MODIFIED** `frontend/web/lib/api.ts` — new `apiPatch` helper + 8s cold-start toast (lazy sonner import).
+- **MODIFIED** `frontend/web/app/doubt/page.tsx` — "+ New doubt" button in chat header; `handleStartNewDoubt` calls `/doubt/new`.
+- **MODIFIED** `frontend/web/app/settings/page.tsx` — Profile tab `handleSave()` now real-PATCH to backend with success/warning/error toast variants.
+- **MODIFIED** `frontend/web/app/admin/page.tsx` — new "Study Path" section (StatCards + AreaChart + sortable table + CSV export).
+- **MODIFIED** `docs/version_history.md`, `docs/session_log.md` (this), `docs/handoff_guide.md` (TBD touch).
+
+**Synthetic test result:** 19/19 PASS at local backend including the prod-log bug repro (`topic_shift.opens_new_block — intent=subject_doubt new_block=…`).
+
+**Cliff notes (non-obvious context):**
+- The block-close drift reclassify is **logging-only for v0.20.x** — it stores `drift_topic` in `session_events.payload` but does NOT re-derive concept_ids. Wiring real EMA shift requires a fresh RAG pass which is too costly for every block close. If beta shows >5% drift rate, v0.21 enables it.
+- `_NEW_QUESTION_MARKERS` regex was the culprit for the prod bug — original v0.20 had `what\s+is` which couldn't match `what's` (apostrophe-s). Now also matches math symbols (`∫`, `²`, etc.) so notation-only pivots like "the integral of sin(x²)" trigger correctly even without a verb.
+- Override loader path uses `parents[3]` to get from `app/services/study/card_composer.py` to repo root. v0.21 first-pass had `parents[2]` which landed on `app/scripts/` (doesn't exist) — synthetic test caught it on first run.
+- `/admin/study-path` endpoint requires `study_card_view` events — these only start being logged at v0.20.2. Pre-v0.20.2 sessions won't appear. Beta data accumulates from now.
+- `PATCH /student/{id}` schema-drift handling means the migration v16 SQL file can ship in this commit but be applied to prod whenever — UI gracefully handles both states. Saves a coordinated deploy.
+- Cold-start toast fires only on the FIRST request in a 60s window (then re-arms). Avoids spam when the user does many quick actions during a real cold start.
+
+**Next session — read these files first:**
+`docs/version_history.md` (v0.20.2 entry), `scripts/synthetic_beta.py`, `app/services/study/card_composer.py` (override loader), `app/api/doubt.py` (`_detect_topic_shift` + `_reclassify_block_topic`).
+
+**Next session — start here:**
+1. Apply migration: `./scripts/run_migration.sh scripts/migrate_v16_student_profile.sql` (so settings save actually persists phone/timezone).
+2. Beta with 30 students. Watch Render logs for `topic_shift:` and `block-close drift detected:` lines — first 24h tells us classifier accuracy.
+3. After beta runs for 3 days, query: `SELECT subject, topic, COUNT(*) FROM session_events WHERE event_type='study_card_view' GROUP BY 1,2 ORDER BY 3 DESC LIMIT 20;` — pick the next 25 topics to hand-polish overrides for.
+
+---
+
 ## Session 2026-04-20 — Dual-loop architecture (v0.20)
 
 **Focus:** Ship Mode 1 (Study Path) + Mode 2 (Ask Anything) end-to-end per the approved dual-loop plan in `.claude/plans/sunny-marinating-wirth.md`. Sir approved via WhatsApp earlier today. Zero content-generation cost; reuse existing NCERT index + problems + jee_problems.
@@ -66,37 +108,4 @@ Run the beta with 30 students. Monitor `topic_shift` log lines to validate class
 
 ---
 
-## Session 2026-04-17 (cont.) — Admin Portal Access + Feedback Debugging + Home Shortcut
-
-**Focus:** Fix `/admin` returning 404 in production; add admin shortcut to home page; debug empty `response_feedback` table.
-
-**Status:** IN PROGRESS — code pushed, but Render env var `ADMIN_EMAILS` not yet set by user (blocks admin access).
-
-**Changed files:**
-- `frontend/web/app/admin/page.tsx` — auth guard: `router.replace('/dashboard')` (dead route) → `/`; `is_admin=false` now shows explicit "not configured" screen with Render instructions instead of silent redirect
-- `frontend/web/app/page.tsx` — added `isAdmin` state + `GET /admin/is_admin` check on load; Admin Dashboard shortcut card renders at bottom of home page (admin-only)
-- `frontend/web/app/doubt/page.tsx` — feedback `.catch` now logs `console.error('[feedback] POST /feedback/response failed:', err)` so failures are visible in devtools
-
-**Current system state:**
-- Backend: working on Render (all endpoints ✅ from previous session)
-- Frontend: deployed to Vercel (commit `a796d24`), admin page shows "not configured" screen until `ADMIN_EMAILS` env var is set on Render
-- DB: no migrations this session; all migrations v1–v15 applied
-
-**In progress / half done:**
-`response_feedback` still 0 rows — root cause unconfirmed. Error logging added; user needs to click thumbs in production and check browser devtools console for `[feedback]` error line to diagnose.
-
-**Cliff notes (non-obvious context):**
-- The original `/admin` 404 was NOT a missing route — `curl` returned 200. The page loaded, auth guard ran, `is_admin` returned `false` (because `ADMIN_EMAILS` not set on Render), and `router.replace('/dashboard')` redirected to a non-existent route which showed Next.js 404. Two bugs in one.
-- `ADMIN_EMAILS` env var is set in local `.env` but was never added to Render environment variables. Backend `settings.admin_emails` defaults to `""` → `allowed = []` → `is_admin = False` for everyone. Fix: Render → upmyrank-api → Environment → `ADMIN_EMAILS=srivastava.ish@northeastern.edu`.
-- `ADMIN_STUDENT_ID` (the old fallback) is also checked in `is_admin` endpoint — if it was already set on Render from the previous settings page era, admin access may already work after the redirect fix.
-- `response_feedback` table has the `uq_feedback_per_turn` unique constraint from v15 AND an auto-named unique constraint from v12 (both on same columns). `ON CONFLICT` uses the first matching constraint — this is fine and not the bug.
-- Admin shortcut on home page silently fails if `is_admin` API errors (`.catch(() => {})`) — card just doesn't show. Intentional: non-admins see no trace of admin features.
-
-**Next session — read these files first:**
-`frontend/web/app/admin/page.tsx`, `app/api/admin.py`
-
-**Next session — start here:**
-Set `ADMIN_EMAILS=srivastava.ish@northeastern.edu` in Render environment variables, redeploy, then verify `/admin` loads. Then open `/doubt` in production, click a thumbs button, check browser console for `[feedback]` error to diagnose the empty `response_feedback` table.
-
----
-<!-- Older entries pruned 2026-04-20 (v0.20). See docs/version_history.md for the full chronology of every version shipped. -->
+<!-- Older entries pruned 2026-04-21 (v0.20.2). See docs/version_history.md for the full chronology. -->

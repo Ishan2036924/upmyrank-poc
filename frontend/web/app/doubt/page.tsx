@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ArrowLeft, RotateCcw, Target, BookOpen } from 'lucide-react'
+import { ArrowLeft, RotateCcw, Target, BookOpen, PlusCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AppShell from '@/components/AppShell'
 import ChatMessage from '@/components/ChatMessage'
@@ -743,6 +743,43 @@ function DoubtPageInner() {
     setTimeout(() => inputRef.current?.focus(), 100)
   }
 
+  // ── v0.20.2: manual "+ New doubt" — close active block on the server, then
+  // reset local state so the next message opens a fresh block. Safe to call
+  // even when no block is active (server returns {closed:false}).
+  const handleStartNewDoubt = async () => {
+    if (!studySessionId) return
+    if (currentBlockId && !currentBlockSolved) {
+      try {
+        await apiPost('/doubt/new', { study_session_id: studySessionId })
+      } catch (err) {
+        console.error('[new-doubt] close failed:', err)
+        // Non-fatal — local reset still helps the student move on.
+      }
+    }
+    setCurrentBlockId(null)
+    setCurrentBlockSolved(false)
+    setSessionId(null)
+    setAnalysis(null)
+    setMentorMode(null)
+    setShowConfidenceMeter(false)
+    setPendingAnswer(null)
+    // Add a divider line so the student sees the cut visually.
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: nanoid(),
+        role: 'divider',
+        content: '',
+        metadata: {
+          doubt_block_number: prev.filter(m => m.role === 'divider').length + 1,
+          doubt_block_topic: 'New doubt',
+          doubt_block_solved: false,
+        },
+      },
+    ])
+    setTimeout(() => inputRef.current?.focus(), 100)
+  }
+
   // Quick-actions appear only above the last message of the current active block
   const showQuickActions =
     !!sessionId &&
@@ -823,6 +860,20 @@ function DoubtPageInner() {
                   </span>
                 )}
               </div>
+            )}
+
+            {/* v0.20.2: manual "+ New doubt" — only meaningful when an active
+                block exists. Otherwise the next message starts a new block
+                naturally, so we hide the button. */}
+            {studySessionId && currentBlockId && !currentBlockSolved && (
+              <button
+                onClick={handleStartNewDoubt}
+                className="ml-2 hidden md:inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors flex-shrink-0"
+                title="End this doubt and start a new one"
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                New doubt
+              </button>
             )}
           </div>
 

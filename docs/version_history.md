@@ -20,6 +20,7 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.20.2](#v0202--prod-bug-patches--reliability--admin-study-path-panel--synthetic-tests-2026-04-21) | 2026-04-21 | Prod bug patches + reliability + admin Study Path panel + synthetic tests |
 | [v0.20](#v020--dual-loop-architecture--study-path--ask-anything-2026-04-20) | 2026-04-20 | Dual-loop architecture — Study Path (Mode 1) + Ask Anything (Mode 2) |
 | [v0.19](#v019--enterprise-ui-phases-2-6--appshell-auth-settings-doubt-admin-2026-04-19) | 2026-04-19 | Enterprise UI Phases 2–6 — AppShell, auth, settings, doubt, admin polish |
 | [v0.18](#v018--enterprise-ui-phase-1--design-tokens--ui-primitives-2026-04-18) | 2026-04-18 | Enterprise UI Phase 1 — design tokens + 18 shadcn-pattern primitives |
@@ -40,6 +41,64 @@
 | [v0.3](#v03--analytics-dashboard-pro-max--nuclear-l3--latex-sanitizer-2026-03-30) | 2026-03-30 | Analytics Bento Box + Confidence Meter + nuclear L3 + LaTeX sanitizer |
 | [v0.2](#v02--glassmorphic-ui-overhaul--taxonomy-api-2026-03-22) | 2026-03-22 | Glassmorphic UI overhaul + Taxonomy API + syllabus selector |
 | [v0.1](#v01--initial-commit--render--vercel-deployment-2026-03-17) | 2026-03-17 | Initial commit + Render + Vercel deployment + OpenAI embeddings |
+
+---
+
+## v0.20.2 — Prod bug patches + reliability + admin Study Path panel + synthetic tests (2026-04-21)
+
+**Status:** shipped (backend + frontend + tests; awaiting user push)
+**Commits:** *(staged — commit by user)*
+
+### Why
+v0.20 deployed and Render-prod logs surfaced two bugs: (a) topic-shift demotion didn't fire on `"wait, what's the integral of sin(x²)?"` because `_NEW_QUESTION_MARKERS` regex was too narrow (no contractions, no math verbs); (b) Notes section showed the same NCERT chunk three times for popular topics (no dedup). User asked to bundle the patches with the remaining v0.20 plan items + a synthetic test harness so beta launches with full confidence.
+
+### What shipped
+
+**P0 — bug patches**
+- `app/api/doubt.py` `_looks_like_new_question()` widened: now matches contractions (`what's`, `how's`), math verbs (`integrate`, `differentiate`, `simplify`), and a `_MATH_SYMBOL_HINTS` fallback covering `∫`, `²`, `dy/dx`, `integral`, `derivative`, `pH`, `mol`, etc. The exact prod-log message that slipped through ("wait, what's the integral of sin(x²)?") now triggers topic-shift demotion → new doubt block opens with correct mastery attribution.
+- `app/services/study/card_composer.py` `_compose_notes()`: fetch wider (k×3), dedupe by sha1 of normalised first-200-chars, prefer chunk-heading diversity. Drops the 3-duplicate-chunks bug visible in prod screenshots.
+
+**P1 — reliability**
+- `app/api/doubt.py` `_reclassify_block_topic()` (NEW): block-close drift backstop. Reads conversation_history, classifies dominant topic from student turns only, logs a warning if the stamped topic differs from dominant. Concept_ids unchanged for v0.20.x — the signal accumulates in `session_events.payload.drift_topic` for admin auditing. If beta shows >5% drift, v0.21 will re-derive concept_ids.
+- `_genome_update_task()` now accepts `engine` kwarg; threaded through every call site (3 paths in /doubt/ask + /doubt/hint + stream).
+- `app/api/doubt.py` `POST /doubt/new` (NEW): manual segmentation lever. Closes any active block; safe to call when no block active. Frontend chat header now renders a "+ New doubt" button (right of analysis chips) when a block is active.
+- Topic-shift demotion log line now includes `old_subject` + `old_topic` so we can audit accuracy from logs alone.
+
+**P2 — features**
+- `scripts/concept_card_overrides.json` (NEW): hand-polished Notes overrides for 5 seed cards (Projectile Motion, Newton's Laws, SHM, Chemical Bonding, Differentiation). Each is a JEE-essentials cheat-sheet with formulas + common traps. Composer prefers these over auto-assembled chunks.
+- `app/services/study/card_composer.py`: override loader. Path: repo `scripts/concept_card_overrides.json` resolved via `Path(__file__).resolve().parents[3]`.
+- `app/api/study.py` now logs `study_card_view` event into `session_events` on every card render — feeds the admin panel.
+- `app/api/admin.py` `GET /admin/study-path` (NEW): top 10 concept cards by view count, daily-views sparkline, override hit-rate, drift-detection count.
+- `frontend/web/app/admin/page.tsx`: new "Study Path" section with stat cards + AreaChart + sortable table + CSV export. Auto-refresh + URL-hash routing inherit from v0.19.
+- `scripts/migrate_v16_student_profile.sql` (NEW): adds `phone`, `avatar_url`, `timezone`, `preferred_language` columns to `students` (idempotent, with phone-format CHECK). **Not yet applied — user runs `./scripts/run_migration.sh scripts/migrate_v16_student_profile.sql` when ready.**
+- `app/api/student.py` `PATCH /student/{student_id}` (NEW): graceful schema-drift handling — discovers existing columns at runtime, applies only the keys that exist, returns `{updated: [...], ignored: [...]}`. Pre-migration: returns `{noop: true, ignored: [phone, timezone, ...]}`. Post-migration: writes through.
+- `frontend/web/app/settings/page.tsx` Profile tab `handleSave()` now actually calls `apiPatch('/student/{id}', ...)`. Toast variants: success / warning (when migration pending) / error.
+- `frontend/web/lib/api.ts`: new `apiPatch()` helper + cold-start toast — fires after 8s on first request only, lazy-imports sonner so it doesn't bloat auth-page bundles.
+
+**Synthetic test harness (NEW)**
+- `scripts/synthetic_beta.py`: spawns 2-N personas, runs full signup → onboarding → study card → topic-shift → manual new-doubt → patch_student → genome-readback. Validates 9+ invariants per persona including Notes dedup, override-loading, structural topic-shift, manual segmentation, schema-drift PATCH shape. Exit code = pass/fail for CI gating.
+
+**Doc + handoff**
+- `docs/version_history.md`: this entry + index update.
+- `docs/session_log.md`: rotated, top entry is v0.20.2.
+- `docs/handoff_guide.md`: pointers to new files (study composer, /doubt/new, synthetic harness).
+
+### Verification
+- `cd frontend/web && npx tsc --noEmit` → 0 errors.
+- `cd frontend/web && npm run build` → ✓ 15 routes (unchanged from v0.20).
+- Backend imports clean: `study`, `student`, `admin`, `doubt` all register.
+- **Synthetic suite — 19/19 PASS** at the local backend:
+  - `topic_shift.opens_new_block — intent=subject_doubt new_block=… old_block=…` ← the prod bug fixed.
+  - `study_card[Chemical Bonding].notes_deduped — 1 unique chunks` ← override + dedup working.
+  - `manual_new.closes_active_block — closed=True`.
+  - `patch_student.shape — updated=['name'] ignored=['phone','timezone']` ← schema-drift handling correct.
+- Live preview confirmed: Concept Card now renders the JEE-essentials override (Projectile Motion equations + traps) instead of duplicated NCERT intro chunks. Cold-start toast fires after 8s as expected.
+
+### Deferred (intentional, will land in v0.21)
+- **Onboarding restyle** on new primitives — current onboarding works; full restyle is large surface change with low marginal pre-beta value.
+- **Concept-card override regeneration** — only 5 seed cards. The other 100+ topics ship with auto-assembled NCERT chunks.
+- **Migration v16 application** — file shipped; user runs `./scripts/run_migration.sh scripts/migrate_v16_student_profile.sql` whenever they're ready. Until then, profile save returns `{ignored: [...]}` and the UI shows a soft warning.
+- **Drift backstop concept_id re-derivation** — current backstop is logging-only. Wires real EMA shift if beta shows >5% drift rate.
 
 ---
 

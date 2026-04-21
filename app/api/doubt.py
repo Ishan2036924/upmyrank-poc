@@ -39,17 +39,47 @@ router = APIRouter(prefix="/doubt", tags=["doubt"])
 # semantics and let the existing guards run.
 
 _NEW_QUESTION_MARKERS = re.compile(
-    r"\b(find|calculate|solve|prove|evaluate|compute|what\s+is|why|how\s+do|"
-    r"explain|define|derive|state)\b",
+    r"\b("
+    r"find|calculate|solve|prove|evaluate|compute|simplify|"
+    r"derive|differentiate|integrate|expand|factor|"
+    r"what(?:\s+is|'s|\sis)?|why|how(?:\s+do|'s|\sdoes)?|"
+    r"explain|define|state|describe|show"
+    r")\b",
+    re.IGNORECASE,
+)
+
+# Math-symbol heuristic — covers the "wait, what's the integral of sin(x²)?"
+# class of pivots that the verb regex misses (no verb present, just notation).
+_MATH_SYMBOL_HINTS = re.compile(
+    r"(?:∫|∑|∏|√|π|θ|±|≤|≥|≠|→|⇒|"
+    r"\^[0-9{(]|"          # x^2, x^{2}, x^(2)
+    r"[a-zA-Z]\^?[²³⁰¹⁴⁵⁶⁷⁸⁹]|"  # x², m², F²
+    r"\bd[a-z]/d[a-z]\b|"  # dy/dx
+    r"\b(?:integral|derivative|limit|matrix|determinant|gradient|pH|mol|atomic)\b)",
     re.IGNORECASE,
 )
 
 
 def _looks_like_new_question(text: str) -> bool:
-    """True if the message shape suggests a new problem (not a hint reply)."""
-    if not text or len(text.strip()) < 30:
+    """True if the message shape suggests a new problem (not a hint reply).
+
+    v0.20.1: widened to catch contractions (what's, how's), math verbs
+    (integrate, differentiate), and math-symbol-only pivots that have no
+    verb (e.g. "the integral of sin(x²)"). Original v0.20 regex missed
+    these — prod log on 2026-04-21 caught it.
+    """
+    if not text:
         return False
-    return bool(_NEW_QUESTION_MARKERS.search(text))
+    stripped = text.strip()
+    if len(stripped) < 20:
+        return False
+    if _NEW_QUESTION_MARKERS.search(stripped):
+        return True
+    # Math-symbol fallback — only triggers on longer messages so a one-token
+    # reply like "x²" doesn't open a new doubt block.
+    if len(stripped) >= 25 and _MATH_SYMBOL_HINTS.search(stripped):
+        return True
+    return False
 
 
 def _topics_differ(a: Optional[str], b: Optional[str]) -> bool:
@@ -62,6 +92,83 @@ def _topics_differ(a: Optional[str], b: Optional[str]) -> bool:
         return False
     # Neither is a prefix of the other (handles "Kinematics" vs "Kinematics (1D)").
     return not (na.startswith(nb) or nb.startswith(na))
+
+
+async def _reclassify_block_topic(
+    engine,
+    pool,
+    doubt_session_id: str,
+) -> Optional[dict]:
+    """
+    v0.20.2 backstop: at block close, classify the *dominant* topic from the
+    full conversation_history. If the classifier returns a different topic
+    than the one stamped at block creation with confidence ≥ threshold, the
+    caller should switch attribution before the EMA update.
+
+    Returns {subject, topic} of the dominant topic if a switch is recommended,
+    or None to keep the existing session.topic stamp.
+    """
+    try:
+        row = await pool.fetchrow(
+            """
+            SELECT conversation_history, topic, subject
+            FROM doubt_sessions
+            WHERE id = $1
+            """,
+            uuid.UUID(doubt_session_id),
+        )
+    except Exception as exc:
+        logger.warning("_reclassify_block_topic: fetch failed: %s", exc)
+        return None
+    if not row:
+        return None
+
+    history = row["conversation_history"] or []
+    if isinstance(history, str):
+        try:
+            history = json.loads(history)
+        except Exception:
+            history = []
+
+    # Concatenate student turns only — AI turns reflect block topic, would bias.
+    student_turns: List[str] = []
+    for turn in history:
+        if isinstance(turn, dict) and turn.get("role") == "student":
+            content = turn.get("content")
+            if content:
+                student_turns.append(str(content))
+    if not student_turns:
+        return None
+
+    # Skip if the block had only 1 student turn — no drift possible.
+    if len(student_turns) < 2:
+        return None
+
+    sample = "\n".join(student_turns[-5:])  # last 5 student turns
+    try:
+        cls = await engine.classify_turn_topic(sample)
+    except Exception as exc:
+        logger.warning("_reclassify_block_topic: classifier failed: %s", exc)
+        return None
+
+    new_subject = (cls.get("subject") or "").strip()
+    new_topic   = (cls.get("topic") or "").strip()
+    old_subject = (row["subject"] or "").strip()
+    old_topic   = (row["topic"] or "").strip()
+
+    if not new_topic:
+        return None
+
+    subject_diff = bool(new_subject and old_subject and new_subject != old_subject)
+    topic_diff   = _topics_differ(old_topic, new_topic)
+
+    if subject_diff or topic_diff:
+        logger.info(
+            "block-close reclassify: %s/%s → %s/%s (session=%s)",
+            old_subject, old_topic, new_subject, new_topic, doubt_session_id,
+        )
+        return {"subject": new_subject or old_subject, "topic": new_topic}
+    return None
 
 
 async def _detect_topic_shift(
@@ -237,6 +344,9 @@ async def _close_doubt_block(pool, engine, doubt_block_id: str, solved: bool):
     rarely click "Got it!", so 98% of doubt_blocks produced no mastery signal
     (confirmed: 83/84 concept_mastery rows stuck at 0). Now any block with
     hint_level >= 1 (student engaged) produces a signal on close.
+
+    v0.20.2: passes `engine` through to _genome_update_task so the
+    block-close drift reclassify can run.
     """
     block = await pool.fetchrow(
         """
@@ -260,6 +370,7 @@ async def _close_doubt_block(pool, engine, doubt_block_id: str, solved: bool):
                 str(block["doubt_session_id"]),
                 give_up_flag=True,
                 misconception_id=block["misconception_id"],
+                engine=engine,
             )
         )
 
@@ -391,6 +502,7 @@ async def _genome_update_task(
     session_type: str = "doubt",
     student_confidence: Optional[str] = None,  # low / medium / high
     misconception_id: Optional[str] = None,    # ID from misconceptions.py if detected
+    engine = None,                              # v0.20.2: optional, enables block-close reclassify
 ) -> None:
     """
     Terminal-state background task — fires ONLY when a doubt block closes.
@@ -431,6 +543,27 @@ async def _genome_update_task(
         resolved:     bool        = bool(session["resolved"])
         topic:        str         = session["topic"] or "Unknown"
         created_at                = session["created_at"]
+
+        # ── v0.20.2 backstop: dominant-topic drift signal ────────────────────
+        # Auto-segmentation in /doubt/ask handles in-flight pivots. This
+        # block-close reclassify is the safety net: if the conversation
+        # drifted gradually without triggering a topic shift, log it so we
+        # can audit attribution accuracy. We do NOT mutate concept_ids
+        # here — that would require a fresh RAG pass which is too costly.
+        # If beta shows >5% drift rate, v0.21 will re-derive concept_ids.
+        drift_topic: Optional[str] = None
+        if engine is not None:
+            try:
+                drift = await _reclassify_block_topic(engine, pool, doubt_session_id)
+                if drift:
+                    drift_topic = drift.get("topic")
+                    logger.warning(
+                        "block-close drift detected: stamped=%s dominant=%s "
+                        "(session=%s) — concept_ids unchanged for v0.20.x",
+                        topic, drift_topic, doubt_session_id,
+                    )
+            except Exception as exc:
+                logger.warning("block-close reclassify skipped: %s", exc)
 
         # ── Time to solve ────────────────────────────────────────────────────
         import datetime
@@ -492,7 +625,12 @@ async def _genome_update_task(
             effective_mistake_tag,
             give_up_flag,
             bool(misconception_id),
-            json.dumps({"resolved": resolved, "topic": topic, "misconception_id": misconception_id}),
+            json.dumps({
+                "resolved": resolved,
+                "topic": topic,
+                "drift_topic": drift_topic,    # v0.20.2 — null when no drift
+                "misconception_id": misconception_id,
+            }),
         )
 
         # ── 2. UPSERT concept_mastery (EMA α=0.7) ────────────────────────────
@@ -748,8 +886,9 @@ async def ask_doubt(
         if shifted:
             logger.info(
                 "v0.20 topic-shift: demoting continuation → subject_doubt "
-                "(block=%s, question=%r)",
+                "(block=%s, question=%r, old_subject=%s, old_topic=%s)",
                 active_block.get("doubt_block_id"), question[:60],
+                active_block.get("subject"), active_block.get("topic"),
             )
             intent = "subject_doubt"
 
@@ -838,6 +977,7 @@ async def ask_doubt(
                     mistake_tag=None,
                     student_confidence=body.student_confidence,
                     misconception_id=active_block.get("misconception_id") or _mc_id_ask,
+                    engine=engine,
                 )
 
             return {
@@ -1029,10 +1169,58 @@ async def get_hint(
                     body.mistake_tag,
                     student_confidence=body.student_confidence,
                     misconception_id=block.get("misconception_id") or _mc_id_hint,
+                    engine=engine,
                 )
             result["doubt_block_id"] = str(block["doubt_block_id"])
 
     return result
+
+
+# ── v0.20.2: manual "new doubt" lever ────────────────────────────────────────
+
+class NewDoubtRequest(BaseModel):
+    study_session_id: str
+
+
+@router.post("/new")
+async def start_new_doubt(
+    body: NewDoubtRequest,
+    request: Request,
+    current_student_id: str = Depends(get_current_student_id),
+):
+    """
+    Manual segmentation lever — closes the active doubt_block (if any) so
+    the next question opens a fresh block. Used by the "+ New doubt" button
+    in the chat header.
+
+    Response is intentionally minimal — clients just need to know whether a
+    block was closed so they can clear local hint-state UI.
+    """
+    pool = request.app.state.db_pool
+    engine = request.app.state.socratic_engine
+
+    try:
+        sid_uuid = uuid.UUID(body.study_session_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="invalid study_session_id")
+
+    active = await _get_active_doubt_block(pool, body.study_session_id)
+    if not active:
+        return {"closed": False, "reason": "no_active_block"}
+
+    try:
+        await _close_doubt_block(
+            pool, engine, str(active["doubt_block_id"]), solved=False,
+        )
+    except Exception as exc:
+        logger.exception("/doubt/new close failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {
+        "closed": True,
+        "closed_block_id": str(active["doubt_block_id"]),
+        "study_session_id": body.study_session_id,
+    }
 
 
 @router.post("/ask/stream")
@@ -1194,6 +1382,7 @@ async def ask_doubt_stream(
                         mistake_tag=None,
                         student_confidence=_student_conf,
                         misconception_id=_active_block.get("misconception_id") or _mc_id,
+                        engine=engine,
                     ))
                 payload = {
                     "intent":         "continuation",

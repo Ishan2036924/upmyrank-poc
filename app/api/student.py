@@ -26,6 +26,19 @@ class MasteryUpdateRequest(BaseModel):
     performance_score: float = Field(..., ge=0.0, le=1.0)
 
 
+# v0.20.2: profile patch — used by /settings save. Migration v16 adds the
+# columns. Until that migration runs, the PATCH gracefully falls back to
+# updating only the columns that exist (logged warning, no 500).
+class StudentProfilePatch(BaseModel):
+    name:               str | None = Field(None, min_length=1, max_length=120)
+    phone:              str | None = Field(None, max_length=20)
+    avatar_url:         str | None = Field(None, max_length=2_000_000)  # base64 inline OK
+    timezone:           str | None = Field(None, max_length=64)
+    preferred_language: str | None = Field(None, max_length=8)
+    exam_type:          str | None = Field(None, max_length=16)
+    target_year:        int | None = Field(None, ge=2024, le=2030)
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _parse_student_uuid(student_id: str) -> uuid.UUID:
@@ -168,6 +181,72 @@ async def get_student(
     except Exception as exc:
         logger.exception("get_student failed for %s: %s", student_id, exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.patch("/{student_id}")
+async def patch_student(
+    student_id: str,
+    body: StudentProfilePatch,
+    request: Request,
+    current: str = Depends(get_current_student_id),
+):
+    """
+    Update editable profile fields (v0.20.2).
+
+    Auth rule: a student can only patch *their own* row. The path UUID must
+    match the JWT-bound student_id.
+    """
+    if student_id != current:
+        raise HTTPException(status_code=403, detail="Cannot edit another student's profile")
+
+    s_uuid = _parse_student_uuid(student_id)
+    pool = request.app.state.db_pool
+
+    # Discover which columns exist (v16 migration may not yet be applied on
+    # this deployment — graceful fallback keeps prod alive).
+    col_rows = await pool.fetch(
+        """
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'students'
+        """
+    )
+    existing_cols = {r["column_name"] for r in col_rows}
+
+    updates: dict = body.model_dump(exclude_none=True)
+    if not updates:
+        return {"updated": [], "ignored": [], "noop": True}
+
+    settable: dict = {}
+    skipped: list = []
+    for key, val in updates.items():
+        if key in existing_cols:
+            settable[key] = val
+        else:
+            skipped.append(key)
+
+    if not settable:
+        logger.warning(
+            "patch_student: no settable cols — migration v16 not applied? "
+            "skipped=%s", skipped,
+        )
+        return {"updated": [], "ignored": skipped, "noop": True}
+
+    set_clause = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(settable.keys()))
+    params = [s_uuid, *settable.values()]
+    try:
+        await pool.execute(
+            f"UPDATE students SET {set_clause} WHERE id = $1",
+            *params,
+        )
+    except Exception as exc:
+        logger.exception("patch_student UPDATE failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {
+        "updated": list(settable.keys()),
+        "ignored": skipped,
+        "noop": False,
+    }
 
 
 @router.post("/{student_id}/update-mastery")

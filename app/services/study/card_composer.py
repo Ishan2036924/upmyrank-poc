@@ -13,8 +13,12 @@ Failures in one section do not poison others — each block is independent.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
+import re
 import uuid
+from pathlib import Path
 from typing import List, Optional
 
 import asyncpg
@@ -22,6 +26,33 @@ import asyncpg
 from app.services.rag.retriever import Retriever
 
 logger = logging.getLogger(__name__)
+
+# v0.21: editorial overrides for hand-polished concept cards.
+# Loaded once at import; file is checked into the repo.
+# Path: this module is at app/services/study/card_composer.py.
+# parents[0]=study/, [1]=services/, [2]=app/, [3]=<repo root>.
+_OVERRIDES_FILE = Path(__file__).resolve().parents[3] / "scripts" / "concept_card_overrides.json"
+
+
+def _load_overrides() -> dict:
+    try:
+        if _OVERRIDES_FILE.is_file():
+            with _OVERRIDES_FILE.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+                if isinstance(data, dict):
+                    return data
+    except Exception as exc:
+        logger.warning("concept_card_overrides load failed (non-fatal): %s", exc)
+    return {}
+
+
+_OVERRIDES = _load_overrides()
+
+
+def _override_key(subject: str, topic: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", subject.lower()).strip("-")
+    t = re.sub(r"[^a-z0-9]+", "-", topic.lower()).strip("-")
+    return f"{s}__{t}"
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -35,6 +66,12 @@ def _topic_query(subject: str, chapter: Optional[str], topic: str) -> str:
     return " — ".join(p for p in parts if p)
 
 
+def _normalise_for_dedup(text: str) -> str:
+    """Lowercase + collapse whitespace + strip; first 200 chars are the key."""
+    s = re.sub(r"\s+", " ", text or "").strip().lower()
+    return s[:200]
+
+
 async def _compose_notes(
     retriever: Retriever,
     subject: str,
@@ -42,23 +79,63 @@ async def _compose_notes(
     topic: str,
     k: int = 3,
 ) -> dict:
-    """Top-k NCERT chunks as the Notes section. No LLM call."""
+    """Top-k NCERT chunks as the Notes section. No LLM call.
+
+    v0.21: prefers a hand-polished override from
+    `scripts/concept_card_overrides.json` if one exists for this
+    (subject, topic). Otherwise dedupes near-duplicate retriever results
+    by hashed-prefix and prefers chunks with distinct section headings.
+    """
+    # ── Override path ─────────────────────────────────────────────────────
+    override = _OVERRIDES.get(_override_key(subject, topic))
+    if override and isinstance(override.get("notes_markdown"), str):
+        return {
+            "chunks": [{
+                "heading":    override.get("heading") or topic,
+                "text":       override["notes_markdown"],
+                "source":     override.get("source") or "Editorial",
+                "similarity": 1.0,
+            }],
+            "is_override": True,
+        }
+
+    # ── Auto path ─────────────────────────────────────────────────────────
     try:
         query = _topic_query(subject, chapter, topic)
-        rows = await retriever.search(query=query, k=k, subject=subject)
+        # Fetch wider, dedupe, return top-k unique.
+        fetch_k = max(k * 3, 9)
+        rows = await retriever.search(query=query, k=fetch_k, subject=subject)
     except Exception as exc:
         logger.warning("notes retrieval failed: %s", exc)
         return {"chunks": [], "error": "retrieval_failed"}
 
+    seen_hashes: set[str] = set()
+    seen_headings: set[str] = set()
     chunks: List[dict] = []
+
     for row in rows:
+        if len(chunks) >= k:
+            break
+        text = row.get("content") or ""
+        if not text.strip():
+            continue
+        digest = hashlib.sha1(_normalise_for_dedup(text).encode()).hexdigest()
+        if digest in seen_hashes:
+            continue
         md = row.get("metadata") or {}
+        heading = md.get("section") or md.get("title") or chapter or topic
+        # Prefer heading diversity — but allow a repeat if we're running low.
+        if heading in seen_headings and len(chunks) < (k - 1):
+            continue
+        seen_hashes.add(digest)
+        seen_headings.add(heading)
         chunks.append({
-            "heading":    md.get("section") or md.get("title") or chapter or topic,
-            "text":       row.get("content", ""),
+            "heading":    heading,
+            "text":       text,
             "source":     md.get("source") or "NCERT",
             "similarity": float(row.get("similarity_score", 0.0)),
         })
+
     return {"chunks": chunks}
 
 

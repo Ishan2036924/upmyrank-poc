@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 
 import AppShell from '@/components/AppShell'
 import AuthGuard from '@/components/AuthGuard'
-import { apiGet, apiPost } from '@/lib/api'
+import { apiGet, apiPost, apiPatch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { StudentGenome } from '@/lib/types'
 import { cn, getInitials } from '@/lib/utils'
@@ -69,6 +69,7 @@ function ComingSoon({ children, label = 'Coming soon' }: { children: React.React
 // ── Profile tab ─────────────────────────────────────────────────────────────
 
 function ProfileTab({ genome }: { genome: StudentGenome | null }) {
+  const { studentId } = useAuth()
   const [name,     setName]     = useState('')
   const [phone,    setPhone]    = useState('')
   const [email,    setEmail]    = useState('')
@@ -88,13 +89,35 @@ function ProfileTab({ genome }: { genome: StudentGenome | null }) {
     }
   }, [genome])
 
-  const handleSave = () => {
+  // v0.20.2: real PATCH /student/{id}. If migration v16 hasn't run yet on
+  // this deployment, the backend silently ignores unknown columns and
+  // returns {ignored: [...]} — we surface that as a soft warning toast
+  // instead of failure.
+  const handleSave = async () => {
+    if (!studentId) return
     setSaving(true)
-    setTimeout(() => {
-      setSaving(false)
+    try {
+      const res: any = await apiPatch(`/student/${studentId}`, {
+        name: name || undefined,
+        phone: phone || undefined,
+        timezone: timezone || undefined,
+        preferred_language: language || undefined,
+      })
+      const ignored = Array.isArray(res?.ignored) ? res.ignored : []
+      const updated = Array.isArray(res?.updated) ? res.updated : []
+      if (updated.length === 0 && ignored.length > 0) {
+        toast.warning('Profile not saved — schema migration v16 pending on backend.')
+      } else if (ignored.length > 0) {
+        toast.success(`Saved ${updated.join(', ')} · pending: ${ignored.join(', ')}`)
+      } else {
+        toast.success('Profile saved')
+      }
       setDirty(false)
-      toast.success('Profile saved')
-    }, 800)
+    } catch (err: any) {
+      toast.error('Save failed', { description: err?.message ?? 'Network error.' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (

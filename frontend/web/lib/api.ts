@@ -53,15 +53,42 @@ async function handleResponse(res: Response, retry: () => Promise<Response>): Pr
   return res.json()
 }
 
+// v0.20.2 — show a soft toast when the request takes >8s (Render cold start).
+// Loaded lazily so this module doesn't pull sonner into auth-page bundles
+// where it isn't needed.
+let _coldStartToastShown = false
+async function _showColdStartToast() {
+  if (_coldStartToastShown) return
+  _coldStartToastShown = true
+  setTimeout(() => { _coldStartToastShown = false }, 60_000)  // re-arm after 1 min
+  try {
+    const { toast } = await import('sonner')
+    toast.info('Waking up the server…', {
+      description: 'First request takes a moment on the free tier. Hang tight.',
+      duration: 5000,
+    })
+  } catch {
+    // sonner may not be available — fail silent.
+  }
+}
+
 // Render free tier cold-starts can take up to 50s.
 // Retry up to 3 times with increasing delays before giving up.
 async function fetchWithRetry(input: string, init: RequestInit): Promise<Response> {
   const delays = [5000, 15000, 30000]
   let lastError: unknown
   for (let i = 0; i <= delays.length; i++) {
+    // Cold-start toast after 8s on the FIRST attempt only (so retries don't spam).
+    let toastTimer: ReturnType<typeof setTimeout> | null = null
+    if (i === 0 && typeof window !== 'undefined') {
+      toastTimer = setTimeout(_showColdStartToast, 8000)
+    }
     try {
-      return await fetch(input, init)
+      const res = await fetch(input, init)
+      if (toastTimer) clearTimeout(toastTimer)
+      return res
     } catch (err) {
+      if (toastTimer) clearTimeout(toastTimer)
       lastError = err
       if (i < delays.length) {
         await new Promise((r) => setTimeout(r, delays[i]))
@@ -98,5 +125,22 @@ export async function apiGet(endpoint: string) {
   return handleResponse(res, async () => {
     const token = getToken()
     return fetchWithRetry(`${API_URL}${endpoint}`, { headers: authHeaders(token ?? undefined) })
+  })
+}
+
+// v0.20.2 — used by /settings PATCH /student/{id}
+export async function apiPatch(endpoint: string, body: unknown) {
+  const res = await fetchWithRetry(`${API_URL}${endpoint}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  })
+  return handleResponse(res, async () => {
+    const token = getToken()
+    return fetchWithRetry(`${API_URL}${endpoint}`, {
+      method: 'PATCH',
+      headers: authHeaders(token ?? undefined),
+      body: JSON.stringify(body),
+    })
   })
 }

@@ -38,7 +38,8 @@ function exportCSV(filename: string, rows: Record<string, unknown>[]) {
 
 type Section =
   | 'platform' | 'conv-quality' | 'response-quality'
-  | 'system-perf' | 'feedback' | 'knowledge' | 'students' | 'diagnostics'
+  | 'system-perf' | 'feedback' | 'knowledge' | 'students'
+  | 'study-path' | 'diagnostics'
 
 interface TurnRow {
   doubt_session_id: string
@@ -156,7 +157,7 @@ export default function AdminPage() {
   // URL hash sync — bookmarkable admin sections
   useEffect(() => {
     const h = (typeof window !== 'undefined' ? window.location.hash.slice(1) : '') as Section
-    const valid: Section[] = ['platform','conv-quality','response-quality','system-perf','feedback','knowledge','students','diagnostics']
+    const valid: Section[] = ['platform','conv-quality','response-quality','system-perf','feedback','knowledge','students','study-path','diagnostics']
     if (h && valid.includes(h)) setActiveSectionState(h)
   }, [])
   const setActiveSection = useCallback((s: Section) => {
@@ -175,6 +176,7 @@ export default function AdminPage() {
   const [studentsData, setStudentsData]     = useState<any>(null)
   const [diagnosticsData, setDiagnosticsData] = useState<any>(null)
   const [digestData, setDigestData]         = useState<any>(null)
+  const [studyPathData, setStudyPathData]   = useState<any>(null)
 
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [days, setDays] = useState(7)
@@ -207,6 +209,7 @@ export default function AdminPage() {
   const loadFeedback     = useCallback(() => tryLoad('feed',     () => apiGet(`/admin/user-feedback?days=${days}`),       setFeedbackData, 'User feedback'),      [days])
   const loadKb           = useCallback(() => tryLoad('kb',       () => apiGet(`/admin/knowledge-base?days=${days}`),      setKbData,       'Knowledge base'),     [days])
   const loadStudents     = useCallback(() => tryLoad('students', () => apiGet(`/admin/student-insights?days=30`),         setStudentsData, 'Student insights'),   [])
+  const loadStudyPath    = useCallback(() => tryLoad('studypath', () => apiGet(`/admin/study-path?days=${days}`),          setStudyPathData, 'Study Path usage'),   [days])
   const runDiagnostics   = useCallback(() => tryLoad('diag',     () => apiPost('/admin/diagnostics', {}),                 setDiagnosticsData, 'Diagnostics'),     [])
   const runDigest        = useCallback(() => tryLoad('digest',   () => apiPost('/admin/quality-digest', {}),              setDigestData,   'Digest'),             [])
 
@@ -220,6 +223,7 @@ export default function AdminPage() {
     if (activeSection === 'feedback' && !feedbackData)        loadFeedback()
     if (activeSection === 'knowledge' && !kbData)             loadKb()
     if (activeSection === 'students' && !studentsData)        loadStudents()
+    if (activeSection === 'study-path' && !studyPathData)     loadStudyPath()
   }, [activeSection, authChecked]) // eslint-disable-line
 
   // Auto-refresh every 30s when toggled on
@@ -233,9 +237,10 @@ export default function AdminPage() {
       else if (activeSection === 'feedback')        loadFeedback()
       else if (activeSection === 'knowledge')       loadKb()
       else if (activeSection === 'students')        loadStudents()
+      else if (activeSection === 'study-path')      loadStudyPath()
     }, 30_000)
     return () => clearInterval(t)
-  }, [autoRefresh, authChecked, activeSection, loadPlatform, loadConvQuality, loadRespQuality, loadSysPerf, loadFeedback, loadKb, loadStudents])
+  }, [autoRefresh, authChecked, activeSection, loadPlatform, loadConvQuality, loadRespQuality, loadSysPerf, loadFeedback, loadKb, loadStudents, loadStudyPath])
 
   if (authDenied) {
     return (
@@ -282,6 +287,7 @@ export default function AdminPage() {
     { id: 'feedback',         label: 'User Feedback',         icon: ThumbsUp },
     { id: 'knowledge',        label: 'Knowledge Base',        icon: BookOpen },
     { id: 'students',         label: 'Student Insights',      icon: Users },
+    { id: 'study-path',       label: 'Study Path',            icon: BookOpen },
     { id: 'diagnostics',      label: 'Diagnostics',           icon: Stethoscope },
   ]
 
@@ -817,6 +823,84 @@ export default function AdminPage() {
                         </ResponsiveContainer>
                       </motion.div>
                     )}
+                  </>
+                ) : <LoadingState />}
+              </Section>
+            )}
+
+            {/* ── STUDY PATH USAGE (v0.20.2) ─────────────────────────────────── */}
+            {activeSection === 'study-path' && (
+              <Section title="Study Path Usage" icon={BookOpen}
+                onRefresh={loadStudyPath} loading={!!loading.studypath}
+                updatedAt={lastUpdated.studypath}
+                onExport={studyPathData?.top_cards?.length ? () => exportCSV('study-path-top-cards.csv', studyPathData.top_cards) : undefined}>
+                {studyPathData ? (
+                  <>
+                    <motion.div variants={stagger} className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                      <StatCard label="Total Card Views" value={studyPathData.total_views} icon={BookOpen} color="purple" />
+                      <StatCard label="Override Hit Rate" value={`${Math.round((studyPathData.override_hit_rate || 0) * 100)}%`} sub="hand-polished cards / total" icon={Star} color="green" />
+                      <StatCard label="Topic-Shift Drift" value={studyPathData.topic_shift_drift_count} sub="block-close reclassify hits" icon={Activity} color="amber" />
+                      <StatCard label="Lookback" value={`${studyPathData.days}d`} icon={Clock} color="slate" />
+                    </motion.div>
+
+                    {/* Daily views chart */}
+                    {studyPathData.daily_views?.length > 0 && (
+                      <motion.div variants={fadeUp} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.04)] mb-6">
+                        <p className="text-sm font-bold text-slate-700 mb-3">Daily Card Views</p>
+                        <ResponsiveContainer width="100%" height={180}>
+                          <AreaChart data={studyPathData.daily_views}>
+                            <defs>
+                              <linearGradient id="studyViewsGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.3} />
+                                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} />
+                            <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                            <Tooltip />
+                            <Area type="monotone" dataKey="views" stroke="#7c3aed" strokeWidth={2} fill="url(#studyViewsGrad)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </motion.div>
+                    )}
+
+                    {/* Top cards table */}
+                    <motion.div variants={fadeUp} className="bg-white border border-slate-100 rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.04)] overflow-hidden">
+                      <div className="px-5 py-3 border-b border-slate-100">
+                        <p className="text-sm font-bold text-slate-700">Top Concept Cards (last {studyPathData.days}d)</p>
+                      </div>
+                      {studyPathData.top_cards?.length === 0 ? (
+                        <div className="p-8 text-center text-sm text-slate-400">
+                          No card views recorded yet — beta students need to open Study Path topics first.
+                        </div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Subject</th>
+                              <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Topic</th>
+                              <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Views</th>
+                              <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Unique Students</th>
+                              <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Last Viewed</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {studyPathData.top_cards.map((card: any, i: number) => (
+                              <tr key={i} className="border-t border-slate-100 hover:bg-slate-50">
+                                <td className="px-4 py-2 text-slate-700">{card.subject}</td>
+                                <td className="px-4 py-2 text-slate-900 font-medium">{card.topic}</td>
+                                <td className="px-4 py-2 text-right tabular-nums">{card.view_count}</td>
+                                <td className="px-4 py-2 text-right tabular-nums">{card.unique_students}</td>
+                                <td className="px-4 py-2 text-right text-xs text-slate-500">
+                                  {card.last_viewed ? new Date(card.last_viewed).toLocaleString() : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </motion.div>
                   </>
                 ) : <LoadingState />}
               </Section>

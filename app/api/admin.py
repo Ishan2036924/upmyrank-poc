@@ -795,6 +795,107 @@ async def knowledge_base(
     }
 
 
+@router.get("/study-path")
+async def study_path_usage(
+    days: int = Query(7, ge=1, le=90),
+    db=Depends(get_pool),
+    _: str = Depends(get_current_student_id),
+):
+    """v0.20.2: Study Path usage rollup for the admin dashboard.
+
+    Returns:
+        - top_cards: top 10 (subject, topic) pairs by view count in last N days
+        - daily_views: views per day for sparkline
+        - topic_shifts: count of v0.20 topic-shift demotions in last N days
+                         (sourced from doubt_blocks closed by drift)
+        - override_rate: fraction of card views that hit a hand-curated override
+    """
+    # Top 10 cards by view count
+    top_cards = await db.fetch(
+        """
+        SELECT
+            (payload->>'subject') AS subject,
+            (payload->>'topic')   AS topic,
+            COUNT(DISTINCT student_id)::int AS unique_students,
+            COUNT(*)::int                    AS view_count,
+            MAX(created_at)                  AS last_viewed
+        FROM session_events
+        WHERE event_type = 'study_card_view'
+          AND created_at > NOW() - ($1 || ' days')::interval
+        GROUP BY 1, 2
+        ORDER BY view_count DESC
+        LIMIT 10
+        """,
+        str(days),
+    )
+
+    # Daily view sparkline
+    daily = await db.fetch(
+        """
+        SELECT date_trunc('day', created_at)::date AS day,
+               COUNT(*)::int AS views
+        FROM session_events
+        WHERE event_type = 'study_card_view'
+          AND created_at > NOW() - ($1 || ' days')::interval
+        GROUP BY 1 ORDER BY 1
+        """,
+        str(days),
+    )
+
+    # Override hit-rate (fraction of views that came from hand-polished cards)
+    rate_row = await db.fetchrow(
+        """
+        SELECT
+            COUNT(*) FILTER (WHERE (payload->>'is_override')::boolean = TRUE)::int AS overrides,
+            COUNT(*)::int AS total
+        FROM session_events
+        WHERE event_type = 'study_card_view'
+          AND created_at > NOW() - ($1 || ' days')::interval
+        """,
+        str(days),
+    )
+
+    # Topic-shift count from doubt_blocks (approx: blocks that ended without
+    # being solved AND had only the original session_terminal event with no
+    # mid-session drift signal). Use the new drift_topic field.
+    drift_count = await db.fetchval(
+        """
+        SELECT COUNT(*)::int
+        FROM session_events
+        WHERE event_type = 'session_terminal'
+          AND payload ? 'drift_topic'
+          AND payload->>'drift_topic' IS NOT NULL
+          AND payload->>'drift_topic' <> ''
+          AND created_at > NOW() - ($1 || ' days')::interval
+        """,
+        str(days),
+    )
+
+    return {
+        "days": days,
+        "top_cards": [
+            {
+                "subject":         r["subject"],
+                "topic":           r["topic"],
+                "unique_students": int(r["unique_students"] or 0),
+                "view_count":      int(r["view_count"] or 0),
+                "last_viewed":     r["last_viewed"].isoformat() if r["last_viewed"] else None,
+            }
+            for r in top_cards
+        ],
+        "daily_views": [
+            {"day": r["day"].isoformat(), "views": int(r["views"])}
+            for r in daily
+        ],
+        "override_hit_rate": (
+            float(rate_row["overrides"]) / float(rate_row["total"])
+            if rate_row and rate_row["total"] else 0.0
+        ),
+        "total_views": int(rate_row["total"] or 0) if rate_row else 0,
+        "topic_shift_drift_count": int(drift_count or 0),
+    }
+
+
 @router.get("/student-insights")
 async def student_insights(
     days: int = Query(30, ge=1, le=180),
