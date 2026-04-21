@@ -3,6 +3,32 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-04-21 (cont.) — v0.20.3 hot patch: shorten topic-shift length floor
+
+**Focus:** v0.20.2 deployed and fixed the `"what's the integral of sin(x²)?"` pivot, but real-prod usage by user immediately surfaced a sibling bug — `"what is molecule?"` (16 chars) still got refused by counselor because `_looks_like_new_question()` had a 20-char floor that short-circuited before the verb regex could match. User correctly called out the UX inconsistency.
+
+**Status:** DONE — patch + extended synthetic test (now 3-pivot) + docs; awaiting user push.
+
+**Changed files (v0.20.3):**
+- **MODIFIED** `app/api/doubt.py` `_looks_like_new_question()` — verb-regex floor 20 → 12; symbol-only fallback floor stays 25.
+- **MODIFIED** `scripts/synthetic_beta.py` `scenario_topic_shift()` — extended from 1-pivot to 3-pivot stress test (physics → math → "what is molecule?" chemistry). Permanent regression guard.
+- **MODIFIED** `docs/version_history.md`, `docs/session_log.md` (this), `docs/bugs.md`.
+
+**Cliff notes (non-obvious context):**
+- The 20-char floor in v0.20.2 was a guess, not a measurement. The fix sets 12 = length of `"what is x?"` (shortest plausible new-question). Going lower risks treating raw replies like `"what?"` as a new doubt.
+- Symbol-only fallback floor stays at 25 because notation without a verb is more ambiguous (a single fragment like `"x²"` shouldn't open a new block).
+- The synthetic test would NOT have caught this in v0.20.2 because the only pivot tested was the long math one. Multi-pivot is now permanent.
+
+**Next session — read these files first:**
+`docs/bugs.md` (top entry — the length-floor failure mode), `app/api/doubt.py` (`_looks_like_new_question`), `scripts/synthetic_beta.py` (`scenario_topic_shift` — the 3-pivot guard).
+
+**Next session — start here:**
+1. Push v0.20.3 to Render.
+2. Re-test the prod 3-pivot manually: physics → integral pivot → "what is molecule?" — all three should open separate blocks now.
+3. Then proceed with the original v0.20.2 follow-ups (apply migration v16 if not done, beta with 30 students).
+
+---
+
 ## Session 2026-04-21 — v0.20.2 patches + admin Study Path + synthetic tests
 
 **Focus:** Fix two bugs surfaced by Render-prod logs (regex too narrow → topic-shift didn't fire on `"what's the integral…"`; Notes section duplicated chunks). Bundle with remaining v0.20 plan items: block-close drift backstop, manual `+ New doubt` lever, admin Study Path usage panel, hand-curated 5 seed concept-card overrides, profile-save wire-up, cold-start toast, synthetic LLM test harness.
@@ -88,24 +114,4 @@ Run the beta with 30 students. Monitor `topic_shift` log lines to validate class
 
 ---
 
-## Session 2026-04-19 — Enterprise UI Phases 2–6 (v0.19)
-
-**Focus:** Ship AppShell + auth redesign + /doubt message actions + settings 6-tab + admin polish, as a single commit covering five of the six UI overhaul phases.
-
-**Status:** DONE — shipped v0.18 (foundation) + v0.19 (phases 2–6); awaiting user push.
-
-**Changed files:** see `docs/version_history.md` v0.18 and v0.19 entries; also `docs/ui_overhaul_changelog.md`.
-
-**Current system state:**
-- Frontend: 14 static routes build clean. AppShell wraps every logged-in page. New `/auth/forgot-password` route.
-- Backend: untouched in this sprint. 34 routes confirmed healthy.
-- DB: no migration.
-
-**Cliff notes:**
-- Dark mode tokens scaffolded in `globals.css` `.dark` block; toggle disabled with tooltip per locked decision #1.
-- All "coming soon" features (Google OAuth, 2FA, email notifications, regenerate response) are visible + disabled with tooltips — no dead clicks.
-- `/settings` is now 6 tabs; profile section has phone/timezone/language inputs but save is a toast no-op until `v16_student_profile.sql` ships.
-
----
-
-<!-- Older entries pruned 2026-04-21 (v0.20.2). See docs/version_history.md for the full chronology. -->
+<!-- Older entries pruned 2026-04-21 (v0.20.3). See docs/version_history.md for the full chronology. -->

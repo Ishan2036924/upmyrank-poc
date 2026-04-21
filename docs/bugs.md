@@ -1,5 +1,29 @@
 # Bug History — UpMyRank
 
+## Topic-shift demotion didn't fire on short questions ("what is molecule?", 16 chars) — fixed (v0.20.3, 2026-04-21)
+**Symptom:** Real prod chat. Student opened a physics doubt ("A 5 kg block slides down a 30° incline"), pivoted to math ("wait, what's the integral of sin(x²)?" → topic-shift fired, new block opened ✓), then pivoted to chemistry ("what is molecule?" → counselor mode refused with "molecule is a chemistry concept, not related to integrating sin(x²)..."). Student noticed the inconsistency: "but initally i was asking about accelaration, then suddenly about integration but that time you didn't say no??".
+**Root cause:** `_looks_like_new_question()` had `if len(stripped) < 20: return False` as the first gate. The verb regex would have matched "what is molecule?" (16 chars contains "what is"), but the length check short-circuited before reaching it. The 20-char floor was set conservatively in v0.20.2 to avoid false positives on hint replies — but "what is X?" with X being a single noun is a perfectly valid new question well under 20 chars.
+**Fix:** Lower the verb-regex floor from 20 → 12 chars. Keep the symbol-only fallback floor at 25 (notation alone needs more weight). Synthetic test extended from 1-pivot to 3-pivot scenario (physics → math → "what is molecule?" chemistry) so this regression is permanently caught.
+**DO NOT:** raise the floor back without measuring against a corpus of real student doubts. The floor should be set FROM data ("shortest legitimate new-question observed = N → floor = N"), not guessed.
+
+## Topic-shift demotion didn't fire on contractions / math-symbol pivots — fixed (v0.20.2, 2026-04-21)
+**Symptom:** Student in `/doubt` says `"A 5 kg block slides down a 30° incline. Find acceleration."` then mid-hint pivots with `"wait, what's the integral of sin(x²)?"`. Backend's intent classifier *correctly* flagged the pivot as `subject_doubt`, but FIX A3 immediately demoted it back to `continuation` because the message was <100 chars and didn't match the `find|calculate|solve` regex. v0.20's compensating `_detect_topic_shift()` should have re-promoted it but its `_NEW_QUESTION_MARKERS` regex had `what\s+is` which couldn't match `what's` (apostrophe-s contraction), and didn't include math verbs like `integral`. Result: AI stayed in physics counselor mode, refused the pivot ("integral of sin(x²) is unrelated here"), no new doubt_block opened, mastery for any future answer would credit the wrong concept.
+**Root cause:** Regex too narrow. Three gaps: (1) no contractions, (2) no math verbs (`integral`, `derivative`, `differentiate`), (3) no symbol-only fallback for messages that have notation but no verb (e.g. `"the integral of sin(x²)"`).
+**Fix:** Widened `_NEW_QUESTION_MARKERS` to cover contractions + math verbs. Added a separate `_MATH_SYMBOL_HINTS` regex (Unicode super/subscripts, `dy/dx`, `∫`, math nouns like `integral`/`derivative`/`pH`/`mol`). `_looks_like_new_question()` now returns True if the verb regex matches OR (length ≥ 25 AND symbol regex matches). Synthetic test repros the exact prod message and confirms `topic_shift.opens_new_block` invariant holds.
+**DO NOT:** narrow the regex back. Every word in the verb list and every symbol in the math regex was added in response to a real failure mode. If you must constrain (e.g. to reduce false positives), validate against `scripts/synthetic_beta.py` first.
+
+## Notes section showed the same NCERT chunk three times — fixed (v0.20.2, 2026-04-21)
+**Symptom:** Concept Card for Projectile Motion (and other Kinematics topics) rendered three identical "KINEMATICS" Notes blocks with the same text — "Kinematics is the branch of physics that deals with the motion of objects without considering the forces that cause them to move…" — repeated verbatim.
+**Root cause:** The NCERT corpus has the same Kinematics intro section appearing in multiple source files; the hybrid Retriever was returning all of them as top-3 because they all match the topic embedding strongly. `_compose_notes()` returned the raw top-k without dedup.
+**Fix:** Fetch wider (k×3 = 9 chunks instead of 3), dedupe by sha1 of the normalised first-200-chars of each chunk's content, also prefer chunks with distinct `metadata.section` headings (allow heading repeat only when we'd otherwise return <k chunks). Synthetic test asserts `len(prefixes) == len(set(prefixes))` for every fetched card.
+**DO NOT:** dedupe by full content hash — that misses paraphrased duplicates. The first-200-char normalised hash is the right granularity. If you tighten further (e.g. fuzzy dedup), measure recall on a small held-out set first.
+
+## concept_card_overrides.json wasn't loading because Path resolution was off — fixed (v0.20.2, 2026-04-21)
+**Symptom:** Synthetic test reported `study_card[Chemical Bonding].notes_deduped — 3 unique chunks` for a topic that *should* have hit a 1-chunk hand-polished override. Auto-assembly was firing instead of override.
+**Root cause:** In `app/services/study/card_composer.py`, `_OVERRIDES_FILE = Path(__file__).resolve().parents[2] / "scripts" / "concept_card_overrides.json"`. From `app/services/study/card_composer.py`: parents[0]=`study/`, [1]=`services/`, [2]=`app/`. So the loader was looking for `app/scripts/concept_card_overrides.json` (doesn't exist). The correct path uses `parents[3]` to reach the repo root.
+**Fix:** Changed to `parents[3]`. Synthetic test caught it on first run after the migration; second run all 5 seed overrides loaded.
+**DO NOT:** hard-code an absolute path. Keep it relative to `__file__` so the repo is portable. If you move `card_composer.py` to a different depth, recount the parents.
+
 ## Full solution firing multiple times — fixed
 **Symptom:** Student would get 2-3 identical full solutions dumped into chat
 **Root cause:** Missing guard check — full solution handler didn't verify if solution was already delivered in current doubt block

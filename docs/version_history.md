@@ -20,6 +20,7 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.20.3](#v0203--lower-topic-shift-length-floor--regression-guard-2026-04-21) | 2026-04-21 | Lower topic-shift length floor (20→12) so "what is molecule?" opens a new doubt block + regression test |
 | [v0.20.2](#v0202--prod-bug-patches--reliability--admin-study-path-panel--synthetic-tests-2026-04-21) | 2026-04-21 | Prod bug patches + reliability + admin Study Path panel + synthetic tests |
 | [v0.20](#v020--dual-loop-architecture--study-path--ask-anything-2026-04-20) | 2026-04-20 | Dual-loop architecture — Study Path (Mode 1) + Ask Anything (Mode 2) |
 | [v0.19](#v019--enterprise-ui-phases-2-6--appshell-auth-settings-doubt-admin-2026-04-19) | 2026-04-19 | Enterprise UI Phases 2–6 — AppShell, auth, settings, doubt, admin polish |
@@ -41,6 +42,36 @@
 | [v0.3](#v03--analytics-dashboard-pro-max--nuclear-l3--latex-sanitizer-2026-03-30) | 2026-03-30 | Analytics Bento Box + Confidence Meter + nuclear L3 + LaTeX sanitizer |
 | [v0.2](#v02--glassmorphic-ui-overhaul--taxonomy-api-2026-03-22) | 2026-03-22 | Glassmorphic UI overhaul + Taxonomy API + syllabus selector |
 | [v0.1](#v01--initial-commit--render--vercel-deployment-2026-03-17) | 2026-03-17 | Initial commit + Render + Vercel deployment + OpenAI embeddings |
+
+---
+
+## v0.20.3 — Lower topic-shift length floor + regression guard (2026-04-21)
+
+**Status:** shipped (1 backend file + 1 test file + docs; awaiting user push)
+**Commits:** *(staged — commit by user)*
+
+### Why
+Live prod test by the user surfaced the v0.20.2 fix wasn't complete. Sequence: physics doubt → math pivot (`"wait, what's the integral of sin(x²)?"` — opened new block ✓) → chemistry pivot (`"what is molecule?"` — got refused by counselor mode, no new block). User correctly called out the inconsistency: math pivot was allowed, chemistry pivot was refused.
+
+### Root cause
+`_looks_like_new_question()` had `if len(stripped) < 20: return False` as the first gate. `"what is molecule?"` is **16 chars** — short-circuited before the verb regex could match. Since FIX A3 demoted intent → continuation, and my v0.20 promotion was gated by `_looks_like_new_question`, the demotion stuck and the AI treated the chemistry question as a hint reply on the integral block.
+
+### Fix
+- `app/api/doubt.py` `_looks_like_new_question()`: lowered the verb-regex floor from 20 → 12 chars. The symbol-only fallback floor stays at 25 (notation alone needs more weight to overcome ambiguity).
+- `scripts/synthetic_beta.py` `scenario_topic_shift()`: extended from 1 pivot to 3-pivot stress test — physics → math (long, with math symbols) → chemistry (short, "what is X?"). Each pivot must open a new doubt_block. Permanent regression guard.
+
+### Verification
+- Local synthetic suite — re-running with the new chem-pivot fixture (results in commit message before push).
+- Manual repro of the prod chat now opens 3 sequential blocks (Laws of Motion → Integration → Chemistry) instead of 2 + counselor refusal.
+
+### Lessons
+- The 20-char floor was a guess, not a measurement. Should have set it from the shortest legitimate "what is X?" length (≈12). Lesson: thresholds in regex/heuristic code need explicit min-length comments tying back to a real failure mode.
+- Synthetic tests caught only single-pivot scenarios in v0.20.2. Multi-pivot is meaningfully different — added permanently.
+
+### Files changed
+- **MODIFIED** `app/api/doubt.py` (one function, comment updated to reference v0.20.3 + prod date).
+- **MODIFIED** `scripts/synthetic_beta.py` (`scenario_topic_shift` — 1 pivot → 3 pivots).
+- **MODIFIED** `docs/version_history.md`, `docs/session_log.md`, `docs/bugs.md`.
 
 ---
 

@@ -317,7 +317,11 @@ async def scenario_study_card(client: APIClient, run: TestRun):
 
 
 async def scenario_topic_shift(client: APIClient, run: TestRun):
-    """The 'integral of sin(x²)' pivot must structurally close the physics block."""
+    """Three-pivot stress test:
+        physics → math (long, with math symbols) → chemistry (short, "what is X?")
+    Each pivot must open a new doubt_block. Regression guard for both
+    the v0.20.1 and v0.20.3 regex bugs caught in prod.
+    """
     sess = await client.session_start()
     sid = sess["study_session_id"]
 
@@ -335,26 +339,44 @@ async def scenario_topic_shift(client: APIClient, run: TestRun):
         return
     run.add("topic_shift.opening_doubt", True, f"block={block_id[:8]}")
 
-    # 2. Pivot to math (the bug from prod log)
+    # 2. Pivot to math (the v0.20.1 prod-log bug — contractions + math symbols)
     try:
         r2 = await client.doubt_ask(
             DOUBT_FIXTURES[1]["prompt"], study_session_id=sid, subject="Physics",
         )
     except Exception as e:
-        run.add("topic_shift.pivot_request", False, str(e))
+        run.add("topic_shift.math_pivot", False, str(e))
         return
 
-    new_block = r2.get("doubt_block_id") or (r2.get("metadata") or {}).get("doubt_block_id")
-    intent = r2.get("intent") or "unknown"
-
-    # The fix is working if EITHER:
-    #   (a) intent landed as subject_doubt and a NEW block opened, OR
-    #   (b) intent stayed continuation but the block was closed by drift backstop
-    shifted_cleanly = (intent == "subject_doubt" and new_block and new_block != block_id)
+    block_2 = r2.get("doubt_block_id") or (r2.get("metadata") or {}).get("doubt_block_id")
+    intent_2 = r2.get("intent") or "unknown"
+    math_shifted = (intent_2 == "subject_doubt" and block_2 and block_2 != block_id)
     run.add(
-        "topic_shift.opens_new_block", shifted_cleanly,
-        f"intent={intent} new_block={new_block[:8] if new_block else 'none'} "
+        "topic_shift.math_pivot_opens_new_block", math_shifted,
+        f"intent={intent_2} new_block={block_2[:8] if block_2 else 'none'} "
         f"old_block={block_id[:8]}",
+    )
+    if not math_shifted:
+        return
+
+    # 3. Pivot to chemistry with a SHORT question ("what is molecule?", 16 chars).
+    # v0.20.3 regression guard: prod 2026-04-21 showed this got refused by
+    # counselor mode because the length floor was 20.
+    try:
+        r3 = await client.doubt_ask(
+            "what is molecule?", study_session_id=sid, subject="Physics",
+        )
+    except Exception as e:
+        run.add("topic_shift.short_chem_pivot", False, str(e))
+        return
+
+    block_3 = r3.get("doubt_block_id") or (r3.get("metadata") or {}).get("doubt_block_id")
+    intent_3 = r3.get("intent") or "unknown"
+    chem_shifted = (intent_3 == "subject_doubt" and block_3 and block_3 != block_2)
+    run.add(
+        "topic_shift.short_chem_pivot_opens_new_block", chem_shifted,
+        f"intent={intent_3} new_block={block_3[:8] if block_3 else 'none'} "
+        f"old_block={block_2[:8]}",
     )
 
 

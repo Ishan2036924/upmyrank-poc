@@ -67,11 +67,18 @@ def _looks_like_new_question(text: str) -> bool:
     (integrate, differentiate), and math-symbol-only pivots that have no
     verb (e.g. "the integral of sin(x²)"). Original v0.20 regex missed
     these — prod log on 2026-04-21 caught it.
+
+    v0.20.3 (2026-04-21): lowered the verb-regex floor from 20→12 chars
+    after prod surfaced "what is molecule?" (16 chars) being refused by
+    counselor mode instead of opening a new doubt block. The 20-char
+    floor was too aggressive for short, unambiguous question shapes
+    like "what is X?" / "what's Y?". Symbol-only fallback floor stays
+    at 25 (notation alone needs more weight to overcome ambiguity).
     """
     if not text:
         return False
     stripped = text.strip()
-    if len(stripped) < 20:
+    if len(stripped) < 12:
         return False
     if _NEW_QUESTION_MARKERS.search(stripped):
         return True
