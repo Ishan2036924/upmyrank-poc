@@ -20,6 +20,7 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.20](#v020--dual-loop-architecture--study-path--ask-anything-2026-04-20) | 2026-04-20 | Dual-loop architecture — Study Path (Mode 1) + Ask Anything (Mode 2) |
 | [v0.19](#v019--enterprise-ui-phases-2-6--appshell-auth-settings-doubt-admin-2026-04-19) | 2026-04-19 | Enterprise UI Phases 2–6 — AppShell, auth, settings, doubt, admin polish |
 | [v0.18](#v018--enterprise-ui-phase-1--design-tokens--ui-primitives-2026-04-18) | 2026-04-18 | Enterprise UI Phase 1 — design tokens + 18 shadcn-pattern primitives |
 | [v0.17](#v017--version-history-doc--hard-no-commit-rule-2026-04-19) | 2026-04-19 | Version history doc + hard no-commit rule for Claude |
@@ -39,6 +40,59 @@
 | [v0.3](#v03--analytics-dashboard-pro-max--nuclear-l3--latex-sanitizer-2026-03-30) | 2026-03-30 | Analytics Bento Box + Confidence Meter + nuclear L3 + LaTeX sanitizer |
 | [v0.2](#v02--glassmorphic-ui-overhaul--taxonomy-api-2026-03-22) | 2026-03-22 | Glassmorphic UI overhaul + Taxonomy API + syllabus selector |
 | [v0.1](#v01--initial-commit--render--vercel-deployment-2026-03-17) | 2026-03-17 | Initial commit + Render + Vercel deployment + OpenAI embeddings |
+
+---
+
+## v0.20 — Dual-loop architecture — Study Path + Ask Anything (2026-04-20)
+
+**Status:** shipped (backend + frontend; beta-ready)
+**Commits:** *(staged — commit by user)*
+
+### Why
+Per-topic localStorage partitioning (v0.15) solved session bleed but created three new problems: (a) forced topic pre-pick bad UX, (b) mastery mis-attribution on cross-topic follow-ups because session-level topic tagging credits the wrong concept, (c) unbounded `conversation_history` JSONB inside a single doubt_session. Sir confirmed "students need structure when they study, free-form when they have doubts" — that's two distinct activities. One mode can't serve both.
+
+### What shipped
+**Two coexisting modes, one Knowledge Genome.**
+
+**Mode 1 — Study Path (structured):**
+- **`app/api/study.py`** (NEW) — `GET /study/card?subject=&chapter=&topic=` returns a computed concept card. Zero LLM calls.
+- **`app/services/study/card_composer.py`** (NEW) — assembles four sections from data already indexed:
+  - Notes: top-3 NCERT chunks via existing `Retriever.search(topic, subject)` (no LLM)
+  - Practice: up to 3 problems from `problems` table filtered by topic
+  - PYQs: up to 3 rows from `jee_problems` filtered by topic
+  - Mastery: aggregate EMA score for this topic for this student
+- **`app/main.py`** — registered `study.router`.
+- **`frontend/web/app/study/page.tsx`** (NEW) — Study Path navigator. Subject → chapter → topic tree reusing `SYLLABUS_MAP`. No gate, no chat.
+- **`frontend/web/app/study/[subject]/[chapter]/[topic]/page.tsx`** (NEW) — Concept Card page. Four sections (Notes / Practice / PYQs / Ask about this) + mastery progress bar + topic-locked "Ask" CTA.
+
+**Mode 2 — Ask Anything (free-form with auto-segmentation):**
+- **`app/services/doubt/engine.py`** — exposed `classify_turn_topic()` as a public wrapper over `_classify_subject()` so the API layer can detect topic shifts without reaching into private methods.
+- **`app/api/doubt.py`** — new helpers `_looks_like_new_question()`, `_topics_differ()`, `_detect_topic_shift()`. Both `/doubt/ask` and `/doubt/ask/stream` now demote `continuation` → `subject_doubt` when the student's message shape suggests a new question AND classifies to a materially different topic/subject than the active block. This triggers the existing close-old-block + start-new-session path, so mastery attributes to the correct concept. Symmetric mirror of FIX A3 (2026-04-18).
+- **`app/api/doubt.py`** — `_get_active_doubt_block()` now LEFT JOINs `doubt_sessions` to expose `subject` for shift detection.
+- Skipped when `topic_lock` is set (Focus Mode from Study Path should not auto-segment).
+
+**Home + navigation:**
+- **`frontend/web/app/page.tsx`** — replaced 4-card bento with two primary CTAs (Study Path + Ask Anything) + 3 secondary (Practice / Mock / Progress).
+- **`frontend/web/components/AppShell.tsx`** — primary nav now: Home / **Study Path** / **Ask Anything** / Practice / Mock Test / Progress. Page titles updated accordingly.
+
+### Zero content-generation cost
+Concept cards are computed, not stored. Existing NCERT chunks (15,069 indexed), existing `problems` table, existing `jee_problems` table, existing EMA mastery. Marginal cost per card render: DB + retriever, no LLM. Daily cost at 30 beta students stays ≈ $15/month.
+
+### Verification
+- `cd frontend/web && npx tsc --noEmit` → 0 errors
+- `cd frontend/web && npm run build` → ✓ 15 routes (up from 14 — `/study` + `/study/[subject]/[chapter]/[topic]` added)
+- `GET /study/card?subject=Physics&chapter=Kinematics&topic=Projectile Motion` → 200 with populated `notes.chunks[]`
+- Manual E2E via preview: home → Study Path → Projectile Motion card → Notes section populated with real NCERT content
+
+### Known limits / future work
+- Hand-curated Notes overrides for top-30 topics — deferred (post-beta).
+- Topic-shift detection is classifier-accuracy-bounded (~94%). 6% of turns may still mis-attribute. Mitigation: confidence threshold + existing session-stamped topic fallback.
+- `/doubt` still uses the existing per-topic localStorage keying. Free-form mode already works because `(null, null, null)` hashes to a single `general__any__quick` key per student. Fuller single-inbox migration can follow if beta shows demand.
+- Admin Study Path usage panel — deferred.
+
+### Files changed
+New: `app/api/study.py`, `app/services/study/__init__.py`, `app/services/study/card_composer.py`, `frontend/web/app/study/page.tsx`, `frontend/web/app/study/[subject]/[chapter]/[topic]/page.tsx`, `docs/handoff_guide.md`.
+Modified: `app/main.py`, `app/api/doubt.py`, `app/services/doubt/engine.py`, `frontend/web/app/page.tsx`, `frontend/web/components/AppShell.tsx`, `MEMORY.md`, `docs/session_log.md`, `docs/version_history.md`, `docs/decisions.md`.
 
 ---
 

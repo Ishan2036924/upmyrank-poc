@@ -1816,6 +1816,19 @@ class SocraticEngine:
 
     # ── subject classification (for agentic RAG pre-seeding) ─────────────────
 
+    async def classify_turn_topic(self, text: str) -> dict:
+        """
+        Public wrapper over _classify_subject().
+
+        Added v0.20 (dual-loop Mode 2) to let doubt.py detect topic shift
+        mid-conversation without reaching into a private method.
+
+        Returns the same dict shape as _classify_subject(): keys subject,
+        topic, question_type. Never raises — falls back to the engine's
+        Physics/conceptual default.
+        """
+        return await self._classify_subject(text)
+
     async def _classify_subject(self, question: str) -> dict:
         """
         Lightweight subject + topic + question_type classifier.

@@ -17,7 +17,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Home, MessageSquare, Target, Timer, BarChart3, Settings as SettingsIcon,
   Shield, LogOut, Menu, X, Bell, Search, ChevronDown, User,
-  Sparkles, HelpCircle,
+  Sparkles, HelpCircle, BookOpen,
 } from 'lucide-react'
 
 import { apiGet } from '@/lib/api'
@@ -45,11 +45,12 @@ interface NavItem {
 }
 
 const PRIMARY_NAV: NavItem[] = [
-  { label: 'Home',      href: '/',         icon: Home, exact: true },
-  { label: 'Doubts',    href: '/doubt',    icon: MessageSquare },
-  { label: 'Practice',  href: '/practice', icon: Target },
-  { label: 'Mock Test', href: '/mock',     icon: Timer },
-  { label: 'Progress',  href: '/progress', icon: BarChart3 },
+  { label: 'Home',         href: '/',         icon: Home, exact: true },
+  { label: 'Study Path',   href: '/study',    icon: BookOpen },
+  { label: 'Ask Anything', href: '/doubt',    icon: MessageSquare },
+  { label: 'Practice',     href: '/practice', icon: Target },
+  { label: 'Mock Test',    href: '/mock',     icon: Timer },
+  { label: 'Progress',     href: '/progress', icon: BarChart3 },
 ]
 
 const SECONDARY_NAV: NavItem[] = [
@@ -60,7 +61,8 @@ const SECONDARY_NAV: NavItem[] = [
 
 function getPageTitle(pathname: string): string {
   if (pathname === '/') return 'Home'
-  if (pathname.startsWith('/doubt'))    return 'Doubts'
+  if (pathname.startsWith('/study'))    return 'Study Path'
+  if (pathname.startsWith('/doubt'))    return 'Ask Anything'
   if (pathname.startsWith('/practice')) return 'Practice'
   if (pathname.startsWith('/mock'))     return 'Mock Test'
   if (pathname.startsWith('/progress')) return 'Progress'

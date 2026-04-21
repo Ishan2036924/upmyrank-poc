@@ -155,7 +155,15 @@ function ProfileTab({ genome }: { genome: StudentGenome | null }) {
                   className="pl-9"
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground">Email changes require verification. <ComingSoon label="Email change flow coming soon"><a className="text-primary underline-offset-2 hover:underline">Change email</a></ComingSoon></p>
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span>Email changes require verification.</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-primary hover:underline opacity-60 cursor-not-allowed">Change email</button>
+                  </TooltipTrigger>
+                  <TooltipContent>Email change flow coming soon</TooltipContent>
+                </Tooltip>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone number</Label>

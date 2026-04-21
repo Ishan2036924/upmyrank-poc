@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import {
   MessageCircle, Target, Timer, BarChart3,
   ChevronRight, Sparkles, CalendarDays, RotateCcw,
-  Atom, FlaskConical, Calculator,
+  Atom, FlaskConical, Calculator, BookOpen,
 } from 'lucide-react'
 import AppShell from '@/components/AppShell'
 import { apiGet } from '@/lib/api'
@@ -136,30 +136,40 @@ const SUBJECT_CARDS = [
 
 // ── Action card config ────────────────────────────────────────────────────────
 
-const ACTION_CARDS = [
+// v0.20 dual-loop: two primary CTAs (Study Path / Ask Anything), secondary
+// actions (Practice, Mock test, Progress) below.
+const PRIMARY_CARDS = [
   {
-    icon: MessageCircle, title: 'Ask a doubt',
-    desc: "Type a question you're stuck on — I'll guide you step by step, Socratically.",
-    href: '/doubt', span: 'col-span-2', accent: 'text-indigo-500',
-    accentBg: 'rgba(99,102,241,0.06)',
+    icon: BookOpen, title: 'Study Path',
+    desc: 'Structured concept cards — notes, practice & PYQs, topic by topic.',
+    href: '/study', accent: 'text-indigo-600',
+    accentBg: 'rgba(99,102,241,0.10)',
+    badge: 'Structured',
   },
+  {
+    icon: MessageCircle, title: 'Ask Anything',
+    desc: "Just type your doubt. I'll guide you Socratically — no topic pre-pick.",
+    href: '/doubt', accent: 'text-emerald-600',
+    accentBg: 'rgba(16,185,129,0.10)',
+    badge: 'Free-form',
+  },
+]
+
+const SECONDARY_CARDS = [
   {
     icon: Target, title: 'Practice',
     desc: '5 problems picked for your weak areas.',
-    href: '/practice', span: 'col-span-1', accent: 'text-emerald-500',
-    accentBg: 'rgba(34,197,94,0.06)',
+    href: '/practice', accent: 'text-emerald-500',
   },
   {
     icon: Timer, title: 'Mock test',
     desc: 'Timed · 10 Qs · Exam conditions',
-    href: '/mock', span: 'col-span-1', accent: 'text-amber-500',
-    accentBg: 'rgba(245,158,11,0.06)',
+    href: '/mock', accent: 'text-amber-500',
   },
   {
     icon: BarChart3, title: 'My progress',
-    desc: 'Knowledge genome, study plan, and full analytics.',
-    href: '/progress', span: 'col-span-2', accent: 'text-blue-500',
-    accentBg: 'rgba(59,130,246,0.06)',
+    desc: 'Knowledge genome & analytics.',
+    href: '/progress', accent: 'text-blue-500',
   },
 ]
 
@@ -308,32 +318,47 @@ export default function Home() {
               </motion.div>
             )}
 
-            {/* ── Bento action cards ────────────────────────────────────── */}
-            {/* Desktop: 3-col asymmetric grid. Mobile: 2-col */}
-            <motion.div variants={containerVariants} className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-              {ACTION_CARDS.map((card) => (
-                <motion.div
-                  key={card.href}
-                  variants={itemVariants}
-                  className={`${card.span === 'col-span-2' ? 'md:col-span-2' : ''} col-span-1`}
-                >
+            {/* ── Primary CTAs: Study Path + Ask Anything (v0.20 dual-loop) ─ */}
+            <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              {PRIMARY_CARDS.map((card) => (
+                <motion.div key={card.href} variants={itemVariants}>
                   <Link
                     href={card.href}
-                    className="group relative flex flex-col h-full bg-white/80 backdrop-blur-md border border-white/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-5 md:p-6 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgb(0,0,0,0.08)] transition-all duration-300 ease-out active:scale-[0.98] overflow-hidden"
+                    className="group relative flex flex-col h-full bg-white/85 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-6 md:p-7 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgb(0,0,0,0.08)] transition-all duration-300 ease-out active:scale-[0.98] overflow-hidden"
                   >
-                    {/* Ambient orb */}
                     <div
-                      className="absolute bottom-0 right-0 w-24 h-24 rounded-full translate-x-8 translate-y-8 pointer-events-none transition-all duration-300 group-hover:scale-125"
-                      style={{ background: `radial-gradient(circle, ${card.accentBg.replace('0.06', '0.12')} 0%, transparent 70%)` }}
+                      className="absolute bottom-0 right-0 w-40 h-40 rounded-full translate-x-10 translate-y-10 pointer-events-none transition-all duration-300 group-hover:scale-125"
+                      style={{ background: `radial-gradient(circle, ${card.accentBg} 0%, transparent 70%)` }}
                     />
                     <div className="relative flex-1 flex flex-col">
-                      <card.icon className={`h-5 w-5 ${card.accent} mb-3 md:mb-4 transition-transform duration-300 ease-out group-hover:scale-110`} />
-                      <div className="font-semibold text-slate-900 text-sm mb-1">{card.title}</div>
-                      <div className="text-xs md:text-sm text-slate-500 flex-1 leading-relaxed">{card.desc}</div>
-                      <div className={`mt-3 md:mt-4 text-xs font-semibold ${card.accent} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200`}>
-                        Get started <ChevronRight className="h-3 w-3" />
+                      <div className="flex items-center gap-2 mb-3">
+                        <card.icon className={`h-5 w-5 ${card.accent} transition-transform duration-300 group-hover:scale-110`} />
+                        <span className={`text-[10px] uppercase tracking-widest font-bold ${card.accent}`}>
+                          {card.badge}
+                        </span>
+                      </div>
+                      <div className="font-bold text-slate-900 text-lg mb-1.5">{card.title}</div>
+                      <div className="text-sm text-slate-500 leading-relaxed flex-1">{card.desc}</div>
+                      <div className={`mt-4 text-xs font-semibold ${card.accent} flex items-center gap-1`}>
+                        Start now <ChevronRight className="h-3 w-3" />
                       </div>
                     </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* ── Secondary: Practice / Mock / Progress ───────────────────── */}
+            <motion.div variants={containerVariants} className="grid grid-cols-3 gap-2.5 md:gap-3">
+              {SECONDARY_CARDS.map((card) => (
+                <motion.div key={card.href} variants={itemVariants}>
+                  <Link
+                    href={card.href}
+                    className="group flex flex-col h-full bg-white/75 backdrop-blur-sm border border-white/50 shadow-[0_4px_16px_rgb(0,0,0,0.03)] rounded-2xl p-4 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgb(0,0,0,0.06)] transition-all duration-200 ease-out active:scale-[0.98]"
+                  >
+                    <card.icon className={`h-4 w-4 ${card.accent} mb-2`} />
+                    <div className="font-semibold text-slate-900 text-sm">{card.title}</div>
+                    <div className="text-[11px] text-slate-500 leading-snug mt-0.5">{card.desc}</div>
                   </Link>
                 </motion.div>
               ))}

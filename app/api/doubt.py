@@ -26,6 +26,89 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/doubt", tags=["doubt"])
 
 
+# ── v0.20 dual-loop: topic-shift detection (Mode 2) ───────────────────────────
+# Mirror of FIX A3 (2026-04-18) in the opposite direction: A3 promotes
+# subject_doubt → continuation for short replies. This helper demotes
+# continuation → subject_doubt when the student's message classifies to a
+# DIFFERENT topic than the active doubt_block. Triggers the existing
+# close-and-start-new-session path at ask_doubt() line ~745, so mastery
+# credits the correct concept.
+#
+# Conservative by design: requires both (a) a nontrivial new-question shape
+# and (b) a high-confidence topic mismatch. Otherwise we keep continuation
+# semantics and let the existing guards run.
+
+_NEW_QUESTION_MARKERS = re.compile(
+    r"\b(find|calculate|solve|prove|evaluate|compute|what\s+is|why|how\s+do|"
+    r"explain|define|derive|state)\b",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_new_question(text: str) -> bool:
+    """True if the message shape suggests a new problem (not a hint reply)."""
+    if not text or len(text.strip()) < 30:
+        return False
+    return bool(_NEW_QUESTION_MARKERS.search(text))
+
+
+def _topics_differ(a: Optional[str], b: Optional[str]) -> bool:
+    """Case- and whitespace-tolerant topic comparison."""
+    if not a or not b:
+        return False
+    na = re.sub(r"[^a-z0-9]+", "", a.lower())
+    nb = re.sub(r"[^a-z0-9]+", "", b.lower())
+    if not na or not nb:
+        return False
+    # Neither is a prefix of the other (handles "Kinematics" vs "Kinematics (1D)").
+    return not (na.startswith(nb) or nb.startswith(na))
+
+
+async def _detect_topic_shift(
+    engine,
+    question: str,
+    active_block: dict,
+) -> bool:
+    """
+    Returns True when the student's message is (a) shaped like a new question
+    AND (b) classifies to a topic/subject materially different from the active
+    block. Caller should then treat intent as subject_doubt, not continuation.
+
+    Never raises — classifier failures return False (preserves continuation).
+    """
+    if not active_block or not _looks_like_new_question(question):
+        return False
+
+    try:
+        cls = await engine.classify_turn_topic(question)
+    except Exception as exc:
+        logger.warning("_detect_topic_shift: classifier failed: %s", exc)
+        return False
+
+    new_subject = (cls.get("subject") or "").strip()
+    new_topic   = (cls.get("topic") or "").strip()
+    old_subject = (active_block.get("subject") or "").strip()
+    old_topic   = (active_block.get("topic") or "").strip()
+
+    # Subject change is a strong signal (e.g. from Physics → Maths mid-chat).
+    if new_subject and old_subject and new_subject != old_subject:
+        logger.info(
+            "topic_shift: subject %s → %s (block=%s)",
+            old_subject, new_subject, active_block.get("doubt_block_id"),
+        )
+        return True
+
+    # Same subject — require a real topic mismatch.
+    if _topics_differ(old_topic, new_topic):
+        logger.info(
+            "topic_shift: topic %r → %r (block=%s)",
+            old_topic, new_topic, active_block.get("doubt_block_id"),
+        )
+        return True
+
+    return False
+
+
 # ── request / response models ─────────────────────────────────────────────────
 
 class AskRequest(BaseModel):
@@ -81,17 +164,23 @@ class VerifyRequest(BaseModel):
 # ── doubt-block helpers ───────────────────────────────────────────────────────
 
 async def _get_active_doubt_block(pool, study_session_id: str) -> Optional[dict]:
-    """Get the latest unsolved, unclosed doubt block for a study session."""
+    """Get the latest unsolved, unclosed doubt block for a study session.
+
+    v0.20: also JOINs doubt_sessions to surface `subject` for topic-shift
+    detection in ask_doubt(). Downstream callers are tolerant of the extra key.
+    """
     try:
         row = await pool.fetchrow(
             """
-            SELECT doubt_block_id, doubt_session_id, topic, hint_level, solved,
-                   misconception_id
-            FROM doubt_blocks
-            WHERE study_session_id = $1
-              AND ended_at IS NULL
-              AND solved = FALSE
-            ORDER BY started_at DESC
+            SELECT db.doubt_block_id, db.doubt_session_id, db.topic,
+                   db.hint_level, db.solved, db.misconception_id,
+                   ds.subject
+            FROM doubt_blocks db
+            LEFT JOIN doubt_sessions ds ON ds.id = db.doubt_session_id
+            WHERE db.study_session_id = $1
+              AND db.ended_at IS NULL
+              AND db.solved = FALSE
+            ORDER BY db.started_at DESC
             LIMIT 1
             """,
             uuid.UUID(study_session_id),
@@ -642,6 +731,28 @@ async def ask_doubt(
         )
         intent = "continuation"
 
+    # ── 2d. v0.20 dual-loop: topic-shift demotion (Mode 2) ─────────────────────
+    # Symmetric to FIX A3. If the message LOOKS like a new question AND
+    # classifies to a different topic/subject than the active block, demote
+    # continuation → subject_doubt so the existing path at line ~745 closes
+    # the old block and opens a new one (correct mastery attribution).
+    # Skipped when topic_lock is set — a locked session should not auto-segment.
+    if (
+        has_active_block
+        and active_block
+        and intent == "continuation"
+        and not body.topic_lock
+        and question
+    ):
+        shifted = await _detect_topic_shift(engine, question, active_block)
+        if shifted:
+            logger.info(
+                "v0.20 topic-shift: demoting continuation → subject_doubt "
+                "(block=%s, question=%r)",
+                active_block.get("doubt_block_id"), question[:60],
+            )
+            intent = "subject_doubt"
+
     # ── 3. Non-subject intents → immediate response, NO DB writes ─────────────
     if intent in ("greeting", "meta", "meta_identity", "meta_pricing", "meta_competitor",
                   "emotional", "out_of_scope", "conversational", "explanation"):
@@ -965,6 +1076,27 @@ async def ask_doubt_stream(
         intent = "subject_doubt"
     else:
         intent = await engine.classify_intent(question, has_active_block, subject=body.subject or "Physics")
+
+    # ── v0.20 dual-loop: topic-shift demotion (mirrors ask_doubt) ─────────────
+    # If the student's message looks like a new question AND classifies to a
+    # different topic/subject than the active block, demote continuation →
+    # subject_doubt so a fresh doubt_block opens with the correct topic.
+    if (
+        has_active_block
+        and active_block
+        and intent == "continuation"
+        and not body.topic_lock
+        and question
+    ):
+        try:
+            if await _detect_topic_shift(engine, question, active_block):
+                logger.info(
+                    "v0.20 topic-shift (stream): demoting continuation → subject_doubt "
+                    "(block=%s)", active_block.get("doubt_block_id"),
+                )
+                intent = "subject_doubt"
+        except Exception as exc:
+            logger.warning("topic-shift check failed (stream): %s", exc)
 
     # ── Non-streaming path: non-subject / continuation ─────────────────────
     # These are cheap (no LLM or fast LLM) — return as a single SSE event.

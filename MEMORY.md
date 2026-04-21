@@ -1,24 +1,33 @@
 # UpMyRank — Living Project Memory
 
 > **Maintainers:** Update this file whenever a major feature ships or an architectural decision is made.
-> **Claude sessions:** Read this file at the start of every new session.
+> **Claude sessions:** Read this file at the start of every new session — after `docs/version_history.md` and `docs/session_log.md`.
+> **Current version:** v0.20 (2026-04-20) — dual-loop architecture shipped.
 
 ---
 
-## 🚧 Next Up — Planned Work
+## 🎯 Current architecture (v0.20) — the 60-second summary
 
-### UI Overhaul: Topic Tree + Quick Doubt + Mobile Responsive
-**Full spec:** `docs/ui_overhaul_plan.md` — read this before starting any frontend work.  
-**Status:** PLANNED, not started. Steps 1–10 all pending.  
-**Summary:** Replace current sidebar with Subject → Chapter → Topic tree. Add floating Quick Doubt FAB. Full mobile-first responsive overhaul at 360px. One backend change: short-circuit `_classify_subject()` in `engine.py` when subject is already known from navigation.
+**Dual-loop product** feeding one Knowledge Genome:
 
-### Render Deployment Fix
-**Status:** PLANNED, not done.  
-In Render dashboard → Settings → Docker Command field → set to:
-```
-uvicorn app.main:app --host 0.0.0.0 --port 10000
-```
-This removes `--reload` from the production container. Root cause: `--reload` spawns a file-watcher that briefly drops the port during reload cycles, causing Render health checks to fail.
+- **Mode 1 — Study Path** (`/study`, `/study/[subject]/[chapter]/[topic]`): structured concept cards. Each card = Notes (top-3 NCERT chunks) + Practice (3 problems) + PYQs + Mastery snapshot. Zero LLM cost to assemble. Files: `app/api/study.py`, `app/services/study/card_composer.py`, `frontend/web/app/study/...`.
+- **Mode 2 — Ask Anything** (`/doubt`): free-form inbox. Backend auto-segments doubt_blocks on topic shift (via `_detect_topic_shift` in `app/api/doubt.py`, which demotes `continuation` → `subject_doubt` when the message shape + classifier agree a new topic started). Mastery attributes to the correct concept. Files: `app/api/doubt.py`, `app/services/doubt/engine.py`.
+- Shared: `_genome_update_task` (sole mastery writer, Rule #2), persona evolution every 5 sessions, misconception library, Socratic L0→L3 ladder. Unchanged from v0.19.
+
+## ✅ Recently shipped (last 3 versions)
+
+- **v0.20 (2026-04-20)** — dual-loop architecture (see current architecture above). Topic-shift detection in `/doubt/ask` + `/doubt/ask/stream`. New `GET /study/card` endpoint. New `/study` navigator + concept card pages. Home restructured with primary CTAs.
+- **v0.19 (2026-04-19)** — enterprise UI Phases 2–6: `AppShell`, split-screen auth, `/settings` 6-tab, admin URL-hash routing + CSV export + auto-refresh + error toasts.
+- **v0.18 (2026-04-18)** — enterprise UI Phase 1: design tokens + 18 shadcn-pattern primitives + Toaster wiring.
+
+## 🚧 Next up (deferred from v0.20)
+
+1. **Beta with 30 students** — monitor `topic_shift` log lines, card render errors.
+2. **Hand-curated Notes overrides** for top-30 topics (~2.5 h editorial; no code change; `scripts/concept_card_overrides.json` when ready).
+3. **Admin Study Path usage panel** — single endpoint `/admin/study-path` + section in `app/admin/page.tsx`.
+4. **Migration `v16_student_profile.sql`** — add `phone`, `avatar_url`, `timezone`, `preferred_language` columns. Wire settings-save no-ops to real updates.
+5. **Dark mode activation** — tokens already in `globals.css` `.dark` block; enable toggle in `/settings?tab=appearance`.
+6. **Render deployment fix** — set Docker Command field to `uvicorn app.main:app --host 0.0.0.0 --port 10000` (remove `--reload` from prod).
 
 ---
 

@@ -1,5 +1,13 @@
 # Architecture Decisions — UpMyRank
 
+## 2026-04-20 — Dual-loop architecture (Study Path + Ask Anything)
+**Decision:** Ship two coexisting product modes feeding the same Knowledge Genome — Mode 1 "Study Path" (structured: subject → chapter → topic → concept card) and Mode 2 "Ask Anything" (free-form inbox, backend classifies each turn, auto-segments doubt_blocks on topic shift).
+**Why:** Students need structure when studying (topic-by-topic, notes → practice → PYQs) AND free-form when they have spontaneous doubts. The per-topic localStorage partitioning from v0.15 solved session bleed but forced topic pre-pick before every chat (bad UX) and mis-attributed mastery on cross-topic follow-ups (session-level topic stamp credits the wrong concept). Sir confirmed the dual-loop framing.
+**Rejected:** (a) "Problem Card" Photomath-style (loses conversational tutor warmth; different product philosophy). (b) Keeping status quo and patching (v0.15 + v0.16 already cost 17 bug fixes; the next 10 will cost as much as 1 redesign). (c) AI-generated content for cards (costs $50-150 one-time — deferred; V1 uses zero-cost composition from existing NCERT index + problems table + jee_problems).
+**Revisit if:** Classifier accuracy on topic-shift drops below 90% in production, OR students report the two modes feel confusing, OR content quality from raw NCERT chunks becomes unacceptable.
+
+
+
 ## 2025-XX-XX — all-MiniLM-L6-v2 over text-embedding-3-large
 **Decision:** Use sentence-transformers all-MiniLM-L6-v2 (384d) for embeddings
 **Why:** Free, local inference, no API cost. Good enough for 10,500 NCERT Physics chunks. OpenAI embedding API would add per-query cost at scale.
