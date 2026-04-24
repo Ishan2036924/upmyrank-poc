@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "name": "diagnostic_100",
+    "version": "1.0",
+    "created": "2026-04-23",
+    "description": "100 prompts across 9 scenario classes organized as ordered flows. Each flow is a sequence of turns sharing one study_session_id. Single-turn flows = 1 prompt; multi-turn flows = 2-4 prompts. Tags let the scorer cluster results by scenario class and expected behaviour."
+  },
+  "flows": [
+    { "flow_id": "A01", "class": "canonical", "subject": "Physics", "topic": "Kinematics", "turns": [{"prompt": "A ball is thrown upward with 20 m/s. How high does it go? g = 10 m/s^2.", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A02", "class": "canonical", "subject": "Physics", "topic": "Kinematics", "turns": [{"prompt": "A car accelerates from rest at 2 m/s^2 for 10 seconds. Find distance covered.", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A03", "class": "canonical", "subject": "Physics", "topic": "Laws of Motion", "turns": [{"prompt": "A 5 kg block is on a 30 degree frictionless incline. What is its acceleration down the slope?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A04", "class": "canonical", "subject": "Physics", "topic": "Work, Energy, Power", "turns": [{"prompt": "A 2 kg ball falls from 5 m. What is its kinetic energy just before hitting the ground?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A05", "class": "canonical", "subject": "Physics", "topic": "Circular Motion", "turns": [{"prompt": "A stone of mass 1 kg is whirled in a horizontal circle of radius 0.5 m at 4 m/s. Tension in the string?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A06", "class": "canonical", "subject": "Physics", "topic": "Rotational Dynamics", "turns": [{"prompt": "Moment of inertia of a uniform disc about its center, mass M, radius R?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A07", "class": "canonical", "subject": "Physics", "topic": "Gravitation", "turns": [{"prompt": "Escape velocity from Earth's surface given g and R?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A08", "class": "canonical", "subject": "Physics", "topic": "SHM", "turns": [{"prompt": "A spring with k = 200 N/m holds a 0.5 kg mass. Find the time period of oscillation.", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A09", "class": "canonical", "subject": "Physics", "topic": "Electrostatics", "turns": [{"prompt": "Electric field due to a point charge 2 microcoulombs at 10 cm away?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A10", "class": "canonical", "subject": "Physics", "topic": "Current Electricity", "turns": [{"prompt": "Two resistors 6 ohm and 3 ohm in parallel. Equivalent resistance?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+
+    { "flow_id": "A11", "class": "canonical", "subject": "Chemistry", "topic": "Atomic Structure", "turns": [{"prompt": "Calculate the wavelength of a photon emitted when an electron drops from n=3 to n=2 in a hydrogen atom.", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A12", "class": "canonical", "subject": "Chemistry", "topic": "Chemical Bonding", "turns": [{"prompt": "Why is BF3 a planar molecule but NH3 is pyramidal?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A13", "class": "canonical", "subject": "Chemistry", "topic": "Thermodynamics", "turns": [{"prompt": "Delta H = -200 kJ and delta S = -100 J/K at 300 K. Spontaneous?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A14", "class": "canonical", "subject": "Chemistry", "topic": "Equilibrium", "turns": [{"prompt": "Kp and Kc for N2 + 3H2 <=> 2NH3 at 500 K. How are they related?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A15", "class": "canonical", "subject": "Chemistry", "topic": "Electrochemistry", "turns": [{"prompt": "Standard EMF of a Daniel cell given E(Zn2+/Zn) = -0.76 V and E(Cu2+/Cu) = 0.34 V?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A16", "class": "canonical", "subject": "Chemistry", "topic": "Chemical Kinetics", "turns": [{"prompt": "For a first-order reaction, half-life is 20 min. Rate constant?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A17", "class": "canonical", "subject": "Chemistry", "topic": "Organic - Isomerism", "turns": [{"prompt": "Explain cis-trans isomerism with 2-butene as example.", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A18", "class": "canonical", "subject": "Chemistry", "topic": "Organic - Reactions", "turns": [{"prompt": "Difference between SN1 and SN2 mechanism with an example each.", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A19", "class": "canonical", "subject": "Chemistry", "topic": "Coordination Compounds", "turns": [{"prompt": "IUPAC name of [Co(NH3)4Cl2]Cl?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A20", "class": "canonical", "subject": "Chemistry", "topic": "Solutions", "turns": [{"prompt": "5 g of NaCl (M=58.5) in 500 mL water. Molarity?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+
+    { "flow_id": "A21", "class": "canonical", "subject": "Maths", "topic": "Sets and Relations", "turns": [{"prompt": "If A = {1,2,3} and B = {3,4}, find A intersect B and A union B.", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A22", "class": "canonical", "subject": "Maths", "topic": "Trigonometry", "turns": [{"prompt": "If sin(theta) = 3/5 and theta is acute, find cos(2*theta).", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A23", "class": "canonical", "subject": "Maths", "topic": "Limits and Derivatives", "turns": [{"prompt": "Evaluate lim x->0 of (sin(3x))/x.", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A24", "class": "canonical", "subject": "Maths", "topic": "Differentiation", "turns": [{"prompt": "Derivative of x^3 * ln(x)?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A25", "class": "canonical", "subject": "Maths", "topic": "Integration", "turns": [{"prompt": "Evaluate the integral of x * e^x dx.", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A26", "class": "canonical", "subject": "Maths", "topic": "Matrices", "turns": [{"prompt": "Find the determinant of [[2,3],[1,4]].", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A27", "class": "canonical", "subject": "Maths", "topic": "Probability", "turns": [{"prompt": "Two dice are thrown. P(sum = 7)?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A28", "class": "canonical", "subject": "Maths", "topic": "Vectors", "turns": [{"prompt": "Given a=2i+3j and b=i-2j, find a . b.", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A29", "class": "canonical", "subject": "Maths", "topic": "3D Geometry", "turns": [{"prompt": "Distance from origin to the plane 2x+3y+6z=14?", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+    { "flow_id": "A30", "class": "canonical", "subject": "Maths", "topic": "Complex Numbers", "turns": [{"prompt": "If z = 3 + 4i, find |z| and arg(z).", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+
+    { "flow_id": "B01", "class": "followup", "subject": "Physics", "topic": "Laws of Motion", "turns": [
+      {"prompt": "A 2 kg block is pushed with a 10 N horizontal force on a rough surface with mu = 0.2. Find its acceleration.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "why do we subtract the friction force instead of adding it?", "expect": {"intent": "continuation", "socratic": true}},
+      {"prompt": "ok so then what would happen if mu was 0.6?", "expect": {"intent": "continuation", "socratic": true}}
+    ]},
+    { "flow_id": "B02", "class": "followup", "subject": "Chemistry", "topic": "Atomic Structure", "turns": [
+      {"prompt": "Why is the radius of a cation smaller than the parent atom?", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "but isn't the nucleus still the same number of protons?", "expect": {"intent": "continuation", "socratic": true}},
+      {"prompt": "hmm can you give an example with Na+?", "expect": {"intent": "continuation", "socratic": true}}
+    ]},
+    { "flow_id": "B03", "class": "followup", "subject": "Maths", "topic": "Integration", "turns": [
+      {"prompt": "Evaluate integral of 1/(1+x^2) dx.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "why does substitution not help here?", "expect": {"intent": "continuation", "socratic": true}},
+      {"prompt": "wait - is this related to arctan somehow?", "expect": {"intent": "continuation", "socratic": true}}
+    ]},
+    { "flow_id": "B04", "class": "followup", "subject": "Physics", "topic": "Electrostatics", "turns": [
+      {"prompt": "Field due to a uniformly charged thin ring on its axis at distance x?", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "does it matter if the ring is at an angle?", "expect": {"intent": "continuation", "socratic": true}},
+      {"prompt": "what happens when x is very large compared to R?", "expect": {"intent": "continuation", "socratic": true}}
+    ]},
+    { "flow_id": "B05", "class": "followup", "subject": "Chemistry", "topic": "Chemical Bonding", "turns": [
+      {"prompt": "Why is water a bent molecule and not linear?", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "can you explain the lone pair repulsion part again?", "expect": {"intent": "continuation", "socratic": true}},
+      {"prompt": "is H2S bent too for the same reason?", "expect": {"intent": "continuation", "socratic": true}}
+    ]},
+
+    { "flow_id": "C01", "class": "sudden_pivot", "subject": "Physics", "topic": "mixed", "turns": [
+      {"prompt": "A projectile is fired at 60 degrees with 40 m/s. Find time of flight.", "expect": {"intent": "subject_doubt", "subject": "Physics"}},
+      {"prompt": "Wait, what's the integral of sin(x^2)? Is there a closed form?", "expect": {"intent": "subject_doubt", "subject": "Maths", "topic_shift": true}},
+      {"prompt": "what is molecule?", "expect": {"intent": "subject_doubt", "subject": "Chemistry", "topic_shift": true}}
+    ]},
+    { "flow_id": "C02", "class": "sudden_pivot", "subject": "Chemistry", "topic": "mixed", "turns": [
+      {"prompt": "Calculate pH of 0.01 M HCl.", "expect": {"intent": "subject_doubt", "subject": "Chemistry"}},
+      {"prompt": "hmm actually can you help me with derivatives of trig functions?", "expect": {"intent": "subject_doubt", "subject": "Maths", "topic_shift": true}},
+      {"prompt": "oh wait I also don't understand Newton's third law — explain?", "expect": {"intent": "subject_doubt", "subject": "Physics", "topic_shift": true}}
+    ]},
+    { "flow_id": "C03", "class": "sudden_pivot", "subject": "Maths", "topic": "mixed", "turns": [
+      {"prompt": "Solve the quadratic x^2 - 5x + 6 = 0.", "expect": {"intent": "subject_doubt", "subject": "Maths"}},
+      {"prompt": "what's the structure of benzene?", "expect": {"intent": "subject_doubt", "subject": "Chemistry", "topic_shift": true}},
+      {"prompt": "how does a capacitor store energy?", "expect": {"intent": "subject_doubt", "subject": "Physics", "topic_shift": true}}
+    ]},
+    { "flow_id": "C04", "class": "sudden_pivot", "subject": "Physics", "topic": "mixed", "turns": [
+      {"prompt": "Define refractive index.", "expect": {"intent": "subject_doubt", "subject": "Physics"}},
+      {"prompt": "what's a mole in chemistry?", "expect": {"intent": "subject_doubt", "subject": "Chemistry", "topic_shift": true}},
+      {"prompt": "solve log_2(8)", "expect": {"intent": "subject_doubt", "subject": "Maths", "topic_shift": true}}
+    ]},
+
+    { "flow_id": "D01", "class": "short_pivot", "subject": "Physics", "topic": "mixed", "turns": [
+      {"prompt": "What is the formula for kinetic energy?", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "what is atom?", "expect": {"intent": "subject_doubt", "subject": "Chemistry", "topic_shift": true}},
+      {"prompt": "what is log?", "expect": {"intent": "subject_doubt", "subject": "Maths", "topic_shift": true}}
+    ]},
+    { "flow_id": "D02", "class": "short_pivot", "subject": "Maths", "topic": "mixed", "turns": [
+      {"prompt": "Evaluate d/dx (x^2).", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "what is pH?", "expect": {"intent": "subject_doubt", "subject": "Chemistry", "topic_shift": true}},
+      {"prompt": "what is force?", "expect": {"intent": "subject_doubt", "subject": "Physics", "topic_shift": true}}
+    ]},
+
+    { "flow_id": "E01", "class": "misconception", "subject": "Physics", "topic": "Circular Motion", "turns": [{"prompt": "I think the centripetal force pulls the ball outward because of the spinning. Is that right?", "expect": {"intent": "subject_doubt", "misconception": true}}] },
+    { "flow_id": "E02", "class": "misconception", "subject": "Physics", "topic": "Newton's Laws", "turns": [{"prompt": "If I throw a ball while moving on a train, it goes backward relative to me because inertia pulls it back, right?", "expect": {"intent": "subject_doubt", "misconception": true}}] },
+    { "flow_id": "E03", "class": "misconception", "subject": "Physics", "topic": "Work and Energy", "turns": [{"prompt": "So if I hold a heavy bag and walk, I'm doing work on the bag right?", "expect": {"intent": "subject_doubt", "misconception": true}}] },
+    { "flow_id": "E04", "class": "misconception", "subject": "Chemistry", "topic": "Atomic Structure", "turns": [{"prompt": "Electrons revolve in fixed circular orbits around the nucleus like planets around the sun, correct?", "expect": {"intent": "subject_doubt", "misconception": true}}] },
+    { "flow_id": "E05", "class": "misconception", "subject": "Chemistry", "topic": "Thermodynamics", "turns": [{"prompt": "If delta H is negative the reaction is always spontaneous, that's the rule right?", "expect": {"intent": "subject_doubt", "misconception": true}}] },
+    { "flow_id": "E06", "class": "misconception", "subject": "Physics", "topic": "Gravitation", "turns": [{"prompt": "Astronauts float on the ISS because there is no gravity up there, correct?", "expect": {"intent": "subject_doubt", "misconception": true}}] },
+    { "flow_id": "E07", "class": "misconception", "subject": "Maths", "topic": "Probability", "turns": [{"prompt": "If a coin has landed heads 5 times in a row, it's more likely to land tails next — is that right?", "expect": {"intent": "subject_doubt", "misconception": true}}] },
+    { "flow_id": "E08", "class": "misconception", "subject": "Physics", "topic": "Current Electricity", "turns": [{"prompt": "Current is consumed by the bulb — it goes in both terminals but only comes out of one, right?", "expect": {"intent": "subject_doubt", "misconception": true}}] },
+    { "flow_id": "E09", "class": "misconception", "subject": "Chemistry", "topic": "Chemical Bonding", "turns": [{"prompt": "Ionic bonds are stronger than covalent bonds always, so ionic compounds have higher boiling points, right?", "expect": {"intent": "subject_doubt", "misconception": true}}] },
+    { "flow_id": "E10", "class": "misconception", "subject": "Maths", "topic": "Limits", "turns": [{"prompt": "lim x->0 of 1/x = infinity, so 1/0 = infinity, right?", "expect": {"intent": "subject_doubt", "misconception": true}}] },
+
+    { "flow_id": "F01", "class": "emotional", "subject": "Physics", "topic": "Rotational Dynamics", "turns": [
+      {"prompt": "What is moment of inertia for a thin rod of length L and mass M about its center?", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "ugh I just don't get this topic at all, it's hopeless", "expect": {"intent": "emotional", "counselor_mode": true}}
+    ]},
+    { "flow_id": "F02", "class": "emotional", "subject": "Maths", "topic": "Integration", "turns": [
+      {"prompt": "Evaluate integral of x*cos(x) dx.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "I hate calculus, I'm going to fail JEE because of this", "expect": {"intent": "emotional", "counselor_mode": true}}
+    ]},
+    { "flow_id": "F03", "class": "emotional", "subject": "Chemistry", "topic": "Coordination Compounds", "turns": [
+      {"prompt": "Determine the hybridization of Co in [Co(NH3)6]3+.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "I give up, I don't want to do this anymore", "expect": {"intent": "emotional", "counselor_mode": true}}
+    ]},
+    { "flow_id": "F04", "class": "emotional", "subject": "Physics", "topic": "Electromagnetic Induction", "turns": [
+      {"prompt": "State Faraday's law of induction.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "tbh I haven't slept and my brain isn't working, can we skip?", "expect": {"intent": "emotional", "counselor_mode": true}}
+    ]},
+
+    { "flow_id": "G01", "class": "out_of_scope", "subject": "Physics", "topic": "greeting", "turns": [{"prompt": "hello! how are you today?", "expect": {"intent": "greeting", "not_llm_heavy": true}}] },
+    { "flow_id": "G02", "class": "out_of_scope", "subject": "Physics", "topic": "greeting", "turns": [{"prompt": "thanks bro!", "expect": {"intent": "greeting", "not_llm_heavy": true}}] },
+    { "flow_id": "G03", "class": "out_of_scope", "subject": "Physics", "topic": "meta", "turns": [{"prompt": "what can you do? what are your limits?", "expect": {"intent": "meta"}}] },
+    { "flow_id": "G04", "class": "out_of_scope", "subject": "Physics", "topic": "out_of_scope", "turns": [{"prompt": "who won the cricket world cup in 2023?", "expect": {"intent": "out_of_scope"}}] },
+    { "flow_id": "G05", "class": "out_of_scope", "subject": "Physics", "topic": "out_of_scope", "turns": [{"prompt": "can you write me a poem about love?", "expect": {"intent": "out_of_scope"}}] },
+    { "flow_id": "G06", "class": "out_of_scope", "subject": "Physics", "topic": "out_of_scope", "turns": [{"prompt": "help me pick between two colleges, NIT vs BITS?", "expect": {"intent": "out_of_scope"}}] },
+
+    { "flow_id": "H01", "class": "vague", "subject": "Physics", "topic": "vague", "turns": [{"prompt": "umm", "expect": {"robust": true}}] },
+    { "flow_id": "H02", "class": "vague", "subject": "Maths", "topic": "vague", "turns": [{"prompt": "solve", "expect": {"robust": true}}] },
+    { "flow_id": "H03", "class": "vague", "subject": "Chemistry", "topic": "vague", "turns": [{"prompt": "???", "expect": {"robust": true}}] },
+    { "flow_id": "H04", "class": "vague", "subject": "Maths", "topic": "vague_latex", "turns": [{"prompt": "$$\\frac{dy}{dx} = ?$$", "expect": {"robust": true}}] },
+    { "flow_id": "H05", "class": "vague", "subject": "Physics", "topic": "vague_typo", "turns": [{"prompt": "hlp me undrstnd newwton secn lawww pls", "expect": {"intent": "subject_doubt", "socratic": true}}] },
+
+    { "flow_id": "I01", "class": "hint_ladder", "subject": "Physics", "topic": "Kinematics", "turns": [
+      {"prompt": "A stone is dropped from 20 m above the ground. How long does it take to hit the ground? g = 10 m/s^2.", "expect": {"hint_level_after": 0}, "hint_action": "ask"},
+      {"prompt": "hint", "expect": {"hint_level_after": 1}, "hint_action": "hint"},
+      {"prompt": "another hint", "expect": {"hint_level_after": 2}, "hint_action": "hint"},
+      {"prompt": "I really don't know, my attempt: t = sqrt(2*20/10) = 2", "expect": {"hint_level_after": 3}, "hint_action": "hint_with_attempt"}
+    ]},
+    { "flow_id": "I02", "class": "hint_ladder", "subject": "Maths", "topic": "Integration", "turns": [
+      {"prompt": "Evaluate the integral of x^2 * e^x dx using integration by parts.", "expect": {"hint_level_after": 0}, "hint_action": "ask"},
+      {"prompt": "give me a hint", "expect": {"hint_level_after": 1}, "hint_action": "hint"},
+      {"prompt": "bigger hint please", "expect": {"hint_level_after": 2}, "hint_action": "hint"},
+      {"prompt": "My attempt: let u = x^2, dv = e^x dx. Then du = 2x dx, v = e^x. So integral = x^2*e^x - integral of 2x*e^x dx.", "expect": {"hint_level_after": 3}, "hint_action": "hint_with_attempt"}
+    ]}
+  ]
+}

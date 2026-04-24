@@ -706,20 +706,40 @@ function DoubtPageInner() {
   // ── Per-message thumbs feedback ───────────────────────────────────────────
   const handleFeedback = async (msgIdx: number, rating: 'thumbs_up' | 'thumbs_down') => {
     if (!sessionId) return
+    const currentMsg = messages[msgIdx]
+    if (!currentMsg || currentMsg.role !== 'tutor') return
+    // Only allow feedback on the currently-active block. Older blocks have a
+    // different doubt_session_id than the current sessionId — sending the wrong
+    // pair would either 404, or worse, clobber a current-block row via the
+    // UNIQUE(student_id, doubt_session_id, response_idx) ON CONFLICT DO UPDATE.
+    const clickedBlockId = currentMsg.metadata?.doubt_block_id
+    if (clickedBlockId && currentBlockId && clickedBlockId !== currentBlockId) return
+    // response_idx is the 0-based index of the tutor message **within its
+    // doubt_session** (backend contract: app/api/feedback.py line 21 +
+    // UNIQUE(student_id, doubt_session_id, response_idx)). Previously the frontend
+    // sent the absolute messages[] index (which includes divider + student rows
+    // + messages from prior blocks), so every row after the first tutor reply
+    // mis-collided on the UNIQUE constraint — thumbs appeared to "not stick".
+    const responseIdx = messages
+      .slice(0, msgIdx)
+      .filter(m => m.role === 'tutor' && (
+        !m.metadata?.doubt_block_id ||
+        !clickedBlockId ||
+        m.metadata.doubt_block_id === clickedBlockId
+      ))
+      .length
     // Optimistic update — toggle off if same rating clicked again
     setMessages(prev => prev.map((m, i) => {
       if (i !== msgIdx) return m
       const next = m.feedback === rating ? null : rating
       return { ...m, feedback: next }
     }))
-    // Determine final rating from state (after optimistic update)
-    const currentMsg = messages[msgIdx]
     const newRating = currentMsg.feedback === rating ? null : rating
     if (!newRating) return  // toggled off — no API call needed
     try {
       await apiPost('/feedback/response', {
         doubt_session_id: sessionId,
-        response_idx:     msgIdx,
+        response_idx:     responseIdx,
         rating:           newRating,
       })
     } catch (err) {
