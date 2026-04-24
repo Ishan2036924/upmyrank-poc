@@ -3,6 +3,39 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-04-23 — v0.20.5 docs backfill + v0.20.6 thumbs fix + 100Q prod diagnostic
+
+**Focus:** v0.20.5 (commit `9f0de7a`) shipped critical security + Knowledge-Genome fixes on 2026-04-21 but was pushed **without the required `docs/version_history.md` + `docs/session_log.md` entries** — policy violation per `CLAUDE.md`. Backfill first, then fix the remaining R2 from that diagnostic (thumbs UI `response_feedback` table is 0 rows all-time — suspected frontend bug), then run a 100-question end-to-end quality diagnostic against prod.
+
+**Status:** DONE — v0.20.5.1 docs backfill + v0.20.6 thumbs fix + synthetic diagnostic harness + report shipped; awaiting user push. Cleanup of synthetic personas is user-gated (asked before running).
+
+**Changed files (v0.20.5.1 + v0.20.6 combined):**
+- **MODIFIED** `docs/version_history.md` — appended `## v0.20.5`, `## v0.20.5.1`, `## v0.20.6` sections + 3 new index rows.
+- **MODIFIED** `docs/session_log.md` (this) — new top entry, oldest (v0.20.2) pruned per the last-3 rule.
+- **MODIFIED** `frontend/web/app/doubt/page.tsx` — `handleFeedback` computes `response_idx` as `messages.slice(0,msgIdx).filter(m => m.role === 'tutor').length` (was absolute `msgIdx` including divider+student rows, which collided with the `UNIQUE(student_id, doubt_session_id, response_idx)` constraint via ON CONFLICT — thumbs silently overwrote the wrong row on the second click).
+- **NEW** `scripts/diagnostic_100.py` — thin wrapper around `synthetic_beta.py` that runs the 100-prompt set, waits for async Judge rows, queries Supabase for aggregates, pulls Render logs, writes a markdown + JSON report.
+- **NEW** `scripts/data/diagnostic_100.json` — 100 prompts across 9 scenario classes (canonical, follow-up, sudden pivot, short-form pivot, misconception, emotional, out-of-scope, vague, forced-attempt ladder).
+- **NEW** `reports/diagnostic_2026-04-23.md` + `.json` — quality report scored on user's 4 pillars (comms quality, Knowledge Genome correctness, personalization, learning ease).
+
+**Cliff notes (non-obvious context):**
+- The thumbs bug is an index-semantics mismatch, not a missing endpoint — `app/api/feedback.py:21` explicitly documents `response_idx` as "0-based index of the AI message in the conversation" but the React component was passing the raw array index. Silent ON CONFLICT DO UPDATE hid it — no 500s, no DB errors, just wrong rows and mysterious "toggle doesn't stick" UX reports. Backend + migration + UNIQUE constraint are all correct; single frontend one-liner fixes it.
+- Diagnostic hits **prod Render directly** (`https://upmyrank-poc.onrender.com`) — no local server. Personas tagged with a `diagnostic_run_id` so `diag_cleanup_test_accounts.py --run-id …` removes only this run's rows. Judge LLM is fired automatically by the prod engine on every response; script just waits 2s after each response and then pulls `judge_evaluations` aggregates.
+- The 9 scenario classes are spread across 3 synthetic personas (high/medium/low scaffolding) so personalization can be judged from the same 100-prompt base: a MEDIUM persona getting the same Q as a LOW persona should produce visibly different responses (different `max_concepts`, different scaffolding). Divergence between rendered responses = personalization working; identical = personalization not firing.
+
+**Deferred to next session:**
+- Post-cleanup re-query of `concept_mastery` once prod has 24-48h of real user traffic on v0.20.5 — confirms autoclose-idle backfill is working on abandoned sessions.
+- Fix for any bugs surfaced by the diagnostic report (shipped as v0.20.7+).
+
+**Next session — read these first:**
+`reports/diagnostic_2026-04-23.md` (the quality report — has a prioritized bug list at the bottom), `docs/version_history.md` (top 3 entries: v0.20.5 + v0.20.5.1 + v0.20.6), `scripts/diagnostic_100.py` (to re-run or extend).
+
+**Next session — start here:**
+1. Push v0.20.5.1 + v0.20.6 (two separate commits).
+2. Review the prioritized bug list from the diagnostic report. Any P0s get shipped as v0.20.7.
+3. Provision Render Redis add-on ($7/mo) — last remaining R1 from the v0.20.5 diagnostic.
+
+---
+
 ## Session 2026-04-21 (cont. cont.) — v0.20.4 admin panel + mastery hot patches
 
 **Focus:** v0.20.3 deployed. Prod synthetic + Render logs surfaced THREE more bugs in the v0.20.2 admin Study Path panel + mastery composer — all hidden behind soft "non-fatal" INFO log fallbacks. Fix all three, harden synthetic to catch the regression in CI.
@@ -64,46 +97,4 @@
 
 ---
 
-## Session 2026-04-21 — v0.20.2 patches + admin Study Path + synthetic tests
-
-**Focus:** Fix two bugs surfaced by Render-prod logs (regex too narrow → topic-shift didn't fire on `"what's the integral…"`; Notes section duplicated chunks). Bundle with remaining v0.20 plan items: block-close drift backstop, manual `+ New doubt` lever, admin Study Path usage panel, hand-curated 5 seed concept-card overrides, profile-save wire-up, cold-start toast, synthetic LLM test harness.
-
-**Status:** DONE — backend + frontend + tests + docs shipped; awaiting user push. Onboarding restyle deferred to v0.21 (works, low marginal pre-beta value).
-
-**Changed files (v0.20.2):**
-- **NEW** `app/services/study/__init__.py` already shipped in v0.20; no change here.
-- **NEW** `scripts/concept_card_overrides.json` — 5 hand-polished concept cards (Projectile Motion, Newton's Laws, SHM, Chemical Bonding, Differentiation).
-- **NEW** `scripts/migrate_v16_student_profile.sql` — phone/avatar_url/timezone/preferred_language; idempotent.
-- **NEW** `scripts/synthetic_beta.py` — async test harness, 19 invariants per persona-run, validates topic-shift fix end-to-end.
-- **MODIFIED** `app/api/doubt.py` — widened `_NEW_QUESTION_MARKERS` regex + math-symbol fallback; added `_reclassify_block_topic` block-close drift backstop; new `POST /doubt/new` endpoint; threaded `engine` kwarg through every `_genome_update_task` call site; topic-shift demote log now includes old_subject + old_topic.
-- **MODIFIED** `app/services/study/card_composer.py` — Notes dedup (sha1 of normalised first-200-chars + heading-diversity); override-loader prefers hand-polished cards; **fixed path bug** (`parents[3]` not `parents[2]`).
-- **MODIFIED** `app/api/study.py` — logs `study_card_view` event into `session_events` for admin panel.
-- **MODIFIED** `app/api/student.py` — new `PATCH /student/{student_id}` with graceful schema-drift (returns `updated`/`ignored` lists).
-- **MODIFIED** `app/api/admin.py` — new `GET /admin/study-path` endpoint.
-- **MODIFIED** `frontend/web/lib/api.ts` — new `apiPatch` helper + 8s cold-start toast (lazy sonner import).
-- **MODIFIED** `frontend/web/app/doubt/page.tsx` — "+ New doubt" button in chat header; `handleStartNewDoubt` calls `/doubt/new`.
-- **MODIFIED** `frontend/web/app/settings/page.tsx` — Profile tab `handleSave()` now real-PATCH to backend with success/warning/error toast variants.
-- **MODIFIED** `frontend/web/app/admin/page.tsx` — new "Study Path" section (StatCards + AreaChart + sortable table + CSV export).
-- **MODIFIED** `docs/version_history.md`, `docs/session_log.md` (this), `docs/handoff_guide.md` (TBD touch).
-
-**Synthetic test result:** 19/19 PASS at local backend including the prod-log bug repro (`topic_shift.opens_new_block — intent=subject_doubt new_block=…`).
-
-**Cliff notes (non-obvious context):**
-- The block-close drift reclassify is **logging-only for v0.20.x** — it stores `drift_topic` in `session_events.payload` but does NOT re-derive concept_ids. Wiring real EMA shift requires a fresh RAG pass which is too costly for every block close. If beta shows >5% drift rate, v0.21 enables it.
-- `_NEW_QUESTION_MARKERS` regex was the culprit for the prod bug — original v0.20 had `what\s+is` which couldn't match `what's` (apostrophe-s). Now also matches math symbols (`∫`, `²`, etc.) so notation-only pivots like "the integral of sin(x²)" trigger correctly even without a verb.
-- Override loader path uses `parents[3]` to get from `app/services/study/card_composer.py` to repo root. v0.21 first-pass had `parents[2]` which landed on `app/scripts/` (doesn't exist) — synthetic test caught it on first run.
-- `/admin/study-path` endpoint requires `study_card_view` events — these only start being logged at v0.20.2. Pre-v0.20.2 sessions won't appear. Beta data accumulates from now.
-- `PATCH /student/{id}` schema-drift handling means the migration v16 SQL file can ship in this commit but be applied to prod whenever — UI gracefully handles both states. Saves a coordinated deploy.
-- Cold-start toast fires only on the FIRST request in a 60s window (then re-arms). Avoids spam when the user does many quick actions during a real cold start.
-
-**Next session — read these files first:**
-`docs/version_history.md` (v0.20.2 entry), `scripts/synthetic_beta.py`, `app/services/study/card_composer.py` (override loader), `app/api/doubt.py` (`_detect_topic_shift` + `_reclassify_block_topic`).
-
-**Next session — start here:**
-1. Apply migration: `./scripts/run_migration.sh scripts/migrate_v16_student_profile.sql` (so settings save actually persists phone/timezone).
-2. Beta with 30 students. Watch Render logs for `topic_shift:` and `block-close drift detected:` lines — first 24h tells us classifier accuracy.
-3. After beta runs for 3 days, query: `SELECT subject, topic, COUNT(*) FROM session_events WHERE event_type='study_card_view' GROUP BY 1,2 ORDER BY 3 DESC LIMIT 20;` — pick the next 25 topics to hand-polish overrides for.
-
----
-
-<!-- Older entries pruned 2026-04-21 (v0.20.4). See docs/version_history.md for the full chronology. -->
+<!-- Older entries pruned 2026-04-23 (v0.20.5.1 — last-3 rule). Pruned: v0.20.2. See docs/version_history.md for the full chronology. -->
