@@ -3,6 +3,59 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-04-25 — v0.20.7 + v0.20.8 + v0.21 + v0.20.7.1 + multi-user retest + cofounder summary + Redis pitch
+
+**Focus:** Ship the 3 fixes for the bugs surfaced in the 2026-04-23 100Q diagnostic (follow-up continuation, short-pivot block-open, misconception-on-initial-doubt), plus a small patch (v0.20.7.1) that closes a regression v0.20.7 introduced. Then re-run the full 100Q diagnostic against a local backend with all fixes live, run a new multi-user diagnostic to validate personalization, and write a 1-2 page summary doc for sir.
+
+**Status:** DONE — v0.20.7 + v0.20.8 already committed + pushed (`9e1988a`, `cb26e18`); v0.21's diff bundled into v0.20.7's commit (single-file staging order; functionally on prod, history hash documented in version_history.md). v0.20.7.1 patch ready to ship; cofounder summary written; memory files updated. Awaiting user push of v0.20.7.1 + Render env-var update for Upstash Redis.
+
+**Changed files (this session):**
+- **MODIFIED** `app/api/doubt.py` — v0.20.7 (`_CONTINUATION_STARTERS_RE` + `_looks_like_continuation` + early-return guard); v0.20.7.1 (asymmetric guard with LLM classifier + deterministic `_SUBJECT_KEYWORDS` fallback for short ambiguous prompts); v0.20.8 (block-stamp `misconception_id` after `_create_doubt_block` in both `/doubt/ask` and `/doubt/ask/stream` paths); v0.21 (split `explanation` intent — falls through to `start_session` when `study_session_id` is set, legacy path preserved when not).
+- **MODIFIED** `app/services/doubt/engine.py` — v0.20.8 added `check_for_misconception` calls in `start_session` + `start_session_stream` after RAG completes; logs `misconception_detected` session event; injects `is_misconception_correction` + `misconception_id` into result payload.
+- **MODIFIED** `app/services/doubt/misconceptions.py` — v0.20.8 added topic-agnostic 2-keyword fallback in `check_for_misconception`; expanded `centripetal_outward_force` keyword list to cover natural phrasings.
+- **NEW** `scripts/diagnostic_multiuser.py` — 3-persona × 20-shared-prompt parallel harness with style-keyword + length-divergence + Judge LLM consistency analysis.
+- **NEW** `scripts/data/diagnostic_smoke_fixes.json` — bug-#1/#2/#3 smoke fixtures.
+- **NEW** `scripts/data/diagnostic_smoke_v0207_1.json` — v0.20.7.1 regression fixtures (4 cross-subject pivots + 5 same-subject regression guards).
+- **NEW** `reports/diagnostic_post_fixes_2026-04-25.md` + `.json` — 100Q post-fix run.
+- **NEW** `reports/multiuser_post_fixes_2026-04-25.md` + `.json` — 3-persona run.
+- **NEW** `reports/comparison_2026-04-25.md` — full before/after with all 4 pillars + the new bug from multi-user.
+- **NEW** `docs/cofounder_summary_2026-04-25.md` — 1-2 page tech summary for sir.
+- **MODIFIED** `MEMORY.md` — current version → v0.20.7.1, recently shipped + next-up rewritten.
+- **MODIFIED** `docs/version_history.md` — v0.20.7 / v0.20.8 / v0.21 / v0.20.7.1 entries + index rows; v0.21 entry notes git-hash bundling.
+- **MODIFIED** `docs/session_log.md` (this) — new top entry, oldest pruned.
+
+**Verification (delta vs 2026-04-23):**
+- Follow-up continuation rate: 50 % → **100 %** (15/15) — v0.20.7 hits.
+- Short-pivot block-open rate: 33.3 % → **100 %** (6/6) — v0.21 hits.
+- Topic-shift pass rate: 75 % → 58 % (v0.20.7 over-fire) → patched in v0.20.7.1 (smoke-tested cross-subject + same-subject regression guards).
+- Misconception detection: wiring fixed (3/3 smoke when phrasings align with library); diagnostic-100 phrasings still 0/10 because the library's keyword coverage is too narrow → filed as v0.22.
+- Multi-user: response length σ/μ = 0.231 (above 0.15 threshold ✅); Judge quality 0.82–0.86 across HIGH/MEDIUM/LOW (consistent ✅); style-keyword diagonal: HIGH→formula ✓, MEDIUM/LOW also lean formula ✗ → filed as v0.22 (prompt engineering).
+- Socratic adherence held at 97.1 %; factual 1.00; single-question rate 90 % → 100 %.
+
+**Cliff notes (non-obvious context):**
+- **v0.20.7.1 uses BOTH a classifier subject mismatch AND a deterministic keyword fallback.** The LLM classifier is unreliable on short ambiguous prompts (returns empty/wrong subject for "what is pH?"); the keyword regex catches these cases.
+- **v0.21 commit-hash quirk:** all three fixes' `app/api/doubt.py` changes were staged together when v0.20.7's `git add` ran, so they shipped under hash `9e1988a` ("v0.20.7" message). v0.21 has no commit of its own — code is on prod, just history-message slightly imprecise. NOT rewriting history (RULES.md). Future commits should stage incrementally with `git add -p` when multiple version changes touch the same file.
+- **Misconception library coverage is the v0.22 work.** Wiring (v0.20.8) is correct; library only matches narrow phrasings ("centrifugal" + "outward force"). Natural prompts ("centripetal pulls outward") miss. Need ~50–100 keyword additions across 30 entries.
+- **Multi-user new finding (v0.22):** length divergence personalization works (σ/μ=0.231); style-keyword personalization doesn't — gpt-4.1-mini defaults to formula on technical questions regardless of `learning_preference`. Fix is prompt-engineering only — top-of-system-prompt do/don't examples per learning style.
+- **Sir is provisioning Upstash Redis (Free tier) → set `REDIS_URL` env var on Render.** Redis was 100 % down in prod per v0.20.5 R1. Free tier is 256 MB / 10 GB / unlimited commands — way more than we need (we'll use ~5 MB / 50 MB / 22k commands per month at 30-student beta scale).
+
+**Deferred to next session:**
+- v0.22 — misconception library keyword expansion + personalization-prompt strengthening (do/don't per learning_preference).
+- Confirm Redis is alive in prod logs after sir sets `REDIS_URL`.
+- Render paid tier ($7/mo) when beta launches — kills 22 s cold start.
+- Cleanup 8 synthetic accounts in Supabase (smoke + 100Q + multi-user run residue) once spot-check is done.
+
+**Next session — read these first:**
+`docs/cofounder_summary_2026-04-25.md` (overall context), `reports/comparison_2026-04-25.md` (the technical delta — all 4 pillars), `app/api/doubt.py` (`_detect_topic_shift` + `_SUBJECT_KEYWORDS`), `app/services/doubt/misconceptions.py` (library coverage gap for v0.22).
+
+**Next session — start here:**
+1. Verify Redis is up in prod (sir's task — `https://upmyrank-poc.onrender.com/admin/platform-health` or grep Render logs for "Redis connection refused" disappearing).
+2. Push v0.20.7.1.
+3. Start v0.22 — library keyword expansion is mechanical work (~2 hours); personalization prompt strengthening is iterative (write + smoke + adjust).
+4. Run full 100Q + multi-user against PROD (not local) once v0.20.7.1 + Redis are live, to compare against the 2026-04-23 baseline on the same backend.
+
+---
+
 ## Session 2026-04-23 — v0.20.5 docs backfill + v0.20.6 thumbs fix + 100Q prod diagnostic
 
 **Focus:** v0.20.5 (commit `9f0de7a`) shipped critical security + Knowledge-Genome fixes on 2026-04-21 but was pushed **without the required `docs/version_history.md` + `docs/session_log.md` entries** — policy violation per `CLAUDE.md`. Backfill first, then fix the remaining R2 from that diagnostic (thumbs UI `response_feedback` table is 0 rows all-time — suspected frontend bug), then run a 100-question end-to-end quality diagnostic against prod.
@@ -71,30 +124,4 @@
 
 ---
 
-## Session 2026-04-21 (cont.) — v0.20.3 hot patch: shorten topic-shift length floor
-
-**Focus:** v0.20.2 deployed and fixed the `"what's the integral of sin(x²)?"` pivot, but real-prod usage by user immediately surfaced a sibling bug — `"what is molecule?"` (16 chars) still got refused by counselor because `_looks_like_new_question()` had a 20-char floor that short-circuited before the verb regex could match. User correctly called out the UX inconsistency.
-
-**Status:** DONE — patch + extended synthetic test (now 3-pivot) + docs; awaiting user push.
-
-**Changed files (v0.20.3):**
-- **MODIFIED** `app/api/doubt.py` `_looks_like_new_question()` — verb-regex floor 20 → 12; symbol-only fallback floor stays 25.
-- **MODIFIED** `scripts/synthetic_beta.py` `scenario_topic_shift()` — extended from 1-pivot to 3-pivot stress test (physics → math → "what is molecule?" chemistry). Permanent regression guard.
-- **MODIFIED** `docs/version_history.md`, `docs/session_log.md` (this), `docs/bugs.md`.
-
-**Cliff notes (non-obvious context):**
-- The 20-char floor in v0.20.2 was a guess, not a measurement. The fix sets 12 = length of `"what is x?"` (shortest plausible new-question). Going lower risks treating raw replies like `"what?"` as a new doubt.
-- Symbol-only fallback floor stays at 25 because notation without a verb is more ambiguous (a single fragment like `"x²"` shouldn't open a new block).
-- The synthetic test would NOT have caught this in v0.20.2 because the only pivot tested was the long math one. Multi-pivot is now permanent.
-
-**Next session — read these files first:**
-`docs/bugs.md` (top entry — the length-floor failure mode), `app/api/doubt.py` (`_looks_like_new_question`), `scripts/synthetic_beta.py` (`scenario_topic_shift` — the 3-pivot guard).
-
-**Next session — start here:**
-1. Push v0.20.3 to Render.
-2. Re-test the prod 3-pivot manually: physics → integral pivot → "what is molecule?" — all three should open separate blocks now.
-3. Then proceed with the original v0.20.2 follow-ups (apply migration v16 if not done, beta with 30 students).
-
----
-
-<!-- Older entries pruned 2026-04-23 (v0.20.5.1 — last-3 rule). Pruned: v0.20.2. See docs/version_history.md for the full chronology. -->
+<!-- Older entries pruned 2026-04-25 (v0.20.7.1 — last-3 rule). Pruned: v0.20.3 ("what is molecule?" length-floor patch). See docs/version_history.md for the full chronology. -->

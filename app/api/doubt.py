@@ -94,6 +94,85 @@ def _looks_like_continuation(text: str) -> bool:
     stripped = text.strip().lower()
     return bool(_CONTINUATION_STARTERS_RE.match(stripped))
 
+
+# v0.20.7.1 — deterministic subject hint via topic keywords. Used as a
+# fallback when the LLM classifier returns empty / wrong subject on short or
+# ambiguous prompts. If the prompt contains an unambiguous keyword for a
+# subject DIFFERENT from the active block's subject, we re-promote the
+# topic-shift even if the marker matched _looks_like_continuation.
+#
+# Word-boundaried so "force" doesn't match inside "enforce", "atom" doesn't
+# match inside "atomic-bomb-trivia", etc.
+_SUBJECT_KEYWORDS: dict[str, re.Pattern] = {
+    "Maths": re.compile(
+        r"\b(?:integral|integration|integrate|derivative|differentiate|"
+        r"derivat[a-z]*|limit|limits|continuity|matrix|matrices|determinant|"
+        r"vector|vectors|dot\s+product|cross\s+product|complex\s+number|"
+        r"argand|trig(?:onometry)?|sin|cos|tan|cosec|sec|cot|"
+        r"logarithm|antilog|exponent|polynomial|quadratic|equation|"
+        r"probability|permutation|combination|arithmetic\s+progression|"
+        r"geometric\s+progression|3d\s+geometry|conic|parabola|ellipse|"
+        r"hyperbola|locus|differential\s+equation|"
+        r"d/dx|dy/dx|∫|lim\s+x|"
+        r"\blog\b|\bln\b)",
+        re.IGNORECASE,
+    ),
+    "Chemistry": re.compile(
+        r"\b(?:ph\b|p\s*o\s*h\b|mole|molarity|molality|normality|atom|atoms|"
+        r"molecule|molecules|bond|bonding|covalent|ionic|hydrogen\s+bond|"
+        r"acid|base|alkaline|orbital|electron|proton|neutron|isotope|"
+        r"compound|reagent|catalyst|equilibrium|kinetics|"
+        r"thermodynamics|enthalpy|entropy|gibbs|"
+        r"electrochem(?:istry)?|galvanic|electrolysis|"
+        r"organic|aliphatic|aromatic|benzene|alkene|alkane|alkyne|"
+        r"sn1|sn2|"
+        r"coordination\s+(?:compound|complex)|ligand|"
+        r"oxidation|reduction|redox|valenc[ye])",
+        re.IGNORECASE,
+    ),
+    "Physics": re.compile(
+        r"\b(?:newton|kinematics|projectile|inclined?\s+plane|friction|"
+        r"force|forces|gravitational\s+force|normal\s+force|"
+        r"momentum|impulse|kinetic\s+energy|potential\s+energy|"
+        r"work\s*[-]?\s*energy|conservation|"
+        r"circular\s+motion|centripetal|centrifugal|angular|torque|"
+        r"moment\s+of\s+inertia|rotation(?:al)?|"
+        r"gravitation|gravity|orbit|escape\s+velocity|kepler|"
+        r"oscillation|simple\s+harmonic|shm|spring\s+constant|pendulum|"
+        r"wave(?:length)?|frequency|amplitude|"
+        r"electric\s+field|magnetic\s+field|coulomb|gauss|"
+        r"capacitor|capacitance|resistor|resistance|inductor|inductance|"
+        r"current\s+electricity|ohm|kirchhoff|"
+        r"electromagnetic\s+induction|emf|"
+        r"refractive\s+index|lens|mirror|"
+        r"thermodynamic[s]?|carnot|"
+        r"photoelectric|black\s*body)",
+        re.IGNORECASE,
+    ),
+}
+
+
+def _detect_subject_via_keywords(text: str) -> Optional[str]:
+    """v0.20.7.1 — return the subject whose keyword set has the most
+    distinct hits in the text, or None if no subject's keywords appear OR
+    if multiple subjects tie. Used as a deterministic fallback when the LLM
+    topic classifier returns empty / wrong subject on short prompts.
+    """
+    if not text:
+        return None
+    hits: dict[str, int] = {}
+    for subj, pat in _SUBJECT_KEYWORDS.items():
+        m = pat.findall(text)
+        if m:
+            hits[subj] = len({x.lower() for x in m})  # distinct hits
+    if not hits:
+        return None
+    # Need a clear winner: if the top is tied, ambiguous.
+    sorted_hits = sorted(hits.items(), key=lambda kv: -kv[1])
+    if len(sorted_hits) == 1 or sorted_hits[0][1] > sorted_hits[1][1]:
+        return sorted_hits[0][0]
+    return None
+
 # Math-symbol heuristic — covers the "wait, what's the integral of sin(x²)?"
 # class of pivots that the verb regex misses (no verb present, just notation).
 _MATH_SYMBOL_HINTS = re.compile(
@@ -236,31 +315,60 @@ async def _detect_topic_shift(
 
     Never raises — classifier failures return False (preserves continuation).
     """
-    if not active_block or not _looks_like_new_question(question):
+    if not active_block:
         return False
 
-    # v0.20.7 — asymmetric trust: if the prompt begins with a continuation
-    # starter, skip the shift check entirely. The intent LLM already flagged
-    # this as `continuation`; our job is to demote `continuation` only when
-    # the shape is *really* ambiguous, not to second-guess obvious follow-ups.
-    if _looks_like_continuation(question):
-        logger.info(
-            "v0.20.7 continuation_trusted: starter phrase matched, skipping shift "
-            "(block=%s, question=%r)",
-            active_block.get("doubt_block_id"), question[:80],
-        )
+    # v0.20.7.1 — run the shift check when EITHER:
+    #   (a) the prompt has a new-question shape (verb regex / math symbols), OR
+    #   (b) the prompt begins with a continuation marker (why does/ok so/hmm/
+    #       wait/oh) — these need a cross-subject check too, because a
+    #       continuation marker in front of a clearly different-subject prompt
+    #       (e.g. "hmm actually can you help me with derivatives") is a real
+    #       pivot we'd otherwise miss.
+    # Without the OR-branch on `_looks_like_continuation`, prompts that don't
+    # match _NEW_QUESTION_MARKERS would silently stay in the active block.
+    looks_new = _looks_like_new_question(question)
+    looks_continuation = _looks_like_continuation(question)
+    if not looks_new and not looks_continuation:
         return False
 
     try:
         cls = await engine.classify_turn_topic(question)
     except Exception as exc:
         logger.warning("_detect_topic_shift: classifier failed: %s", exc)
+        # Fail-safe: if the classifier dies, fall back to v0.20.7's behaviour
+        # (continuation marker → trust it). Better to miss a pivot than to
+        # incorrectly open a phantom block.
         return False
 
     new_subject = (cls.get("subject") or "").strip()
     new_topic   = (cls.get("topic") or "").strip()
     old_subject = (active_block.get("subject") or "").strip()
     old_topic   = (active_block.get("topic") or "").strip()
+
+    if looks_continuation:
+        # v0.20.7.1 — re-promote ONLY on deterministic keyword evidence.
+        # The LLM classifier is too unreliable on short/ambiguous prompts
+        # (an early v0.20.7.1 trial with classifier-only re-promotion
+        # caused 1/5 same-subject follow-ups to flip to subject_doubt
+        # because the classifier returned the wrong subject). Keyword
+        # regex is deterministic and covers the cross-subject pivots we
+        # care about (integral/derivative → Maths, pH/molecule/atom →
+        # Chemistry, force/Newton/circuit → Physics).
+        kw_subj = _detect_subject_via_keywords(question)
+        if kw_subj and old_subject and kw_subj != old_subject:
+            logger.info(
+                "v0.20.7.1 cross-subject pivot via continuation marker (keyword) — re-promoting "
+                "(block=%s, %s → %s, q=%r)",
+                active_block.get("doubt_block_id"), old_subject, kw_subj, question[:80],
+            )
+            return True
+        logger.info(
+            "v0.20.7.1 continuation_trusted (same-subject or no keyword): skipping shift "
+            "(block=%s, q=%r)",
+            active_block.get("doubt_block_id"), question[:80],
+        )
+        return False
 
     # Subject change is a strong signal (e.g. from Physics → Maths mid-chat).
     if new_subject and old_subject and new_subject != old_subject:

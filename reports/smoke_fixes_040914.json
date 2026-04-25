@@ -1,0 +1,822 @@
+{
+  "meta": {
+    "run_id": "diag-20260425-040914",
+    "backend": "http://localhost:8000",
+    "email": "diag-diag-20260425-040914-b052f0@upmyrank.test",
+    "student_id": "d8e1aa66-2a08-4539-856a-b854adab80f8",
+    "persona": "Diag Persona",
+    "n_flows": 9,
+    "n_prompts": 12,
+    "generated_at": "2026-04-25 04:17:06 IST",
+    "duration_s": 463.8
+  },
+  "turns": [
+    {
+      "flow_id": "V20.7-FU01",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "A 2 kg block is pushed with a 10 N horizontal force on a rough surface with mu = 0.2. Find its acceleration.",
+      "subject_sent": "Physics",
+      "duration_ms": 47842,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "329cf468-dc08-4209-ae28-0811a6a347ca",
+      "doubt_session_id": "804909bc-1b29-4c46-883e-13feab893afb",
+      "hint_level": null,
+      "response_text": "Let's take this one step at a time with your 2 kg block pushed by a 10 N horizontal force on a rough surface where the coefficient of friction is 0.2.\n\nYou know Newton\u2019s Second Law says net force equals mass times acceleration, $F = ma$. But here, friction opposes the motion. Can you tell me how to find the frictional force acting on the block using the given coefficient of friction and the block\u2019s weight?",
+      "response_len": 409,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Laws of Motion",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7-FU01",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "why do we subtract the friction force instead of adding it?",
+      "subject_sent": "Physics",
+      "duration_ms": 23228,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "329cf468-dc08-4209-ae28-0811a6a347ca",
+      "doubt_session_id": "804909bc-1b29-4c46-883e-13feab893afb",
+      "hint_level": 1,
+      "response_text": "I see what you're thinking \u2014 but be careful, friction is a force that always acts opposite to the direction of motion (or the tendency to move). Since the applied force tries to push the block forward, friction pushes back against that motion, so we subtract friction from the applied force to find the net force.\n\nCan you think about which direction friction must act relative to the applied 10 N force on the block?",
+      "response_len": 417,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "fix": "v0.20.7"
+      }
+    },
+    {
+      "flow_id": "V20.7-FU02",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Evaluate integral of 1/(1+x^2) dx.",
+      "subject_sent": "Maths",
+      "duration_ms": 40639,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "8e296abe-72dc-42f1-94ac-98f464cbcddc",
+      "doubt_session_id": "6c581799-c562-47fb-a768-0c7533a3c43c",
+      "hint_level": null,
+      "response_text": "You\u2019ve asked to evaluate the integral of $\\frac{1}{1+x^2} \\, dx$, which is a classic integral connected with inverse trigonometric functions. You might remember that derivatives of inverse trig functions like $\\arctan x$ have forms involving $1 + x^2$. \n\nBefore we jump into the solution, can you recall the derivative of $\\arctan x$ and how it relates to the expression inside your integral?",
+      "response_len": 392,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Integration",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Maths",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7-FU02",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "why does substitution not help here?",
+      "subject_sent": "Maths",
+      "duration_ms": 25268,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "8e296abe-72dc-42f1-94ac-98f464cbcddc",
+      "doubt_session_id": "6c581799-c562-47fb-a768-0c7533a3c43c",
+      "hint_level": 1,
+      "response_text": "Right method: substitution is often useful when the integral\u2019s form changes into something simpler after replacing variables. Here, the integrand $\\frac{1}{1+x^2}$ already matches the derivative of a known function directly, so substitution won\u2019t simplify it further.\n\nThe part that trips people up is recognizing when an integral corresponds exactly to a standard derivative formula. Can you recall the derivative of $\\arctan x$ and see if it matches the integrand?",
+      "response_len": 466,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "fix": "v0.20.7"
+      }
+    },
+    {
+      "flow_id": "V20.7-FU03",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Why is water a bent molecule and not linear?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 33251,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "0cbd77c4-cd42-41a1-b090-7fdb8410d225",
+      "doubt_session_id": "8959d034-2194-48c3-9f45-f49d4bf8084b",
+      "hint_level": null,
+      "response_text": "Let\u2019s take this one step at a time. You know that water has two hydrogen atoms bonded to oxygen. Oxygen also has lone pairs of electrons that are not shared with hydrogen. How do you think these lone pairs affect the arrangement of atoms compared to a molecule with only bonded pairs, like carbon dioxide (CO\u2082), which is linear?",
+      "response_len": 328,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Molecular Geometry",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Chemistry",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7-FU03",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "is H2S bent too for the same reason?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 19754,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "0cbd77c4-cd42-41a1-b090-7fdb8410d225",
+      "doubt_session_id": "8959d034-2194-48c3-9f45-f49d4bf8084b",
+      "hint_level": 1,
+      "response_text": "Right \u2014 H\u2082S is bent too, mainly because it also has lone pairs on the sulfur atom that repel the bonding pairs, similar to oxygen in water. However, the extent of bending can differ because sulfur is larger and less electronegative than oxygen, which affects the bond angles and repulsion strength. How do you think the size and electronegativity of the central atom influence the bond angle in bent molecules like H\u2082O and H\u2082S?",
+      "response_len": 427,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "fix": "v0.20.7"
+      }
+    },
+    {
+      "flow_id": "V20.8-MC01",
+      "flow_class": "misconception",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "I think the centripetal force pulls the ball outward because of the spinning. Is that right?",
+      "subject_sent": "Physics",
+      "duration_ms": 35768,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "adbd2657-97e5-499c-b8b7-68861ef7b361",
+      "doubt_session_id": "2731006f-a382-4f23-bd30-807e1b33a0c6",
+      "hint_level": null,
+      "response_text": "I see you\u2019re thinking about the direction of centripetal force on a spinning ball. Imagine a ball tied to a string, swung in a circle. The ball moves outward, but what force actually acts on the ball to keep it moving in a circle. If the ball feels pulled outward, what might be causing that sensation, physically speaking?",
+      "response_len": 323,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Laws of Motion",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "misconception": true,
+        "fix": "v0.20.8"
+      }
+    },
+    {
+      "flow_id": "V20.8-MC02",
+      "flow_class": "misconception",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Electrons revolve in fixed circular orbits around the nucleus like planets around the sun, correct?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 31505,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "96256f52-df3d-42a6-ab73-9fba1cda0028",
+      "doubt_session_id": "37d367bb-3db0-4f68-a50d-66dc0032f9c2",
+      "hint_level": null,
+      "response_text": "You have a good start with the idea of electrons moving around the nucleus. The Bohr model does say electrons revolve in fixed circular orbits, similar to planets orbiting the sun. But think: if electrons behaved exactly like planets, could we predict their exact position and energy always. What do you think about the limitations of this idea when you consider what you know about waves or uncertainty in measurements?",
+      "response_len": 420,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Atomic Structure",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "misconception": true,
+        "fix": "v0.20.8"
+      }
+    },
+    {
+      "flow_id": "V20.8-MC03",
+      "flow_class": "misconception",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Astronauts float on the ISS because there is no gravity up there, correct?",
+      "subject_sent": "Physics",
+      "duration_ms": 33609,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "19155e0f-3c70-4d18-9c52-a01cee840446",
+      "doubt_session_id": "75227774-f609-47fd-a41f-34f7c65b4b91",
+      "hint_level": null,
+      "response_text": "You\u2019re thinking about why astronauts seem to float inside the ISS, which is a great place to start. You might already know that gravity acts between any two masses, like Earth and the ISS. Now, if gravity were truly zero there, what would happen to the ISS itself in its orbit around Earth?",
+      "response_len": 290,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Laws of Motion",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "misconception": true,
+        "fix": "v0.20.8"
+      }
+    },
+    {
+      "flow_id": "V21-EX01",
+      "flow_class": "short_pivot",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "what is atom?",
+      "subject_sent": "Physics",
+      "duration_ms": 5030,
+      "http_ok": false,
+      "intent": null,
+      "doubt_block_id": null,
+      "doubt_session_id": null,
+      "hint_level": null,
+      "response_text": "",
+      "response_len": 0,
+      "mentor_mode": null,
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": null,
+      "analysis_subject": null,
+      "error": "Client error '401 Unauthorized' for url 'http://localhost:8000/doubt/ask'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401",
+      "expected": {
+        "opens_block": true,
+        "fix": "v0.21"
+      }
+    },
+    {
+      "flow_id": "V21-EX02",
+      "flow_class": "short_pivot",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "what is log?",
+      "subject_sent": "Maths",
+      "duration_ms": 34890,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "33f40a90-9062-4401-ba42-18bf0dd42158",
+      "doubt_session_id": "2a781770-4c46-480d-9b1e-47faa282b54f",
+      "hint_level": null,
+      "response_text": "Since your mastery of Logarithms is just starting, let's connect to something familiar: you know how powers work, right. Like $2^3 = 8$ means 2 multiplied by itself 3 times gives 8. Logarithms essentially ask the reverse question: if you have the number 8, what power of 2 gave you that 8. \n\nCan you tell me, what exponent do you raise 2 to in order to get 8?",
+      "response_len": 359,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Logarithms",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Maths",
+      "error": null,
+      "expected": {
+        "opens_block": true,
+        "fix": "v0.21"
+      }
+    },
+    {
+      "flow_id": "V21-EX03",
+      "flow_class": "short_pivot",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "what's a mole in chemistry?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 32021,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "feca5aae-72f0-4341-8744-b5ce3017e17b",
+      "doubt_session_id": "bb406418-c92d-407c-b61e-f0e2ef48c3cf",
+      "hint_level": null,
+      "response_text": "You\u2019re asking about the mole concept, which is the foundation of stoichiometry. Think of it as a counting unit, like a dozen means 12 things. But in chemistry, the numbers are huge because atoms and molecules are so tiny. So instead of counting one by one, chemists use the mole to count particles in bulk.\n\nWhat specific number do you think defines one mole, the number of particles it contains?",
+      "response_len": 396,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Stoichiometry",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Chemistry",
+      "error": null,
+      "expected": {
+        "opens_block": true,
+        "fix": "v0.21"
+      }
+    }
+  ],
+  "db": {
+    "judge": [
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation of the mole as a counting unit in chemistry is accurate.\", \"pedagogical\": \"The response encourages the student to think critically about the definition of a mole by asking a Socratic question.\", \"context_relevance\": \"The response is relevant as it directly addresses the student's question about the mole.\", \"hint_appropriateness\": \"The hint level is appropriate, as it prompts the student to recall a specific number related to the mole.\"}",
+        "question": "what's a mole in chemistry?",
+        "evaluated_at": "2026-04-24 22:46:48.352737+00:00",
+        "doubt_session_id": "bb406418-c92d-407c-b61e-f0e2ef48c3cf"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation of logarithms and their relationship to exponents is accurate.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to think critically about the concept of logarithms.\", \"context_relevance\": \"The response is relevant as it introduces logarithms in a relatable way without prior context.\", \"hint_appropriateness\": \"The hint level is appropriate for a student just starting to learn about logarithms.\"}",
+        "question": "what is log?",
+        "evaluated_at": "2026-04-24 22:46:08.972495+00:00",
+        "doubt_session_id": "2a781770-4c46-480d-9b1e-47faa282b54f"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation correctly states that gravity is still present at the ISS, which is factually accurate.\", \"pedagogical\": \"The response uses a Socratic question to guide the student to think critically about gravity in orbit.\", \"context_relevance\": \"The response is relevant as it directly addresses the student's misconception about gravity in space.\", \"hint_appropriateness\": \"The hint level is appropriate for a student who has not attempted the question before.\"}",
+        "question": "Astronauts float on the ISS because there is no gravity up there, correct?",
+        "evaluated_at": "2026-04-24 22:45:13.298766+00:00",
+        "doubt_session_id": "75227774-f609-47fd-a41f-34f7c65b4b91"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation accurately reflects the Bohr model's description of electron orbits.\", \"pedagogical\": \"The response uses a Socratic question to encourage deeper thinking about the limitations of the Bohr model.\", \"context_relevance\": \"The response is relevant as it directly addresses the student's question about electron behavior.\", \"hint_appropriateness\": \"The hint level is appropriate for a student who has not attempted the question before.\"}",
+        "question": "Electrons revolve in fixed circular orbits around the nucleus like planets around the sun, correct?",
+        "evaluated_at": "2026-04-24 22:44:33.121825+00:00",
+        "doubt_session_id": "37d367bb-3db0-4f68-a50d-66dc0032f9c2"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation accurately describes the nature of centripetal force and its role in circular motion.\", \"pedagogical\": \"The response uses a Socratic approach to encourage the student to think critically about the concept of centripetal force.\", \"context_relevance\": \"The response is relevant to the student's question about centripetal force and its effects.\", \"hint_appropriateness\": \"The hint level is appropriate as it prompts the student to explore their understanding without giving away the answer.\"}",
+        "question": "I think the centripetal force pulls the ball outward because of the spinning. Is that right?",
+        "evaluated_at": "2026-04-24 22:43:54.889628+00:00",
+        "doubt_session_id": "2731006f-a382-4f23-bd30-807e1b33a0c6"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.85,
+        "rationale_json": "{\"factual\": \"The explanation regarding the influence of lone pairs and the comparison between oxygen and sulfur is factually accurate.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to think critically about the factors influencing molecular shape.\", \"context_relevance\": \"The response does not directly address the student's question about water specifically, making it less relevant.\", \"hint_appropriateness\": \"The hint level is appropriate as it encourages deeper thinking without providing a direct answer.\"}",
+        "question": "Why is water a bent molecule and not linear?",
+        "evaluated_at": "2026-04-24 22:43:12.096208+00:00",
+        "doubt_session_id": "8959d034-2194-48c3-9f45-f49d4bf8084b"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The information about the integral of 1/(1+x^2) being related to the derivative of arctan x is accurate.\", \"pedagogical\": \"The response encourages the student to think critically about the relationship between derivatives and integrals, promoting deeper understanding.\", \"context_relevance\": \"The response is relevant as it directly addresses the student's question about evaluating the integral.\", \"hint_appropriateness\": \"The hint level is appropriate as it guides the student to make connections without giving away the full solution.\"}",
+        "question": "Evaluate integral of 1/(1+x^2) dx.",
+        "evaluated_at": "2026-04-24 22:42:12.300167+00:00",
+        "doubt_session_id": "6c581799-c562-47fb-a768-0c7533a3c43c"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation of friction and its direction relative to the applied force is accurate.\", \"pedagogical\": \"The response encourages the student to think critically about the forces involved, promoting reasoning.\", \"context_relevance\": \"The response is relevant to the student's question about the forces acting on the block.\", \"hint_appropriateness\": \"The hint level is appropriate as it guides the student without giving away the full solution.\"}",
+        "question": "A 2 kg block is pushed with a 10 N horizontal force on a rough surface with mu = 0.2. Find its acceleration.",
+        "evaluated_at": "2026-04-24 22:40:54.521992+00:00",
+        "doubt_session_id": "804909bc-1b29-4c46-883e-13feab893afb"
+      }
+    ],
+    "events": [
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.664878,
+        "response_latency_ms": 1955,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:46:34.619057+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2302,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:45:54.447837+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1923,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:45:00.682565+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1771,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:44:19.992999+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1547,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:43:40.685796+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:43:08.398453+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1661,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:42:59.415216+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1660,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:42:38.212731+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:42:07.351882+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2454,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:41:58.342497+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2020,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:41:31.260891+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:40:51.254837+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2465,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:40:42.293133+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2947,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:40:16.882773+00:00",
+        "doubt_block_id": null
+      }
+    ],
+    "metrics": [
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 11273,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Maths",
+        "retrieval_latency_ms": 7962,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 5708,
+        "agent_steps": 2,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 6664,
+        "agent_steps": 3,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 5378,
+        "agent_steps": 2,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 8607,
+        "agent_steps": 3,
+        "chunks_retrieved": 2,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Maths",
+        "retrieval_latency_ms": 7182,
+        "agent_steps": 3,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 5436,
+        "agent_steps": 2,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      }
+    ],
+    "mastery": [],
+    "blocks": [
+      {
+        "doubt_block_id": "feca5aae-72f0-4341-8744-b5ce3017e17b",
+        "topic": "Stoichiometry",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked about the concept of a mole in chemistry, and the tutor explained it as a counting unit for particles, analogous to a dozen. The tutor then prompted the student to identify the specific number that defines one mole, indicating that the student was engaged and encouraged to deepen their understanding.",
+        "started_at": "2026-04-24 22:46:35.695510+00:00",
+        "ended_at": "2026-04-24 22:46:41.727222+00:00"
+      },
+      {
+        "doubt_block_id": "33f40a90-9062-4401-ba42-18bf0dd42158",
+        "topic": "Logarithms",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked about the concept of logarithms, and the tutor explained that logarithms are the inverse of exponentiation, using the example of how to determine the exponent that gives a certain power. The student seemed to be starting to grasp the concept, as the tutor prompted them to identify the exponent for the example provided.",
+        "started_at": "2026-04-24 22:45:55.514041+00:00",
+        "ended_at": "2026-04-24 22:46:01.895690+00:00"
+      },
+      {
+        "doubt_block_id": "19155e0f-3c70-4d18-9c52-a01cee840446",
+        "topic": "Laws of Motion",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked whether astronauts float on the ISS due to the absence of gravity, and the tutor clarified that gravity is still present but explained the concept of orbital motion. The student demonstrated an understanding of the topic by connecting their question to the effects of gravity on the ISS's orbit.",
+        "started_at": "2026-04-24 22:45:01.689205+00:00",
+        "ended_at": "2026-04-24 22:45:07.442700+00:00"
+      },
+      {
+        "doubt_block_id": "96256f52-df3d-42a6-ab73-9fba1cda0028",
+        "topic": "Atomic Structure",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked whether electrons revolve in fixed circular orbits around the nucleus like planets do, and the tutor confirmed this concept as part of the Bohr model while prompting the student to consider the limitations of this analogy in light of wave behavior and measurement uncertainty. The conversation suggests that the student is beginning to grasp the concept but needs to deepen their understanding of its complexities.",
+        "started_at": "2026-04-24 22:44:20.845309+00:00",
+        "ended_at": "2026-04-24 22:44:26.884977+00:00"
+      },
+      {
+        "doubt_block_id": "adbd2657-97e5-499c-b8b7-68861ef7b361",
+        "topic": "Laws of Motion",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked whether centripetal force pulls a spinning ball outward, indicating confusion about the direction of this force. The tutor guided the student to reconsider the concept by using the analogy of a ball on a string, suggesting that the student was beginning to understand the true nature of centripetal force.",
+        "started_at": "2026-04-24 22:43:41.604998+00:00",
+        "ended_at": "2026-04-24 22:43:47.868587+00:00"
+      },
+      {
+        "doubt_block_id": "0cbd77c4-cd42-41a1-b090-7fdb8410d225",
+        "topic": "Molecular Geometry",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked why water is a bent molecule instead of linear, leading to a discussion about the role of lone pairs of electrons on the central atom. The student demonstrated understanding by relating this concept to H\u2082S and recognizing the influence of atomic size and electronegativity on bond angles in bent molecules.",
+        "started_at": "2026-04-24 22:42:39.021051+00:00",
+        "ended_at": "2026-04-24 22:43:04.584059+00:00"
+      },
+      {
+        "doubt_block_id": "8e296abe-72dc-42f1-94ac-98f464cbcddc",
+        "topic": "Integration",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked how to evaluate the integral of \\( \\frac{1}{1+x^2} \\, dx \\), which is related to the inverse trigonometric function \\( \\arctan x \\). The tutor explained that substitution is not helpful in this case because the integrand directly corresponds to the derivative of \\( \\arctan x \\), and the student seemed to understand the connection.",
+        "started_at": "2026-04-24 22:41:32.165564+00:00",
+        "ended_at": "2026-04-24 22:42:03.713558+00:00"
+      },
+      {
+        "doubt_block_id": "329cf468-dc08-4209-ae28-0811a6a347ca",
+        "topic": "Laws of Motion",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked how to find the acceleration of a 2 kg block being pushed with a 10 N force on a rough surface with a coefficient of friction of 0.2. The tutor explained the concept of net force and friction, clarifying that friction opposes the motion, which the student seemed to understand after discussing the direction of the forces involved.",
+        "started_at": "2026-04-24 22:40:17.778710+00:00",
+        "ended_at": "2026-04-24 22:40:47.249475+00:00"
+      }
+    ],
+    "ctq": [
+      {
+        "validation_score": 2,
+        "appropriateness": 2,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-24 22:43:02.807520+00:00"
+      },
+      {
+        "validation_score": 2,
+        "appropriateness": 2,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-24 22:42:01.239372+00:00"
+      },
+      {
+        "validation_score": 2,
+        "appropriateness": 2,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-24 22:40:45.708132+00:00"
+      }
+    ]
+  },
+  "render_logs_sample": [],
+  "analysis": {
+    "pillars": {
+      "quality_communication": {
+        "socratic_adherence_pct_peda_ge_1": 100.0,
+        "avg_pedagogical_0_2": 2,
+        "avg_factual_0_1": 1,
+        "avg_context_rel_0_1": 0.875,
+        "avg_hint_app_0_1": 1,
+        "avg_overall_0_1": 0.981,
+        "n_judge_rows": 8,
+        "ctq_validation_avg": 2,
+        "ctq_appropriateness_avg": 2,
+        "ctq_single_question_pct": 100.0
+      },
+      "knowledge_genome": {
+        "mastery_rows_written": 0,
+        "blocks_opened": 8,
+        "blocks_resolved": 0,
+        "blocks_ended": 8,
+        "genome_update_rate_pct": 0.0,
+        "n_concepts_touched": 0
+      },
+      "personalized_response": {
+        "response_len_avg": 384.273,
+        "response_len_stdev": 53.0,
+        "len_stdev_over_avg": 0.138,
+        "note": "Heuristic: higher stdev/avg ratio = responses varied in structure/length per context (signal, not proof)."
+      },
+      "easy_learning": {
+        "hint_ladder_progression_monotonic": true,
+        "median_latency_ms": 33251,
+        "p95_latency_ms": 47842,
+        "forced_attempt_triggered_count": 0,
+        "full_solution_triggered_count": 0
+      }
+    },
+    "scenario_class_rollups": {
+      "followup": {
+        "prompts": 6,
+        "http_ok": 6,
+        "http_ok_pct": 100.0,
+        "intents": {
+          "subject_doubt": 3,
+          "continuation": 3
+        },
+        "avg_latency_ms": 31663.667
+      },
+      "misconception": {
+        "prompts": 3,
+        "http_ok": 3,
+        "http_ok_pct": 100.0,
+        "intents": {
+          "subject_doubt": 3
+        },
+        "avg_latency_ms": 33627.333
+      },
+      "short_pivot": {
+        "prompts": 3,
+        "http_ok": 2,
+        "http_ok_pct": 66.7,
+        "intents": {
+          "null": 1,
+          "subject_doubt": 2
+        },
+        "avg_latency_ms": 23980.333
+      }
+    },
+    "expected_intent_match": {
+      "followup": {
+        "checked": 6,
+        "matched": 6,
+        "match_pct": 100.0
+      }
+    },
+    "topic_shift_checks": [],
+    "topic_shift_pass_pct": 0.0,
+    "misconception_detection_rate_pct": 0.0,
+    "emotional_counselor_mode_rate_pct": 0.0,
+    "vague_http_ok_pct": 0.0,
+    "out_of_scope_routing_correct_pct": 0.0,
+    "followup_continuation_rate_pct": 100.0,
+    "n_checks": {
+      "shift": 0,
+      "followup": 3,
+      "misconception": 3,
+      "emotional": 0,
+      "vague": 0,
+      "out_of_scope": 0
+    },
+    "errors": [
+      {
+        "flow_id": "V21-EX01",
+        "flow_class": "short_pivot",
+        "turn_idx": 0,
+        "endpoint": "ask",
+        "prompt": "what is atom?",
+        "subject_sent": "Physics",
+        "duration_ms": 5030,
+        "http_ok": false,
+        "intent": null,
+        "doubt_block_id": null,
+        "doubt_session_id": null,
+        "hint_level": null,
+        "response_text": "",
+        "response_len": 0,
+        "mentor_mode": null,
+        "topic": null,
+        "is_misconception_correction": null,
+        "is_full_solution": null,
+        "analysis_subject": null,
+        "error": "Client error '401 Unauthorized' for url 'http://localhost:8000/doubt/ask'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401",
+        "expected": {
+          "opens_block": true,
+          "fix": "v0.21"
+        }
+      }
+    ],
+    "render_log_errors": [],
+    "render_log_topic_shift_hits": [],
+    "render_log_autoclose_hits": []
+  }
+}

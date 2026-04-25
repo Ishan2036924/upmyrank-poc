@@ -1,0 +1,46 @@
+{
+  "meta": {
+    "name": "diagnostic_smoke_v0207_1",
+    "purpose": "Targeted regression for v0.20.7.1. Two assertion classes: (a) cross-subject pivots that begin with continuation-marker fillers (wait/hmm/oh) MUST open a new block — these were the 4 false-negatives from the 2026-04-25 100Q run; (b) same-subject follow-ups starting with continuation markers MUST stay continuation — these are the v0.20.7 wins we cannot regress."
+  },
+  "flows": [
+    { "flow_id": "V20.7.1-PIV01", "class": "sudden_pivot", "subject": "Physics", "topic": "Kinematics", "turns": [
+      {"prompt": "A projectile is fired at 60 degrees with 40 m/s. Find time of flight.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "Wait, what's the integral of sin(x^2)? Is there a closed form?", "expect": {"subject": "Maths", "topic_shift": true, "fix": "v0.20.7.1"}}
+    ]},
+    { "flow_id": "V20.7.1-PIV02", "class": "sudden_pivot", "subject": "Chemistry", "topic": "pH", "turns": [
+      {"prompt": "Calculate pH of 0.01 M HCl.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "hmm actually can you help me with derivatives of trig functions?", "expect": {"subject": "Maths", "topic_shift": true, "fix": "v0.20.7.1"}}
+    ]},
+    { "flow_id": "V20.7.1-PIV03", "class": "sudden_pivot", "subject": "Chemistry", "topic": "pH", "turns": [
+      {"prompt": "Calculate pH of 0.01 M HCl.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "hmm actually can you help me with derivatives of trig functions?", "expect": {"subject": "Maths", "topic_shift": true}},
+      {"prompt": "oh wait I also don't understand Newton's third law — explain?", "expect": {"subject": "Physics", "topic_shift": true, "fix": "v0.20.7.1"}}
+    ]},
+    { "flow_id": "V20.7.1-PIV04", "class": "short_pivot", "subject": "Maths", "topic": "Differentiation", "turns": [
+      {"prompt": "Evaluate d/dx (x^2).", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "what is pH?", "expect": {"subject": "Chemistry", "topic_shift": true, "fix": "v0.20.7.1"}}
+    ]},
+
+    { "flow_id": "V20.7.1-FU01", "class": "followup", "subject": "Physics", "topic": "Laws of Motion", "turns": [
+      {"prompt": "A 2 kg block is pushed with a 10 N horizontal force on a rough surface with mu = 0.2. Find its acceleration.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "why do we subtract the friction force instead of adding it?", "expect": {"intent": "continuation", "regression_guard": "v0.20.7"}}
+    ]},
+    { "flow_id": "V20.7.1-FU02", "class": "followup", "subject": "Maths", "topic": "Integration", "turns": [
+      {"prompt": "Evaluate integral of 1/(1+x^2) dx.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "why does substitution not help here?", "expect": {"intent": "continuation", "regression_guard": "v0.20.7"}}
+    ]},
+    { "flow_id": "V20.7.1-FU03", "class": "followup", "subject": "Chemistry", "topic": "Chemical Bonding", "turns": [
+      {"prompt": "Why is water a bent molecule and not linear?", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "is H2S bent too for the same reason?", "expect": {"intent": "continuation", "regression_guard": "v0.20.7"}}
+    ]},
+    { "flow_id": "V20.7.1-FU04", "class": "followup", "subject": "Physics", "topic": "Electrostatics", "turns": [
+      {"prompt": "Field due to a uniformly charged thin ring on its axis at distance x?", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "what happens when x is very large compared to R?", "expect": {"intent": "continuation", "regression_guard": "v0.20.7"}}
+    ]},
+    { "flow_id": "V20.7.1-FU05", "class": "followup", "subject": "Physics", "topic": "Laws of Motion", "turns": [
+      {"prompt": "A 5 kg block on a 30 degree incline, find acceleration.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "ok so then what would happen if mu was 0.6?", "expect": {"intent": "continuation", "regression_guard": "v0.20.7"}}
+    ]}
+  ]
+}

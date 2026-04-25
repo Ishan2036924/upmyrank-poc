@@ -2,36 +2,57 @@
 
 > **Maintainers:** Update this file whenever a major feature ships or an architectural decision is made.
 > **Claude sessions:** Read this file at the start of every new session — after `docs/version_history.md` and `docs/session_log.md`.
-> **Current version:** v0.20.2 (2026-04-21) — prod patches + admin Study Path panel + synthetic test harness shipped.
+> **Current version:** v0.20.7.1 (2026-04-25) — cross-subject pivot guard restoring topic-shift after the v0.20.7 over-fire.
 
 ---
 
-## 🎯 Current architecture (v0.20.2) — the 60-second summary
+## 🎯 Current architecture (v0.20.7.1) — the 60-second summary
 
 **Dual-loop product** feeding one Knowledge Genome:
 
 - **Mode 1 — Study Path** (`/study`, `/study/[subject]/[chapter]/[topic]`): structured concept cards. Each card = Notes (top-3 NCERT chunks, deduped + heading-diversity, optional hand-polished override) + Practice (3 problems) + PYQs + Mastery snapshot. Zero LLM cost to assemble. Files: `app/api/study.py`, `app/services/study/card_composer.py`, `scripts/concept_card_overrides.json`, `frontend/web/app/study/...`.
-- **Mode 2 — Ask Anything** (`/doubt`): free-form inbox. Backend auto-segments doubt_blocks on topic shift (via `_detect_topic_shift` in `app/api/doubt.py`). v0.20.2 widened the trigger regex to catch contractions + math verbs + symbol-only pivots. Mastery attributes to the correct concept. Manual `+ New doubt` lever via `POST /doubt/new` for explicit segmentation. Files: `app/api/doubt.py`, `app/services/doubt/engine.py`.
-- **Backstop** (v0.20.2): `_reclassify_block_topic` runs at every block close, logs `drift_topic` into `session_events.payload` if the dominant topic from conversation_history differs from session.topic stamp. Currently logging-only — flag for v0.21 to wire concept_id re-derivation if beta shows >5% drift.
+- **Mode 2 — Ask Anything** (`/doubt`): free-form inbox. Backend auto-segments doubt_blocks on topic shift (via `_detect_topic_shift` in `app/api/doubt.py`).
+  - **v0.20.7 + v0.20.7.1 (2026-04-25):** asymmetric continuation guard. Same-subject markers (`why`/`hmm`/`wait`/`ok so` …) → trust continuation; cross-subject markers (`"Wait, what's the integral of sin(x²)?"` from a Physics block) → re-promote to topic-shift. The classifier always runs; the marker only changes the decision rule.
+  - **v0.21 (2026-04-25):** `explanation` intent now opens a doubt_block when `study_session_id` is set — short concept queries (`"what is atom?"`, `"what is log?"`) get RAG + mastery, instead of bypassing the Genome.
+- **Misconception detection (v0.20.8):** `check_for_misconception()` now fires inside `start_session` + `start_session_stream` (was only in `get_hint`). Misconception_id is stamped on doubt_blocks at creation, so `_genome_update_task` applies the 1.5× penalty on resolve. Library matcher gained a topic-agnostic 2-keyword fallback for cases where the LLM topic-classifier returns a coarser/wrong topic.
+- **Backstop:** `_reclassify_block_topic` runs at every block close, logs `drift_topic` into `session_events.payload` if the dominant topic from conversation_history differs from session.topic stamp. Logging-only.
 - Shared: `_genome_update_task` (sole mastery writer, Rule #2), persona evolution every 5 sessions, misconception library, Socratic L0→L3 ladder.
-- **Admin observability** (v0.20.2): `/admin/study-path` panel surfaces top-viewed cards, override hit-rate, drift count, daily views sparkline, CSV export.
+- **Admin observability:** `/admin/study-path` panel surfaces top-viewed cards, override hit-rate, drift count, daily views sparkline, CSV export.
 
 ## ✅ Recently shipped (last 4 versions)
 
-- **v0.20.2 (2026-04-21)** — prod bug patches (regex too narrow for `"what's the integral…"`, Notes dup) + reliability (block-close drift backstop, `POST /doubt/new`, `+ New doubt` UI button) + admin Study Path panel + 5 hand-polished concept-card overrides (Projectile Motion, Newton's Laws, SHM, Chemical Bonding, Differentiation) + `PATCH /student/{id}` with schema-drift handling + cold-start toast + `scripts/synthetic_beta.py` (19/19 PASS local).
-- **v0.20 (2026-04-20)** — dual-loop architecture. Topic-shift detection. New `GET /study/card` endpoint. New `/study` navigator + concept card pages. Home restructured with primary CTAs.
-- **v0.19 (2026-04-19)** — enterprise UI Phases 2–6: `AppShell`, split-screen auth, `/settings` 6-tab, admin URL-hash routing + CSV export + auto-refresh + error toasts.
-- **v0.18 (2026-04-18)** — enterprise UI Phase 1: design tokens + 18 shadcn-pattern primitives + Toaster wiring.
+- **v0.20.7.1 (2026-04-25)** — patch: cross-subject pivot guard. v0.20.7's continuation marker no longer eats cross-subject pivots like `"Wait, what's the integral of sin(x²)?"`. Topic-shift pass rate 58 % → ≥ 80 % (smoke-verified).
+- **v0.21 (2026-04-25)** — `explanation` intent opens a doubt_block + mastery tracking when `study_session_id` is set. Short-pivot block-open rate 33 % → 100 % on the 100Q diagnostic. Backward-compat: legacy non-session callers still hit `handle_non_physics_intent`.
+- **v0.20.8 (2026-04-25)** — `check_for_misconception` runs on initial doubts; topic-agnostic 2-keyword fallback in the library; centrifugal-misconception keyword expansion. Wiring proven by 3/3 smoke; library coverage gap noted for v0.22.
+- **v0.20.7 (2026-04-25)** — asymmetric continuation guard (`_looks_like_continuation`) early-returns from `_detect_topic_shift` for follow-up starter phrases. Follow-up continuation rate 50 % → 100 % on the 100Q diagnostic. Unit-tested 17/17.
 
-## 🚧 Next up (deferred from v0.20.2)
+(Older versions in `docs/version_history.md`. Quality verified by `reports/comparison_2026-04-25.md`.)
 
-1. **Apply migration v16** — `./scripts/run_migration.sh scripts/migrate_v16_student_profile.sql` (file shipped, not yet applied to prod). Settings phone/timezone save will start persisting once applied.
-2. **Beta with 30 students** — monitor Render logs for `v0.20 topic-shift:` and `block-close drift detected:` lines. After 3 days, query `session_events WHERE event_type='study_card_view'` to identify the next 25 topics to hand-polish overrides for.
-3. **Onboarding restyle** on new primitives (deferred from v0.20 + v0.20.2 — current works, low marginal pre-beta value).
-4. **Drift backstop concept_id re-derivation** — currently logging-only. If beta `block-close drift` rate > 5%, wire EMA shift to dominant-topic concepts.
-5. **Dark mode activation** — tokens already in `globals.css` `.dark` block; enable toggle in `/settings?tab=appearance`.
-6. **Render deployment fix** — set Docker Command field to `uvicorn app.main:app --host 0.0.0.0 --port 10000` (remove `--reload` from prod).
-7. **Render upgrade off free tier** — kills cold start entirely. v0.20.2 cold-start toast is a UX bandaid until the upgrade.
+## 🚧 Next up
+
+1. **Push v0.20.7.1** — patch staged; run the printed `git add/commit/push` sequence in `docs/session_log.md` (top entry).
+2. **Provision Upstash Redis (Free tier)** — set `REDIS_URL` env var on Render. Validates v0.20.5 R1; saves ~$20-30/mo on OpenAI at 30-student beta scale (semantic cache + hot context).
+3. **Render paid tier ($7/mo)** — kills the 22 s cold start. Do this when beta launches.
+4. **v0.22 — misconception library expansion** — ~50-100 keyword additions across 30 entries to cover natural student phrasings (smoke-aligned phrasings already work; diagnostic-100 natural phrasings don't).
+5. **v0.22 — personalization-prompt strengthening** — top-of-system-prompt do/don't examples per `learning_preference` (formula / example / analogy). Multi-user diagnostic showed length divergence is real (σ/μ = 0.231) but style-keyword diagonal only fires for HIGH (formula); MEDIUM/LOW also lean formula because gpt-4.1-mini defaults to formulae on technical questions.
+6. **Cleanup 8 synthetic accounts** in Supabase from today's smoke + multi-user + 100Q runs. Use `scripts/diag_cleanup_test_accounts.py --dry-run` first.
+7. **Onboarding restyle** on new primitives (deferred — current works, low marginal pre-beta value).
+8. **Drift backstop concept_id re-derivation** — currently logging-only. If beta `block-close drift` rate > 5 %, wire EMA shift to dominant-topic concepts.
+9. **Dark mode activation** — tokens already in `globals.css` `.dark` block; enable toggle in `/settings?tab=appearance`.
+
+## 🔍 Where to find today's diagnostic artefacts (2026-04-25)
+
+- `reports/comparison_2026-04-25.md` — full before/after technical comparison across all 4 pillars.
+- `reports/diagnostic_post_fixes_2026-04-25.md` + `.json` — the 100Q post-fix run by scenario class.
+- `reports/multiuser_post_fixes_2026-04-25.md` + `.json` — the 3-persona run.
+- `reports/smoke_r4_043537.json` — 12-of-12 targeted smoke for v0.20.7 / v0.20.8 / v0.21.
+- `reports/smoke_v0207_1_*.json` — v0.20.7.1 smoke (4 cross-subject + 5 same-subject regression guards).
+- `docs/cofounder_summary_2026-04-25.md` — 1-2 page summary written for sir.
+- `scripts/data/diagnostic_100.json` — the 100-prompt set (9 scenario classes).
+- `scripts/data/diagnostic_smoke_fixes.json` — bug-#1/#2/#3 smoke fixtures.
+- `scripts/data/diagnostic_smoke_v0207_1.json` — v0.20.7.1 regression fixtures.
+- `scripts/diagnostic_100.py` — 100Q harness (reusable for any prompt set).
+- `scripts/diagnostic_multiuser.py` — 3-personas-in-parallel personalization harness.
 
 ---
 

@@ -1,0 +1,1645 @@
+{
+  "meta": {
+    "run_id": "mu-post-v0.21",
+    "backend": "http://localhost:8000",
+    "n_personas": 3,
+    "n_prompts": 60,
+    "generated_at": "2026-04-25 04:54:22 IST",
+    "duration_s": 615.3
+  },
+  "responses": {
+    "HIGH": [
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 0,
+        "subject": "Physics",
+        "prompt": "A ball is thrown upward with 20 m/s. How high does it go? g=10.",
+        "response": "You\u2019re working with a ball thrown straight up at 20 m/s against gravity of 10 m/s\u00b2. To find how high it goes, think about what happens to its velocity as it rises. At the highest point, the velocity becomes zero because it momentarily stops before falling back. \n\nGiven that, which kinematic equation would you use to relate initial velocity, final velocity, acceleration, and displacement to find the maximum height?",
+        "response_len": 417,
+        "duration_ms": 32043,
+        "doubt_session_id": "56cd6268-4827-46a8-ac88-3969e954fab8",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 1,
+        "subject": "Physics",
+        "prompt": "A 5 kg block on a 30 degree frictionless incline. Find the acceleration.",
+        "response": "Let's take this one step at a time with your 5 kg block on a 30\u00b0 frictionless incline. The key is to find the acceleration along the incline by resolving the forces correctly. You know the block\u2019s weight acts vertically downward, but since the incline is angled, this weight has components both perpendicular and parallel to the slope.\n\nCan you identify which component of the weight causes the block to accelerate down the incline?",
+        "response_len": 432,
+        "duration_ms": 30306,
+        "doubt_session_id": "e7edf61b-598a-44c0-b5e8-390a4a2ad26e",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 2,
+        "subject": "Physics",
+        "prompt": "State Newton's second law in one line.",
+        "response": "You\u2019re at the very start of Newton\u2019s second law, which connects force, mass, and acceleration directly. You know force and mass are vector and scalar quantities, respectively, and acceleration is how velocity changes. \n\nHow would you express the relationship between the force acting on an object, its mass, and the acceleration it experiences as a single concise formula?",
+        "response_len": 372,
+        "duration_ms": 30262,
+        "doubt_session_id": "4f0b5aae-fd6e-40bd-83a7-f1ea9e0219f0",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 3,
+        "subject": "Physics",
+        "prompt": "Moment of inertia of a uniform rod of length L, mass M, about its center?",
+        "response": "You shifted from Newton's second law to the moment of inertia, which is a different concept related to rotational motion. For this problem, focus on the linear relationship between force, mass, and acceleration. What is the formula that directly links the force applied on an object to its mass and the acceleration it undergoes?",
+        "response_len": 329,
+        "duration_ms": 17877,
+        "doubt_session_id": "4f0b5aae-fd6e-40bd-83a7-f1ea9e0219f0",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 4,
+        "subject": "Physics",
+        "prompt": "Electric field due to a point charge 2 microcoulombs at 10 cm.",
+        "response": "You mentioned the electric field due to a point charge, which involves electrostatics, but the original question asks for Newton\u2019s second law stated in one line. To set up Newton\u2019s second law properly, focus on the relationship between force $\\vec{F}$, mass $m$, and acceleration $\\vec{a}$ of an object.\n\nThe law states:\n$$\n\\vec{F} = m \\vec{a}\n$$where $\\vec{F}$ is the net force vector applied on the object, $m$ is the scalar mass, and $\\vec{a}$ is the acceleration vector produced.\n\nThe first step is to identify the object and the forces acting on it, then express the net force as the product of mass and acceleration. Can you now write down this formula explicitly for a general object?",
+        "response_len": 691,
+        "duration_ms": 29013,
+        "doubt_session_id": "4f0b5aae-fd6e-40bd-83a7-f1ea9e0219f0",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 5,
+        "subject": "Physics",
+        "prompt": "A stone of mass 1 kg whirled in a horizontal circle of radius 0.5 m at 4 m/s. Tension?",
+        "response": "You have shown persistence in engaging with the problem. Now, please provide your final calculated answer for the tension in the string along with your full reasoning as your required attempt before the solution is revealed.",
+        "response_len": 224,
+        "duration_ms": 16893,
+        "doubt_session_id": "4f0b5aae-fd6e-40bd-83a7-f1ea9e0219f0",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 6,
+        "subject": "Physics",
+        "prompt": "Escape velocity from Earth's surface?",
+        "response": "Certainly! Here is the complete step-by-step solution for stating Newton's second law in one line, with full formal rigor:\n\n---\n\n### 1. State the approach\n\nNewton's second law of motion relates the net force acting on a body to the acceleration produced in it. It applies because it defines how the motion of an object changes when a force is applied. The fundamental formula is:\n\n$$\n\\vec{F} = m \\vec{a}\n$$\nwhere:\n- $\\vec{F}$ is the net force vector acting on the object (in newtons, N),\n- $m$ is the mass of the object (in kilograms, kg),\n- $\\vec{a}$ is the acceleration vector produced (in meters per second squared, m/s\u00b2).\n\n---\n\n### 2. Draw the setup (conceptual)\n\nImagine any object of mass $m$ moving or at rest. When forces act on it, the resultant or net force $\\vec{F}$ causes it to accelerate. The acceleration points in the direction of the net force.\n\n- Free body diagram would show all forces acting on the object.\n- The vector sum of these forces is $\\vec{F}$.\n- The object responds with acceleration $\\vec{a}$ proportional to $\\vec{F}$, inversely proportional to $m$.\n\n---\n\n### 3. Show every step with clear working\n\n- Newton\u2019s second law states:\n  \n  \n$$\n\\text{Net force on object} = \\text{mass} \\times \\text{acceleration}\n$$\n- Expressed mathematically:\n\n  \n$$\n\\vec{F} = m \\vec{a}\n$$\n- Here, $\\vec{F}$ and $\\vec{a}$ are vectors, meaning they have both magnitude and direction.\n- The direction of acceleration is the same as the direction of the net force.\n- If no net force acts ($\\vec{F} = 0$), acceleration is zero ($\\vec{a} = 0$), and velocity is constant (Newton's first law).\n\n---\n\n### 4. Calculate (conceptual check)\n\nSince this is a conceptual statement, no numerical substitution is needed.\n\n---\n\n### 5. Verify (units and signs)\n\n- Force unit: Newton (N) = kg\u00b7m/s\u00b2\n- Mass unit: kilogram (kg)\n- Acceleration unit: m/s\u00b2\n\nDimensional analysis:\n\n$$\n[\\vec{F}] = [m][\\vec{a}] = \\text{kg} \\times \\frac{\\text{m}}{\\text{s}^2} = \\text{N}\n$$\nUnits are consistent.\n\nSign check:\n\n- Force and acceleration vectors point in the same direction.\n- Mass is always positive.\n\n---\n\n### 6. Alternative method (brief)\n\nAlternatively, Newton's second law can be expressed as the rate of change of momentum $\\vec{p} = m \\vec{v}$:\n\n$$\n\\vec{F} = \\frac{d\\vec{p}}{dt}\n$$\nFor constant mass, this reduces to $\\vec{F} = m \\vec{a}$.\n\n---\n\n### 7. Final statement (one line)\n\n**Newton's second law in one line:**\n\n$$\n\\boxed{\n\\text{The net force acting on an object is equal to the product of its mass and the acceleration it experiences: } \\vec{F} = m \\vec{a}\n}\n$$\n---\n\n### Key takeaway:\n\nNewton's second law quantitatively defines how forces change the motion of objects, forming the foundation of classical mechanics and enabling prediction of an object's acceleration from applied forces.\n\n---\n\nIf you'd like, I can help you apply this law to specific problems or explore related concepts like momentum or force diagrams. Would you like to proceed?",
+        "response_len": 2940,
+        "duration_ms": 27164,
+        "doubt_session_id": "4f0b5aae-fd6e-40bd-83a7-f1ea9e0219f0",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 7,
+        "subject": "Chemistry",
+        "prompt": "Why is BF3 planar but NH3 pyramidal?",
+        "response": "<<ERROR Client error '401 Unauthorized' for url 'http://localhost:8000/doubt/ask'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401>>",
+        "response_len": 0,
+        "duration_ms": 5028,
+        "doubt_session_id": null,
+        "intent": null,
+        "mentor_mode": null
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 8,
+        "subject": "Chemistry",
+        "prompt": "Calculate pH of 0.01 M HCl.",
+        "response": "You want to find the pH of a 0.01 M HCl solution. Since HCl is a strong acid, it dissociates completely in water, so the concentration of $\\text{H}^+$ ions will be equal to the concentration of HCl. Do you recall the formula that relates pH to the concentration of hydrogen ions?",
+        "response_len": 279,
+        "duration_ms": 30667,
+        "doubt_session_id": "3f69f63e-8829-4bba-b59e-62df5364f950",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 9,
+        "subject": "Chemistry",
+        "prompt": "Difference between SN1 and SN2 with examples.",
+        "response": "You mentioned SN1 and SN2 reactions, but this problem is about calculating the pH of a 0.01 M HCl solution, which involves acid-base chemistry, not reaction mechanisms. The key here is that HCl is a strong acid and dissociates completely in water, so the concentration of hydrogen ions comes directly from the acid concentration. What is the relationship between the concentration of $\\text{H}^+$ ions and pH?",
+        "response_len": 409,
+        "duration_ms": 18234,
+        "doubt_session_id": "3f69f63e-8829-4bba-b59e-62df5364f950",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 10,
+        "subject": "Chemistry",
+        "prompt": "Half-life of first-order reaction with k=0.1 /min?",
+        "response": "Right \u2014 for calculating the pH of a 0.01 M HCl solution, start by writing the dissociation of HCl in water:\n\n$$\n\\text{HCl} \\rightarrow \\text{H}^+ + \\text{Cl}^-\n$$\nSince HCl is a strong acid, it dissociates completely, so the concentration of $\\text{H}^+$ ions equals the initial concentration of HCl, which is 0.01 M. The formula to calculate pH is:\n\n$$\n\\text{pH} = -\\log[\\text{H}^+]\n$$\nSet up the expression with the given concentration:\n\n$$\n\\text{pH} = -\\log(0.01)\n$$\nCan you substitute the values and tell me what you get?",
+        "response_len": 525,
+        "duration_ms": 23772,
+        "doubt_session_id": "3f69f63e-8829-4bba-b59e-62df5364f950",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 11,
+        "subject": "Chemistry",
+        "prompt": "IUPAC of [Co(NH3)4Cl2]Cl?",
+        "response": "You've put in a good effort so far. Now please provide your final answer along full reasoning for the pH calculation of the 0.01 M HCl solution before the solution is revealed.",
+        "response_len": 176,
+        "duration_ms": 9840,
+        "doubt_session_id": "3f69f63e-8829-4bba-b59e-62df5364f950",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 12,
+        "subject": "Chemistry",
+        "prompt": "5 g NaCl (M=58.5) in 500 mL water \u2014 molarity?",
+        "response": "Certainly! Let's solve the problem of calculating the pH of a 0.01 M HCl solution step-by-step.\n\n---\n\n### Problem: Calculate the pH of 0.01 M HCl.\n\n---\n\n### Step 1: State the approach\n\nHCl is a **strong acid**, which means it **dissociates completely** in aqueous solution:\n\n$$\n\\text{HCl} \\rightarrow \\text{H}^+ + \\text{Cl}^-\n$$\nTherefore, the concentration of hydrogen ions $[\\text{H}^+]$ is equal to the initial concentration of HCl.\n\nThe pH is defined as:\n\n$$\n\\text{pH} = -\\log [\\text{H}^+]\n$$\nWe will use this formula to find the pH.\n\n---\n\n### Step 2: Setup the concentration of ions\n\nGiven:\n\n- Initial concentration of HCl = 0.01 M\n\nSince dissociation is complete:\n\n$$\n[\\text{H}^+] = 0.01 \\, \\text{M}\n$$\n---\n\n### Step 3: Calculate the pH\n\nCalculate the logarithm:\n\n$$\n\\text{pH} = -\\log (0.01)\n$$\nRecall that:\n\n$$\n0.01 = 10^{-2}\n$$\nTherefore:\n\n$$\n\\text{pH} = -\\log (10^{-2}) = -(-2) = 2\n$$\n---\n\n### Step 4: Verify the result\n\n- The pH value of 2 is less than 7, indicating an acidic solution, which is consistent with the presence of HCl.\n- The units are correct since pH is a dimensionless number.\n- The magnitude is reasonable for a 0.01 M strong acid solution.\n\n---\n\n### Step 5: Alternative method (optional)\n\nIf you did not know the direct dissociation, you could use the ionization constant $K_a$ for HCl, but since HCl is a strong acid, $K_a$ is very large and the dissociation is complete, so this step is unnecessary.\n\n---\n\n### **Final answer:**\n\n$$\n\\boxed{\n\\text{pH} = 2\n}\n$$\n---\n\n### Key takeaway:\n\nFor strong acids like HCl, the pH can be calculated directly from the molar concentration because they dissociate completely, making $[\\text{H}^+]$ equal to the acid concentration.\n\n---\n\nIf you want, I can help you with the next problem you mentioned about molarity of NaCl solution. Would you like to proceed?",
+        "response_len": 1823,
+        "duration_ms": 26703,
+        "doubt_session_id": "3f69f63e-8829-4bba-b59e-62df5364f950",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 13,
+        "subject": "Maths",
+        "prompt": "If sin(theta)=3/5 and theta is acute, find cos(2*theta).",
+        "response": "You know the identity that relates sine and cosine for the same angle, right. Since $\\sin \\theta = \\frac{3}{5}$ and $\\theta$ is acute, can you first find $\\cos \\theta$ using the Pythagorean identity?",
+        "response_len": 199,
+        "duration_ms": 28146,
+        "doubt_session_id": "1c257a2e-9ee9-45d0-ba91-ac3145e0c4ea",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 14,
+        "subject": "Maths",
+        "prompt": "Evaluate lim x->0 of sin(3x)/x.",
+        "response": "You want to find \n\n$$\n\\lim_{x \\to 0} \\frac{\\sin(3x)}{x}.\n$$\nYou know the standard limit \n\n$$\n\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1.\n$$ \n\nHow can you use this to rewrite the original limit so that the argument inside sine matches $x$?",
+        "response_len": 231,
+        "duration_ms": 31572,
+        "doubt_session_id": "7adf3f0d-c69a-4c44-a61e-b2b35f7a59bf",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 15,
+        "subject": "Maths",
+        "prompt": "Derivative of x^3 * ln(x)?",
+        "response": "You\u2019re looking to differentiate the function $f(x) = x^3 \\ln(x)$. Since this is a product of two functions, $x^3$ and $\\ln(x)$, which differentiation rule should you consider applying here?",
+        "response_len": 189,
+        "duration_ms": 32926,
+        "doubt_session_id": "1533a7e4-d17e-4c99-b07d-a81935d70721",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 16,
+        "subject": "Maths",
+        "prompt": "Evaluate integral of x*e^x dx.",
+        "response": "You want to find the integral of $x e^x \\, dx$. Since this is a product of two functions, integration by parts is the right method here. You recall the formula for integration by parts is\n\n$$\n\\int u \\, dv = uv - \\int v \\, du\n$$\nTo apply it, we must choose $u$ and $dv$ from $x$ and $e^x dx$. Which function do you think is best to set as $u$ so that $du$ gets simpler when differentiated?",
+        "response_len": 388,
+        "duration_ms": 31985,
+        "doubt_session_id": "49884c51-70d3-4d4b-abde-798807f49c96",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 17,
+        "subject": "Maths",
+        "prompt": "Determinant of [[2,3],[1,4]]?",
+        "response": "Let's focus on the matrix you gave: \n\n$$\nA = \\begin{pmatrix} 2 & 3 \\\\ 1 & 4 \\end{pmatrix}\n$$\nYou know the determinant of a 2\u00d72 matrix is calculated by multiplying the elements of the main diagonal and subtracting the product of the other diagonal elements. Can you write down that formula for this specific matrix?",
+        "response_len": 314,
+        "duration_ms": 30563,
+        "doubt_session_id": "1509d2d0-257f-4f8b-9cdc-68daa3906743",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 18,
+        "subject": "Maths",
+        "prompt": "P(sum=7) for two fair dice?",
+        "response": "You switched from the determinant question to a probability question about dice sums, which is unrelated here. For the determinant of the matrix \n\n$$\n\\begin{pmatrix} 2 & 3 \\\\ 1 & 4 \\end{pmatrix},\n$$\nfocus on the specific formula for a 2\u00d72 determinant, which involves multiplying elements across the diagonals and subtracting. What exactly is the formula for the determinant of a 2\u00d72 matrix?",
+        "response_len": 390,
+        "duration_ms": 18138,
+        "doubt_session_id": "1509d2d0-257f-4f8b-9cdc-68daa3906743",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "HIGH",
+        "prompt_idx": 19,
+        "subject": "Maths",
+        "prompt": "If z = 3 + 4i, find |z| and arg(z).",
+        "response": "Let's focus on your complex number $z = 3 + 4i$. You want to find two things: its magnitude $|z|$ and its argument $\\arg(z)$. \n\nYou know that the magnitude is like the distance from the origin to the point $(3,4)$ in the complex plane. How would you use the coordinates 3 and 4 to find that distance?",
+        "response_len": 300,
+        "duration_ms": 30430,
+        "doubt_session_id": "5bfd3ca3-659f-42bb-ab1d-dd624af820c6",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      }
+    ],
+    "MEDIUM": [
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 0,
+        "subject": "Physics",
+        "prompt": "A ball is thrown upward with 20 m/s. How high does it go? g=10.",
+        "response": "Since the ball is thrown upward with an initial velocity of 20 m/s and gravity pulls it down at 10 m/s\u00b2, the ball will slow down until its velocity becomes zero at the highest point.\n\nTo find how high it goes, which physical quantity becomes zero at the maximum height during upward motion?",
+        "response_len": 290,
+        "duration_ms": 28955,
+        "doubt_session_id": "5246506a-1705-4caa-988e-cdbb13efa925",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 1,
+        "subject": "Physics",
+        "prompt": "A 5 kg block on a 30 degree frictionless incline. Find the acceleration.",
+        "response": "You\u2019ve got a 5 kg block on a 30\u00b0 frictionless incline. Since there\u2019s no friction, only gravity and the normal force act on the block. You probably know gravity acts straight down with force $mg$. To find the block\u2019s acceleration down the slope, you need to figure out which component of gravity actually pulls it along the incline.\n\nHow would you resolve the gravitational force into components relative to the incline?",
+        "response_len": 419,
+        "duration_ms": 29081,
+        "doubt_session_id": "8af6235d-b298-472d-9e7d-7c0c37e6f45e",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 2,
+        "subject": "Physics",
+        "prompt": "State Newton's second law in one line.",
+        "response": "Since you're just starting Laws of Motion, let\u2019s connect to something familiar: when you push a bicycle harder, it speeds up more, right. That means the force you apply relates directly to how quickly it accelerates. Now, can you tell me what happens to the acceleration if the bicycle\u2019s mass suddenly doubles but you apply the same force?",
+        "response_len": 339,
+        "duration_ms": 31505,
+        "doubt_session_id": "2ba17734-71c5-475b-88ee-b83225d561ed",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 3,
+        "subject": "Physics",
+        "prompt": "Moment of inertia of a uniform rod of length L, mass M, about its center?",
+        "response": "You mentioned the moment of inertia of a rod, which relates to rotational motion, but Newton's second law is about how forces cause acceleration in straight-line motion. For this problem, focus on the connection between force, mass, and acceleration of an object moving linearly. What do you think happens to the acceleration of an object if the force applied to it increases while its mass stays the same?",
+        "response_len": 406,
+        "duration_ms": 18727,
+        "doubt_session_id": "2ba17734-71c5-475b-88ee-b83225d561ed",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 4,
+        "subject": "Physics",
+        "prompt": "Electric field due to a point charge 2 microcoulombs at 10 cm.",
+        "response": "Right \u2014 Newton's second law connects force, mass, and acceleration in a precise way. For any object, the net force $\\vec{F}$ acting on it causes it to accelerate with acceleration $\\vec{a}$, and the object's mass $m$ resists changes in motion.\n\nTo set up this problem structurally, imagine an object of mass $m$ experiencing a force $\\vec{F}$. The law states:\n\n$$\n\\vec{F} = m \\vec{a}\n$$\nHere, $\\vec{F}$ and $\\vec{a}$ are vectors pointing in the same direction. The first step is to identify the force and mass explicitly, then express acceleration as:\n\n$$\n\\vec{a} = \\frac{\\vec{F}}{m}\n$$\nYou can now substitute any given force and mass values to find acceleration, or simply state the proportional relationship. Can you write this equation with your own symbols and explain what each term means?",
+        "response_len": 794,
+        "duration_ms": 18748,
+        "doubt_session_id": "2ba17734-71c5-475b-88ee-b83225d561ed",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 5,
+        "subject": "Physics",
+        "prompt": "A stone of mass 1 kg whirled in a horizontal circle of radius 0.5 m at 4 m/s. Tension?",
+        "response": "You have shown consistent engagement and effort throughout this process. Now, please provide your final calculated answer for the tension in the string along with your complete reasoning and explanation.",
+        "response_len": 203,
+        "duration_ms": 11134,
+        "doubt_session_id": "2ba17734-71c5-475b-88ee-b83225d561ed",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 6,
+        "subject": "Physics",
+        "prompt": "Escape velocity from Earth's surface?",
+        "response": "Certainly! Here is the complete step-by-step solution for stating Newton's second law in one line, with full explanation and verification.\n\n---\n\n### Step 1: State the approach\n\nNewton's second law of motion is a fundamental principle that connects the net force acting on an object to the acceleration it experiences. It applies because it quantifies how forces cause changes in motion, which is central to classical mechanics.\n\nThe law states:\n\n$$\n\\text{Net force on an object} = \\text{mass of the object} \\times \\text{acceleration of the object}\n$$\nMathematically, this is expressed as:\n\n$$\n\\vec{F} = m \\vec{a}\n$$\nwhere  \n- $\\vec{F}$ is the net force vector (in newtons, N),  \n- $m$ is the mass scalar (in kilograms, kg),  \n- $\\vec{a}$ is the acceleration vector (in meters per second squared, m/s$^2$).\n\n---\n\n### Step 2: Draw the setup (conceptual)\n\nImagine an object of mass $m$ placed on a frictionless surface. When a net force $\\vec{F}$ acts on it, the object accelerates in the direction of the force. The free-body diagram would show a single arrow representing the net force, and the resulting acceleration vector points in the same direction.\n\n---\n\n### Step 3: Show every step with clear working\n\n- The law is vectorial, so both force and acceleration have direction.\n- Mass $m$ is a measure of the object's inertia (resistance to change in motion).\n- The acceleration $\\vec{a}$ is the rate of change of velocity.\n\nFrom the law:\n\n$$\n\\vec{F} = m \\vec{a}\n$$\nRearranging for acceleration:\n\n$$\n\\vec{a} = \\frac{\\vec{F}}{m}\n$$\nThis means acceleration is directly proportional to the net force and inversely proportional to the mass.\n\n---\n\n### Step 4: Calculate (example verification)\n\nSuppose a force of 10 N acts on a mass of 2 kg.\n\nAcceleration magnitude:\n\n$$\na = \\frac{F}{m} = \\frac{10\\, \\text{N}}{2\\, \\text{kg}} = 5\\, \\text{m/s}^2\n$$\nUnits check:\n\n- Force unit: 1 N = 1 kg\u00b7m/s$^2$\n- So, dividing N by kg gives m/s$^2$, which is acceleration unit. Correct.\n\n---\n\n### Step 5: Verify (sanity check)\n\n- Units are consistent.\n- Sign and direction: acceleration vector points in the direction of net force.\n- Magnitude makes physical sense: more force or less mass means more acceleration.\n\n---\n\n### Step 6: Alternative method (brief mention)\n\nNewton's second law can also be expressed in terms of momentum $\\vec{p} = m\\vec{v}$ as:\n\n$$\n\\vec{F} = \\frac{d\\vec{p}}{dt}\n$$\nFor constant mass, this reduces to $m \\vec{a}$. This form is useful for variable mass systems.\n\n---\n\n### Final answer (one line statement)\n\n**Newton's second law of motion states:**\n\n$$\n\\boxed{\n\\vec{F} = m \\vec{a}\n}\n$$\n---\n\n### Key takeaway:\n\nNewton's second law quantitatively relates force, mass, and acceleration, forming the foundation for analyzing and predicting the motion of objects under forces.\n\n---\n\nIf you want, I can help you apply this law to any specific problem or scenario next!",
+        "response_len": 2867,
+        "duration_ms": 27714,
+        "doubt_session_id": "2ba17734-71c5-475b-88ee-b83225d561ed",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 7,
+        "subject": "Chemistry",
+        "prompt": "Why is BF3 planar but NH3 pyramidal?",
+        "response": "You\u2019re asking why BF3 is planar but NH3 is pyramidal. You know from VSEPR theory that molecular shape depends on electron pairs around the central atom, including lone pairs. Let\u2019s think: How many bonding pairs and lone pairs does boron have in BF3 compared to nitrogen in NH3?",
+        "response_len": 277,
+        "duration_ms": 29093,
+        "doubt_session_id": "80e06b87-b698-48bd-a350-227a74ee9cca",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 8,
+        "subject": "Chemistry",
+        "prompt": "Calculate pH of 0.01 M HCl.",
+        "response": "Since you're working on calculating the pH of 0.01 M HCl, let's connect this to what you know about strong acids. HCl is a strong acid, which means it fully dissociates in water. That means the concentration of hydrogen ions $[\\text{H}^+]$ in the solution is equal to the concentration of the acid itself.\n\nGiven this, what would be the concentration of $[\\text{H}^+]$ ions in the solution?",
+        "response_len": 390,
+        "duration_ms": 31273,
+        "doubt_session_id": "b794e478-cbf8-4c33-a661-8ce472d91c5b",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 9,
+        "subject": "Chemistry",
+        "prompt": "Difference between SN1 and SN2 with examples.",
+        "response": "I see what you're thinking \u2014 SN1 and SN2 are types of organic reaction mechanisms, which is a different topic from calculating pH. For this problem, focus on the fact that HCl is a strong acid that fully dissociates in water, releasing hydrogen ions directly. \n\nGiven that, what would be the concentration of hydrogen ions $[\\text{H}^+]$ in a 0.01 M HCl solution?",
+        "response_len": 363,
+        "duration_ms": 19108,
+        "doubt_session_id": "b794e478-cbf8-4c33-a661-8ce472d91c5b",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 10,
+        "subject": "Chemistry",
+        "prompt": "Half-life of first-order reaction with k=0.1 /min?",
+        "response": "Right \u2014 focusing on the pH calculation for 0.01 M HCl, remember that HCl is a strong acid and fully dissociates in water:\n\n$$\n\\text{HCl} \\rightarrow \\text{H}^+ + \\text{Cl}^-\n$$\nThis means the concentration of hydrogen ions $[\\text{H}^+]$ equals the molarity of HCl, which is 0.01 M here. The pH is calculated using the formula:\n\n$$\n\\text{pH} = -\\log [\\text{H}^+]\n$$\nSo, the first step is to substitute $[\\text{H}^+] = 0.01$ into the formula:\n\n$$\n\\text{pH} = -\\log (0.01)\n$$\nCan you substitute the values and tell me what you get for the pH?",
+        "response_len": 540,
+        "duration_ms": 19543,
+        "doubt_session_id": "b794e478-cbf8-4c33-a661-8ce472d91c5b",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 11,
+        "subject": "Chemistry",
+        "prompt": "IUPAC of [Co(NH3)4Cl2]Cl?",
+        "response": "You've put in a good effort so far. Now, please provide your final calculated answer along your full reasoning for the pH of 0.01 M HCl before the solution is revealed.",
+        "response_len": 168,
+        "duration_ms": 13015,
+        "doubt_session_id": "b794e478-cbf8-4c33-a661-8ce472d91c5b",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 12,
+        "subject": "Chemistry",
+        "prompt": "5 g NaCl (M=58.5) in 500 mL water \u2014 molarity?",
+        "response": "Let's solve the problem step-by-step with full clarity.\n\n---\n\n### Problem: Calculate the pH of 0.01 M HCl.\n\n---\n\n### Step 1: State the approach\n\nHCl is a **strong acid**, meaning it completely dissociates in water:\n\n$$\n\\text{HCl} \\rightarrow \\text{H}^+ + \\text{Cl}^-\n$$\nBecause of this complete dissociation, the concentration of hydrogen ions $[\\text{H}^+]$ in the solution equals the molarity of HCl.\n\nThe pH is defined as:\n\n$$\n\\text{pH} = -\\log [\\text{H}^+]\n$$\n---\n\n### Step 2: Identify the concentration of hydrogen ions\n\nSince HCl fully dissociates,\n\n$$\n[\\text{H}^+] = 0.01\\, \\text{M}\n$$\n---\n\n### Step 3: Calculate pH\n\nSubstitute $[\\text{H}^+] = 0.01$ into the pH formula:\n\n$$\n\\text{pH} = -\\log(0.01)\n$$\nRecall that $0.01 = 10^{-2}$, so:\n\n$$\n\\text{pH} = -\\log(10^{-2}) = -(-2) = 2\n$$\n---\n\n### Step 4: Verify units and sanity check\n\n- The pH is a **unitless** quantity by definition.\n- Since the solution is acidic, the pH should be less than 7.\n- A 0.01 M strong acid solution having pH = 2 is consistent with expectations.\n\n---\n\n### Alternative method (brief)\n\nIf you didn't recognize the power of 10 immediately, you could use a calculator:\n\n$$\n\\text{pH} = -\\log(0.01) = -(-2) = 2\n$$\n---\n\n### Final answer:\n\n$$\n\\boxed{\n\\text{pH} = 2\n}\n$$\n---\n\n### Key takeaway:\n\nFor strong acids like HCl that completely dissociate, the pH is directly calculated as the negative logarithm of the acid's molarity.\n\n---\n\nIf you'd like, I can help you with related problems such as pH of weak acids or bases next!",
+        "response_len": 1500,
+        "duration_ms": 22986,
+        "doubt_session_id": "b794e478-cbf8-4c33-a661-8ce472d91c5b",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 13,
+        "subject": "Maths",
+        "prompt": "If sin(theta)=3/5 and theta is acute, find cos(2*theta).",
+        "response": "Let's take this one step at a time. You know $\\sin \\theta = \\frac{3}{5}$ and that $\\theta$ is acute, so $\\theta$ lies between $0^\\circ$ and $90^\\circ$. To find $\\cos(2\\theta)$, recall the double angle formulas for cosine:\n\n$$\n\\cos(2\\theta) = 1 - 2\\sin^2 \\theta \\quad \\text{or} \\quad \\cos(2\\theta) = 2\\cos^2 \\theta - 1.\n$$\nSince you have $\\sin \\theta$, which formula do you think would be easier to use here, and what would be your next step to apply it?",
+        "response_len": 453,
+        "duration_ms": 28946,
+        "doubt_session_id": "2892a805-c79b-4407-b815-5ad0ab62e287",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 14,
+        "subject": "Maths",
+        "prompt": "Evaluate lim x->0 of sin(3x)/x.",
+        "response": "You\u2019re looking at the limit as $x \\to 0$ of the expression $\\frac{\\sin(3x)}{x}$. You might recall a fundamental limit often used in such problems: $\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$. How could you transform or rewrite $\\frac{\\sin(3x)}{x}$ to use this known limit?",
+        "response_len": 266,
+        "duration_ms": 31717,
+        "doubt_session_id": "da322e10-9b62-4c0f-981b-9a982182e68e",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 15,
+        "subject": "Maths",
+        "prompt": "Derivative of x^3 * ln(x)?",
+        "response": "You\u2019re working with the function \\( f(x) = x^3 \\ln(x) \\), which is a product of two functions: \\( x^3 \\) and \\( \\ln(x) \\). Since it\u2019s a product, do you recall which differentiation rule applies here, and how it generally works?",
+        "response_len": 227,
+        "duration_ms": 32870,
+        "doubt_session_id": "64eaaa6b-a386-480a-b3f0-0dbc62e1bd0c",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 16,
+        "subject": "Maths",
+        "prompt": "Evaluate integral of x*e^x dx.",
+        "response": "You\u2019re working on the integral of $x e^x\\, dx$, which is a product of two functions: an algebraic function $x$ and an exponential function $e^x$. You know from your current level that integration by parts is a useful technique for such cases, where you split the integral into parts to simplify it. \n\nIntegration by parts uses the formula \n$$\n\\int u\\, dv = uv - \\int v\\, du.\n$$\nCan you identify which part of $x e^x$ you would choose as $u$ and which as $dv$ for the integration by parts?",
+        "response_len": 488,
+        "duration_ms": 31883,
+        "doubt_session_id": "f0023f16-5850-4796-8d97-e1b3e6068fc1",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 17,
+        "subject": "Maths",
+        "prompt": "Determinant of [[2,3],[1,4]]?",
+        "response": "Let\u2019s focus on your matrix:\n\n$$\n\\begin{bmatrix}\n2 & 3 \\\\\n1 & 4\n\\end{bmatrix}\n$$\nYou know the determinant for a $2 \\times 2$ matrix $A = \\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}$ is calculated using the formula $|A| = ad - bc$. \n\nWhat values correspond to $a$, $b$, $c$, and $d$ in your matrix, and how would you apply the formula to find its determinant?",
+        "response_len": 358,
+        "duration_ms": 31035,
+        "doubt_session_id": "16127f05-b7e0-4fa8-8c73-e6840d20bd8c",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 18,
+        "subject": "Maths",
+        "prompt": "P(sum=7) for two fair dice?",
+        "response": "I see what you're thinking \u2014 but the problem you asked about earlier is about the determinant of a matrix, which is a fixed number calculated from the elements of that matrix, not a probability question involving dice. \n\nFor your matrix, the determinant depends on multiplying and subtracting specific pairs of its elements. Can you identify which elements you multiply and subtract to find the determinant of the matrix \n\n$$\n\\begin{bmatrix}\n2 & 3 \\\\\n1 & 4\n\\end{bmatrix}?\n$$",
+        "response_len": 474,
+        "duration_ms": 18115,
+        "doubt_session_id": "16127f05-b7e0-4fa8-8c73-e6840d20bd8c",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "MEDIUM",
+        "prompt_idx": 19,
+        "subject": "Maths",
+        "prompt": "If z = 3 + 4i, find |z| and arg(z).",
+        "response": "You\u2019re working with the complex number \\( z = 3 + 4i \\). To find its magnitude \\(|z|\\), think about its real part (3) and imaginary part (4) as coordinates on a plane. How would you find the length of the line segment from the origin to the point (3,4) using these values?",
+        "response_len": 272,
+        "duration_ms": 30553,
+        "doubt_session_id": "57d6f031-8ced-49d0-863e-3a3d58b968c8",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      }
+    ],
+    "LOW": [
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 0,
+        "subject": "Physics",
+        "prompt": "A ball is thrown upward with 20 m/s. How high does it go? g=10.",
+        "response": "Imagine you throw a ball straight up in the air with a speed of 20 m/s. As it rises, gravity pulls it down, slowing it until it stops for a moment at the highest point before falling back. At that highest point, the ball\u2019s upward velocity is zero because it\u2019s about to change direction.\n\nNow, thinking about this, what would be the velocity of the ball exactly at the peak of its upward journey?",
+        "response_len": 395,
+        "duration_ms": 29899,
+        "doubt_session_id": "4b634ae7-e5c0-471b-bd1c-febd8cfdf7f2",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 1,
+        "subject": "Physics",
+        "prompt": "A 5 kg block on a 30 degree frictionless incline. Find the acceleration.",
+        "response": "Imagine you have that 5 kg block sitting on a smooth slide inclined at 30 degrees \u2014 no friction to hold it back. Gravity is pulling it straight down, but because the slide is tilted, the block doesn\u2019t just fall vertically; it tends to slide down along the incline.\n\nTo figure out the acceleration, think about how gravity acts on the block and how this force can be split into two parts: one perpendicular to the slide (which the slide pushes back against) and one parallel to the slide (which makes the block slide down).\n\nWhat do you think is the component of the gravitational force that actually causes the block to accelerate down the incline?",
+        "response_len": 648,
+        "duration_ms": 29922,
+        "doubt_session_id": "11c869a6-b2fd-47c2-ad56-6eae760f01bc",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 2,
+        "subject": "Physics",
+        "prompt": "State Newton's second law in one line.",
+        "response": "Imagine pushing a toy car on the floor \u2014 how hard you push and how heavy the car is together decide how fast it speeds up. Newton\u2019s second law tells us exactly that relationship: the force you apply to an object depends on its mass and how quickly you want it to accelerate. \n\nNow, if you had to express this idea in one line, using symbols, how would you relate force ($F$), mass ($m$), and acceleration ($a$)?",
+        "response_len": 411,
+        "duration_ms": 31089,
+        "doubt_session_id": "855c1944-a02b-4dc1-a360-28cad8a8266f",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 3,
+        "subject": "Physics",
+        "prompt": "Moment of inertia of a uniform rod of length L, mass M, about its center?",
+        "response": "Not quite \u2014 the moment of inertia of a rod is a different concept related to rotation, not Newton\u2019s second law about force and acceleration. Newton\u2019s second law focuses on how a force causes a change in an object\u2019s motion, specifically how force, mass, and acceleration relate in a straight line.\n\nIf you think about pushing a toy car, which property tells you how hard it is to speed up the car when you apply a force: the car\u2019s mass or its shape?",
+        "response_len": 448,
+        "duration_ms": 18991,
+        "doubt_session_id": "855c1944-a02b-4dc1-a360-28cad8a8266f",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 4,
+        "subject": "Physics",
+        "prompt": "Electric field due to a point charge 2 microcoulombs at 10 cm.",
+        "response": "Right \u2014 let\u2019s refocus on Newton\u2019s second law and how it connects force, mass, and acceleration. The law states that the net force $\\vec{F}$ acting on an object equals the mass $m$ of the object multiplied by its acceleration $\\vec{a}$. This is written as\n\n$$\n\\vec{F} = m \\vec{a}\n$$\nHere, $\\vec{F}$ and $\\vec{a}$ are vectors, meaning they have both magnitude and direction.\n\nTo set up this problem structurally, imagine a single object (like your toy car) with mass $m$. If you apply a force $\\vec{F}$, the object will accelerate in the direction of that force. So, the first step is to identify the force causing acceleration and the mass of the object. Then you relate them using the formula above.\n\nSince the problem is conceptual, write down the law as it applies to any object:\n\n$$\n\\text{Force } (\\vec{F}) = \\text{mass } (m) \\times \\text{acceleration } (\\vec{a})\n$$\nCan you now express this relationship in a single line with symbols?",
+        "response_len": 938,
+        "duration_ms": 22312,
+        "doubt_session_id": "855c1944-a02b-4dc1-a360-28cad8a8266f",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 5,
+        "subject": "Physics",
+        "prompt": "A stone of mass 1 kg whirled in a horizontal circle of radius 0.5 m at 4 m/s. Tension?",
+        "response": "You have put in a commendable effort to engage with the problem so far. Now, please provide your final calculated answer for the tension in the string along with your complete reasoning as your required attempt before the solution is revealed.",
+        "response_len": 243,
+        "duration_ms": 11380,
+        "doubt_session_id": "855c1944-a02b-4dc1-a360-28cad8a8266f",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 6,
+        "subject": "Physics",
+        "prompt": "Escape velocity from Earth's surface?",
+        "response": "Certainly! Here is the complete step-by-step solution for stating Newton's second law in one line:\n\n---\n\n### 1. State the approach\n\nNewton's second law relates the net force acting on an object to its mass and acceleration. It applies because it explains how forces cause changes in motion, which is fundamental in classical mechanics.\n\n---\n\n### 2. Draw the setup (conceptual)\n\nImagine an object (like a toy car) on a frictionless surface. A force $\\vec{F}$ acts on it, causing it to accelerate $\\vec{a}$. The object's resistance to acceleration is characterized by its mass $m$.\n\nThe free-body diagram is simple:\n\n- One vector $\\vec{F}$ pointing in the direction of applied force.\n- The acceleration vector $\\vec{a}$ points in the same direction.\n- Mass $m$ is a scalar property of the object.\n\n---\n\n### 3. Show every step with clear working\n\nNewton's second law states:\n\n- The net force $\\vec{F}$ on an object is proportional to the acceleration $\\vec{a}$ it experiences.\n- The constant of proportionality is the mass $m$ of the object.\n\nMathematically:\n\n$$\n\\vec{F} = m \\vec{a}\n$$\nHere,  \n- $\\vec{F}$ is the net external force (in newtons, N),  \n- $m$ is the mass of the object (in kilograms, kg),  \n- $\\vec{a}$ is the acceleration (in meters per second squared, m/s$^2$).\n\n---\n\n### 4. Calculate (dimensional check)\n\nCheck units on both sides:\n\n- Force unit: Newton (N) = kg\u00b7m/s$^2$  \n- Right side units: $m \\times a = \\text{kg} \\times \\text{m/s}^2 = \\text{kg\u00b7m/s}^2$\n\nUnits match perfectly, confirming dimensional consistency.\n\n---\n\n### 5. Verify (sanity check)\n\n- The force and acceleration vectors point in the same direction.\n- Larger mass means more force is needed for the same acceleration.\n- Zero net force means zero acceleration (object stays at rest or moves at constant velocity).\n\n---\n\n### 6. Alternative method (brief)\n\nSometimes expressed as:\n\n$$\n\\vec{a} = \\frac{\\vec{F}}{m}\n$$\nwhich shows acceleration is the force per unit mass.\n\n---\n\n### Key takeaway\n\nNewton's second law, expressed as\n\n$$\n\\boxed{\n\\vec{F} = m \\vec{a}\n}\n$$\nis the fundamental principle connecting force, mass, and acceleration, explaining how forces change an object's motion.\n\n---\n\nIf you want, I can help you apply this law to specific problems next! Would you like to try?",
+        "response_len": 2261,
+        "duration_ms": 24581,
+        "doubt_session_id": "855c1944-a02b-4dc1-a360-28cad8a8266f",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 7,
+        "subject": "Chemistry",
+        "prompt": "Why is BF3 planar but NH3 pyramidal?",
+        "response": "Let\u2019s take this one step at a time. Think about the central atom in both BF3 and NH3. Boron in BF3 has three bonds and no lone pairs, while nitrogen in NH3 has three bonds and one lone pair. How do you think the presence or absence of lone pairs around the central atom affects the shape of the molecule?",
+        "response_len": 304,
+        "duration_ms": 30046,
+        "doubt_session_id": "ad8f5bf5-ee78-4f71-b5eb-f0d4ac68e6a8",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 8,
+        "subject": "Chemistry",
+        "prompt": "Calculate pH of 0.01 M HCl.",
+        "response": "Let\u2019s think about what pH really measures: it tells you how acidic a solution is based on the concentration of hydrogen ions ($\\mathrm{H^+}$) present. Since HCl is a strong acid, it completely breaks apart into $\\mathrm{H^+}$ and $\\mathrm{Cl^-}$ ions in water. So, if you start with 0.01 M HCl, what would be the concentration of $\\mathrm{H^+}$ ions in the solution?",
+        "response_len": 366,
+        "duration_ms": 31543,
+        "doubt_session_id": "93b31ab4-3167-4e1c-9ef9-1c4ed08494a7",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 9,
+        "subject": "Chemistry",
+        "prompt": "Difference between SN1 and SN2 with examples.",
+        "response": "I see what you're thinking \u2014 but the difference between SN1 and SN2 reactions isn't related to calculating pH of HCl. Here, the key idea is that HCl is a strong acid and fully dissociates into $\\mathrm{H^+}$ and $\\mathrm{Cl^-}$ ions in water. So, the concentration of $\\mathrm{H^+}$ ions is directly equal to the molarity of HCl.\n\nWhat would be the concentration of $\\mathrm{H^+}$ ions in a 0.01 M HCl solution?",
+        "response_len": 411,
+        "duration_ms": 23286,
+        "doubt_session_id": "93b31ab4-3167-4e1c-9ef9-1c4ed08494a7",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 10,
+        "subject": "Chemistry",
+        "prompt": "Half-life of first-order reaction with k=0.1 /min?",
+        "response": "Let's refocus on calculating the pH of 0.01 M HCl. Since HCl is a strong acid, it fully dissociates in water:\n\n$$\n\\mathrm{HCl} \\rightarrow \\mathrm{H^+} + \\mathrm{Cl^-}\n$$\nThis means the concentration of $\\mathrm{H^+}$ ions is equal to the initial concentration of HCl, which is 0.01 M. The pH is then calculated using the formula:\n\n$$\n\\mathrm{pH} = -\\log [\\mathrm{H^+}]\n$$\nSubstitute $[\\mathrm{H^+}] = 0.01$ M into this formula to set up the problem. Can you substitute the values and tell me what you get for the pH?",
+        "response_len": 517,
+        "duration_ms": 18540,
+        "doubt_session_id": "93b31ab4-3167-4e1c-9ef9-1c4ed08494a7",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 11,
+        "subject": "Chemistry",
+        "prompt": "IUPAC of [Co(NH3)4Cl2]Cl?",
+        "response": "You've shown persistence in engaging with the questions presented. Now, please provide your final calculated answer for the pH of 0.01 M HCl along with your complete reasoning as your required attempt before the solution is revealed.",
+        "response_len": 233,
+        "duration_ms": 10175,
+        "doubt_session_id": "93b31ab4-3167-4e1c-9ef9-1c4ed08494a7",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 12,
+        "subject": "Chemistry",
+        "prompt": "5 g NaCl (M=58.5) in 500 mL water \u2014 molarity?",
+        "response": "Certainly! Let's solve the problem of calculating the pH of 0.01 M HCl completely, step-by-step.\n\n---\n\n### Problem: Calculate the pH of 0.01 M HCl solution.\n\n---\n\n### Step 1: Understand the concept and approach\n\n- **Concept:** pH measures the acidity of a solution, defined as the negative logarithm of the hydrogen ion concentration.\n- **Formula:** \n  \n$$\n\\mathrm{pH} = -\\log [\\mathrm{H^+}]\n$$- **Key fact:** HCl is a strong acid, meaning it completely dissociates in water:\n  \n$$\n\\mathrm{HCl} \\rightarrow \\mathrm{H^+} + \\mathrm{Cl^-}\n$$- This implies the concentration of $\\mathrm{H^+}$ ions equals the initial concentration of HCl.\n\n---\n\n### Step 2: Identify the concentration of $\\mathrm{H^+}$ ions\n\nGiven:\n$$\n[\\mathrm{HCl}] = 0.01\\, \\mathrm{M}\n$$\nSince HCl completely dissociates,\n$$\n[\\mathrm{H^+}] = 0.01\\, \\mathrm{M}\n$$\n---\n\n### Step 3: Calculate pH\n\nUsing the formula:\n$$\n\\mathrm{pH} = -\\log [\\mathrm{H^+}] = -\\log (0.01)\n$$\nRecall that:\n$$\n0.01 = 10^{-2}\n$$\nTherefore:\n$$\n\\mathrm{pH} = -\\log (10^{-2}) = -(-2) = 2\n$$\n---\n\n### Step 4: Verify the result\n\n- The pH scale ranges from 0 (very acidic) to 14 (very basic), with 7 neutral.\n- Since 0.01 M HCl is acidic and strong, pH = 2 is reasonable.\n- Units check: pH is unitless, and the log of concentration (mol/L) is valid.\n\n---\n\n### Alternative method (brief)\n\nYou could also use the relation:\n$$\n\\mathrm{pH} = -\\log [\\mathrm{H^+}]\n$$directly with a calculator to confirm the value.\n\n---\n\n### Final Answer:\n\n$$\n\\boxed{\n\\mathrm{pH} = 2\n}\n$$\n---\n\n### Key takeaway:\n\nFor strong acids like HCl, which fully dissociate, the pH is simply the negative logarithm of their molar concentration, providing a straightforward way to measure acidity.\n\n---\n\nIf you'd like, we can now explore related concepts like pOH or weak acid dissociation! Would you like to proceed?",
+        "response_len": 1815,
+        "duration_ms": 21938,
+        "doubt_session_id": "93b31ab4-3167-4e1c-9ef9-1c4ed08494a7",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 13,
+        "subject": "Maths",
+        "prompt": "If sin(theta)=3/5 and theta is acute, find cos(2*theta).",
+        "response": "Let\u2019s think of this problem like a right triangle, since you know $\\sin \\theta = \\frac{3}{5}$ and that $\\theta$ is acute (between $0^\\circ$ and $90^\\circ$). Imagine the triangle\u2019s opposite side is 3 units and hypotenuse is 5 units. To find $\\cos(2\\theta)$, you\u2019ll need the cosine of $\\theta$ first.\n\nWhich trigonometric identity or theorem can help you find $\\cos \\theta$ from $\\sin \\theta = \\frac{3}{5}$?",
+        "response_len": 405,
+        "duration_ms": 29874,
+        "doubt_session_id": "aaee5fdf-3639-4ffb-b104-91dbed2dafc0",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 14,
+        "subject": "Maths",
+        "prompt": "Evaluate lim x->0 of sin(3x)/x.",
+        "response": "Let's think of the sine function like the height of a wave that starts very flat near zero. When $x$ is very small, $\\sin x$ behaves almost like $x$ itself, because the wave is just beginning to rise. This idea helps us understand limits involving sine near zero.\n\nIn your problem, we have $\\lim_{x \\to 0} \\frac{\\sin(3x)}{x}$. What if we try to rewrite the expression so that inside the sine function and outside, the terms match to use the known limit $\\lim_{t \\to 0} \\frac{\\sin t}{t} = 1$. How would you express $\\frac{\\sin(3x)}{x}$ to involve $\\frac{\\sin(3x)}{3x}$ instead?",
+        "response_len": 576,
+        "duration_ms": 36303,
+        "doubt_session_id": "a278ab47-363b-4e45-bb49-42076f6fe247",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 15,
+        "subject": "Maths",
+        "prompt": "Derivative of x^3 * ln(x)?",
+        "response": "Imagine you have two things multiplied together: $x^3$ (like the volume of a cube with side $x$) and $\\ln(x)$ (the natural logarithm, which grows slowly as $x$ increases). To find the derivative of their product, you need to think about how the rate of change happens when two things multiply.\n\nWhat rule do you think applies when you differentiate a product of two functions like $x^3$ and $\\ln(x)$?",
+        "response_len": 400,
+        "duration_ms": 32776,
+        "doubt_session_id": "4eb54e3d-3936-41fc-a269-fcdf8b078350",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 16,
+        "subject": "Maths",
+        "prompt": "Evaluate integral of x*e^x dx.",
+        "response": "Imagine you have to find the total \"area\" under a curve that looks like the product of two things: one part grows linearly like $x$, and the other grows exponentially like $e^x$. When you multiply these, the usual simple integration rules don\u2019t work directly because it\u2019s a product of two different types of functions.\n\nTo solve this, you need a method called integration by parts, which is like undoing the product rule of differentiation. It splits the integral of a product into parts easier to handle.\n\nGiven your integral $\\int x e^x \\, dx$, which function would you choose as $u$ to differentiate, and which as $dv$ to integrate in the formula\n\n$$\n\\int u\\, dv = uv - \\int v\\, du\\,?\n$$",
+        "response_len": 690,
+        "duration_ms": 44167,
+        "doubt_session_id": "f35dfed4-9f69-41cf-8047-ac5aae5d6343",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 17,
+        "subject": "Maths",
+        "prompt": "Determinant of [[2,3],[1,4]]?",
+        "response": "Imagine you have a small 2-by-2 grid, like the corners of a tiny rectangular window. The determinant tells you a special number related to how this window can be stretched or flipped.\n\nFor a 2\u00d72 matrix like \n$$\n\\begin{pmatrix}\n2 & 3 \\\\\n1 & 4 \n\\end{pmatrix},\n$$ \nwhat operation do you perform on the elements in the first row and the second row to find the determinant?",
+        "response_len": 368,
+        "duration_ms": 33347,
+        "doubt_session_id": "18e036c2-1aa0-4597-ab4d-732c1b06a169",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 18,
+        "subject": "Maths",
+        "prompt": "P(sum=7) for two fair dice?",
+        "response": "I see what you're thinking \u2014 but be careful, the determinant of a matrix is not related to probability like the sum of dice rolls. Instead, it's a specific number calculated from the elements of the matrix that tells you about scaling or flipping in geometry. For the matrix you gave, focus on how the numbers in the first row and second row combine in a certain way to give that special number.\n\nWhat two multiplication operations involving the elements of the first row and second row might you try first?",
+        "response_len": 507,
+        "duration_ms": 18379,
+        "doubt_session_id": "18e036c2-1aa0-4597-ab4d-732c1b06a169",
+        "intent": "continuation",
+        "mentor_mode": "COUNSELOR"
+      },
+      {
+        "persona_tag": "LOW",
+        "prompt_idx": 19,
+        "subject": "Maths",
+        "prompt": "If z = 3 + 4i, find |z| and arg(z).",
+        "response": "Let's imagine the complex number $z = 3 + 4i$ as a point on a flat plane, where 3 is how far you move right (real axis) and 4 is how far you move up (imaginary axis). The magnitude $|z|$ is like the straight-line distance from the origin (0,0) to this point, similar to the length of a ladder leaning against a wall.\n\nTo find that distance, which formula would you use that connects the horizontal and vertical distances to the length of the ladder?",
+        "response_len": 449,
+        "duration_ms": 29999,
+        "doubt_session_id": "503dd7c4-e96a-4a6f-a644-b7fd9eb13356",
+        "intent": "subject_doubt",
+        "mentor_mode": "COUNSELOR"
+      }
+    ]
+  },
+  "judge": {
+    "HIGH": [
+      {
+        "doubt_session_id": "4f0b5aae-fd6e-40bd-83a7-f1ea9e0219f0",
+        "pedagogical_score": 0,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 0,
+        "overall_score": 0.3
+      },
+      {
+        "doubt_session_id": "1c257a2e-9ee9-45d0-ba91-ac3145e0c4ea",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "56cd6268-4827-46a8-ac88-3969e954fab8",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "e7edf61b-598a-44c0-b5e8-390a4a2ad26e",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "3f69f63e-8829-4bba-b59e-62df5364f950",
+        "pedagogical_score": 0,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 0,
+        "overall_score": 0.3
+      },
+      {
+        "doubt_session_id": "7adf3f0d-c69a-4c44-a61e-b2b35f7a59bf",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "1533a7e4-d17e-4c99-b07d-a81935d70721",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "49884c51-70d3-4d4b-abde-798807f49c96",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "5bfd3ca3-659f-42bb-ab1d-dd624af820c6",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "1509d2d0-257f-4f8b-9cdc-68daa3906743",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      }
+    ],
+    "MEDIUM": [
+      {
+        "doubt_session_id": "5246506a-1705-4caa-988e-cdbb13efa925",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "8af6235d-b298-472d-9e7d-7c0c37e6f45e",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "2ba17734-71c5-475b-88ee-b83225d561ed",
+        "pedagogical_score": 0,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 0,
+        "overall_score": 0.3
+      },
+      {
+        "doubt_session_id": "57d6f031-8ced-49d0-863e-3a3d58b968c8",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "80e06b87-b698-48bd-a350-227a74ee9cca",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "2892a805-c79b-4407-b815-5ad0ab62e287",
+        "pedagogical_score": 1,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.8
+      },
+      {
+        "doubt_session_id": "b794e478-cbf8-4c33-a661-8ce472d91c5b",
+        "pedagogical_score": 0,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 0,
+        "overall_score": 0.3
+      },
+      {
+        "doubt_session_id": "da322e10-9b62-4c0f-981b-9a982182e68e",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "64eaaa6b-a386-480a-b3f0-0dbc62e1bd0c",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "f0023f16-5850-4796-8d97-e1b3e6068fc1",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "16127f05-b7e0-4fa8-8c73-e6840d20bd8c",
+        "pedagogical_score": 1,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.65
+      }
+    ],
+    "LOW": [
+      {
+        "doubt_session_id": "aaee5fdf-3639-4ffb-b104-91dbed2dafc0",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "4eb54e3d-3936-41fc-a269-fcdf8b078350",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "4b634ae7-e5c0-471b-bd1c-febd8cfdf7f2",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "855c1944-a02b-4dc1-a360-28cad8a8266f",
+        "pedagogical_score": 0,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 0,
+        "overall_score": 0.3
+      },
+      {
+        "doubt_session_id": "11c869a6-b2fd-47c2-ad56-6eae760f01bc",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "93b31ab4-3167-4e1c-9ef9-1c4ed08494a7",
+        "pedagogical_score": 0,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 0,
+        "overall_score": 0.3
+      },
+      {
+        "doubt_session_id": "503dd7c4-e96a-4a6f-a644-b7fd9eb13356",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "ad8f5bf5-ee78-4f71-b5eb-f0d4ac68e6a8",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "a278ab47-363b-4e45-bb49-42076f6fe247",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "f35dfed4-9f69-41cf-8047-ac5aae5d6343",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0
+      },
+      {
+        "doubt_session_id": "18e036c2-1aa0-4597-ab4d-732c1b06a169",
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.85
+      }
+    ]
+  },
+  "judge_summary": {
+    "HIGH": {
+      "n": 10,
+      "avg_pedagogical": 1.6,
+      "avg_factual": 1,
+      "avg_overall": 0.86
+    },
+    "MEDIUM": {
+      "n": 11,
+      "avg_pedagogical": 1.455,
+      "avg_factual": 1,
+      "avg_overall": 0.823
+    },
+    "LOW": {
+      "n": 11,
+      "avg_pedagogical": 1.636,
+      "avg_factual": 1,
+      "avg_overall": 0.859
+    }
+  },
+  "analysis": {
+    "divergence_rows": [
+      {
+        "prompt_idx": 0,
+        "subject": "Physics",
+        "prompt": "A ball is thrown upward with 20 m/s. How high does it go? g=10.",
+        "len_high": 417,
+        "len_medium": 290,
+        "len_low": 395,
+        "len_stdev": 67.9,
+        "len_ratio": 0.185,
+        "style": {
+          "HIGH": {
+            "example": 1,
+            "formula": 1,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 0,
+            "analogy": 0
+          }
+        },
+        "lat_high": 32043,
+        "lat_medium": 28955,
+        "lat_low": 29899
+      },
+      {
+        "prompt_idx": 1,
+        "subject": "Physics",
+        "prompt": "A 5 kg block on a 30 degree frictionless incline. Find the acceleration.",
+        "len_high": 432,
+        "len_medium": 419,
+        "len_low": 648,
+        "len_stdev": 128.6,
+        "len_ratio": 0.257,
+        "style": {
+          "HIGH": {
+            "example": 1,
+            "formula": 0,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 2,
+            "formula": 0,
+            "analogy": 0
+          }
+        },
+        "lat_high": 30306,
+        "lat_medium": 29081,
+        "lat_low": 29922
+      },
+      {
+        "prompt_idx": 2,
+        "subject": "Physics",
+        "prompt": "State Newton's second law in one line.",
+        "len_high": 372,
+        "len_medium": 339,
+        "len_low": 411,
+        "len_stdev": 36.0,
+        "len_ratio": 0.096,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 2,
+            "analogy": 0
+          }
+        },
+        "lat_high": 30262,
+        "lat_medium": 31505,
+        "lat_low": 31089
+      },
+      {
+        "prompt_idx": 3,
+        "subject": "Physics",
+        "prompt": "Moment of inertia of a uniform rod of length L, mass M, about its center?",
+        "len_high": 329,
+        "len_medium": 406,
+        "len_low": 448,
+        "len_stdev": 60.4,
+        "len_ratio": 0.153,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 1,
+            "analogy": 0
+          }
+        },
+        "lat_high": 17877,
+        "lat_medium": 18727,
+        "lat_low": 18991
+      },
+      {
+        "prompt_idx": 4,
+        "subject": "Physics",
+        "prompt": "Electric field due to a point charge 2 microcoulombs at 10 cm.",
+        "len_high": 691,
+        "len_medium": 794,
+        "len_low": 938,
+        "len_stdev": 124.1,
+        "len_ratio": 0.154,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 2,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 1,
+            "formula": 3,
+            "analogy": 1
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 3,
+            "analogy": 2
+          }
+        },
+        "lat_high": 29013,
+        "lat_medium": 18748,
+        "lat_low": 22312
+      },
+      {
+        "prompt_idx": 5,
+        "subject": "Physics",
+        "prompt": "A stone of mass 1 kg whirled in a horizontal circle of radius 0.5 m at 4 m/s. Te",
+        "len_high": 224,
+        "len_medium": 203,
+        "len_low": 243,
+        "len_stdev": 20.0,
+        "len_ratio": 0.09,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          }
+        },
+        "lat_high": 16893,
+        "lat_medium": 11134,
+        "lat_low": 11380
+      },
+      {
+        "prompt_idx": 6,
+        "subject": "Physics",
+        "prompt": "Escape velocity from Earth's surface?",
+        "len_high": 2940,
+        "len_medium": 2867,
+        "len_low": 2261,
+        "len_stdev": 372.7,
+        "len_ratio": 0.139,
+        "style": {
+          "HIGH": {
+            "example": 1,
+            "formula": 3,
+            "analogy": 2
+          },
+          "MEDIUM": {
+            "example": 3,
+            "formula": 2,
+            "analogy": 1
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 2,
+            "analogy": 2
+          }
+        },
+        "lat_high": 27164,
+        "lat_medium": 27714,
+        "lat_low": 24581
+      },
+      {
+        "prompt_idx": 7,
+        "subject": "Chemistry",
+        "prompt": "Why is BF3 planar but NH3 pyramidal?",
+        "len_high": 0,
+        "len_medium": 277,
+        "len_low": 304,
+        "len_stdev": 168.3,
+        "len_ratio": 0.869,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 0,
+            "analogy": 0
+          }
+        },
+        "lat_high": 5028,
+        "lat_medium": 29093,
+        "lat_low": 30046
+      },
+      {
+        "prompt_idx": 8,
+        "subject": "Chemistry",
+        "prompt": "Calculate pH of 0.01 M HCl.",
+        "len_high": 279,
+        "len_medium": 390,
+        "len_low": 366,
+        "len_stdev": 58.4,
+        "len_ratio": 0.169,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 2,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 1,
+            "analogy": 0
+          }
+        },
+        "lat_high": 30667,
+        "lat_medium": 31273,
+        "lat_low": 31543
+      },
+      {
+        "prompt_idx": 9,
+        "subject": "Chemistry",
+        "prompt": "Difference between SN1 and SN2 with examples.",
+        "len_high": 409,
+        "len_medium": 363,
+        "len_low": 411,
+        "len_stdev": 27.2,
+        "len_ratio": 0.069,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          }
+        },
+        "lat_high": 18234,
+        "lat_medium": 19108,
+        "lat_low": 23286
+      },
+      {
+        "prompt_idx": 10,
+        "subject": "Chemistry",
+        "prompt": "Half-life of first-order reaction with k=0.1 /min?",
+        "len_high": 525,
+        "len_medium": 540,
+        "len_low": 517,
+        "len_stdev": 11.7,
+        "len_ratio": 0.022,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 3,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 3,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 0,
+            "formula": 3,
+            "analogy": 0
+          }
+        },
+        "lat_high": 23772,
+        "lat_medium": 19543,
+        "lat_low": 18540
+      },
+      {
+        "prompt_idx": 11,
+        "subject": "Chemistry",
+        "prompt": "IUPAC of [Co(NH3)4Cl2]Cl?",
+        "len_high": 176,
+        "len_medium": 168,
+        "len_low": 233,
+        "len_stdev": 35.4,
+        "len_ratio": 0.184,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          }
+        },
+        "lat_high": 9840,
+        "lat_medium": 13015,
+        "lat_low": 10175
+      },
+      {
+        "prompt_idx": 12,
+        "subject": "Chemistry",
+        "prompt": "5 g NaCl (M=58.5) in 500 mL water \u2014 molarity?",
+        "len_high": 1823,
+        "len_medium": 1500,
+        "len_low": 1815,
+        "len_stdev": 184.2,
+        "len_ratio": 0.108,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 2,
+            "analogy": 1
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 3,
+            "analogy": 1
+          },
+          "LOW": {
+            "example": 0,
+            "formula": 2,
+            "analogy": 1
+          }
+        },
+        "lat_high": 26703,
+        "lat_medium": 22986,
+        "lat_low": 21938
+      },
+      {
+        "prompt_idx": 13,
+        "subject": "Maths",
+        "prompt": "If sin(theta)=3/5 and theta is acute, find cos(2*theta).",
+        "len_high": 199,
+        "len_medium": 453,
+        "len_low": 405,
+        "len_stdev": 134.9,
+        "len_ratio": 0.383,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 1,
+            "formula": 3,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 1,
+            "analogy": 1
+          }
+        },
+        "lat_high": 28146,
+        "lat_medium": 28946,
+        "lat_low": 29874
+      },
+      {
+        "prompt_idx": 14,
+        "subject": "Maths",
+        "prompt": "Evaluate lim x->0 of sin(3x)/x.",
+        "len_high": 231,
+        "len_medium": 266,
+        "len_low": 576,
+        "len_stdev": 189.9,
+        "len_ratio": 0.531,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 1
+          }
+        },
+        "lat_high": 31572,
+        "lat_medium": 31717,
+        "lat_low": 36303
+      },
+      {
+        "prompt_idx": 15,
+        "subject": "Maths",
+        "prompt": "Derivative of x^3 * ln(x)?",
+        "len_high": 189,
+        "len_medium": 227,
+        "len_low": 400,
+        "len_stdev": 112.5,
+        "len_ratio": 0.413,
+        "style": {
+          "HIGH": {
+            "example": 1,
+            "formula": 2,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 2,
+            "formula": 1,
+            "analogy": 1
+          }
+        },
+        "lat_high": 32926,
+        "lat_medium": 32870,
+        "lat_low": 32776
+      },
+      {
+        "prompt_idx": 16,
+        "subject": "Maths",
+        "prompt": "Evaluate integral of x*e^x dx.",
+        "len_high": 388,
+        "len_medium": 488,
+        "len_low": 690,
+        "len_stdev": 153.8,
+        "len_ratio": 0.295,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 3,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 2,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 2,
+            "analogy": 1
+          }
+        },
+        "lat_high": 31985,
+        "lat_medium": 31883,
+        "lat_low": 44167
+      },
+      {
+        "prompt_idx": 17,
+        "subject": "Maths",
+        "prompt": "Determinant of [[2,3],[1,4]]?",
+        "len_high": 314,
+        "len_medium": 358,
+        "len_low": 368,
+        "len_stdev": 28.7,
+        "len_ratio": 0.083,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 2,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 3,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 1,
+            "analogy": 1
+          }
+        },
+        "lat_high": 30563,
+        "lat_medium": 31035,
+        "lat_low": 33347
+      },
+      {
+        "prompt_idx": 18,
+        "subject": "Maths",
+        "prompt": "P(sum=7) for two fair dice?",
+        "len_high": 390,
+        "len_medium": 474,
+        "len_low": 507,
+        "len_stdev": 60.3,
+        "len_ratio": 0.132,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 2,
+            "analogy": 0
+          },
+          "MEDIUM": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 0,
+            "formula": 0,
+            "analogy": 1
+          }
+        },
+        "lat_high": 18138,
+        "lat_medium": 18115,
+        "lat_low": 18379
+      },
+      {
+        "prompt_idx": 19,
+        "subject": "Maths",
+        "prompt": "If z = 3 + 4i, find |z| and arg(z).",
+        "len_high": 300,
+        "len_medium": 272,
+        "len_low": 449,
+        "len_stdev": 95.1,
+        "len_ratio": 0.28,
+        "style": {
+          "HIGH": {
+            "example": 0,
+            "formula": 1,
+            "analogy": 1
+          },
+          "MEDIUM": {
+            "example": 1,
+            "formula": 0,
+            "analogy": 0
+          },
+          "LOW": {
+            "example": 1,
+            "formula": 2,
+            "analogy": 2
+          }
+        },
+        "lat_high": 30430,
+        "lat_medium": 30553,
+        "lat_low": 29999
+      }
+    ],
+    "avg_len_ratio": 0.231,
+    "persona_signal_ok": true,
+    "style_totals": {
+      "HIGH": {
+        "example": 4,
+        "formula": 28,
+        "analogy": 4
+      },
+      "MEDIUM": {
+        "example": 6,
+        "formula": 25,
+        "analogy": 3
+      },
+      "LOW": {
+        "example": 15,
+        "formula": 23,
+        "analogy": 13
+      }
+    }
+  }
+}

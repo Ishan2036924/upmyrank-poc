@@ -1,0 +1,1287 @@
+{
+  "meta": {
+    "run_id": "diag-20260425-064349",
+    "backend": "http://localhost:8000",
+    "email": "diag-diag-20260425-064349-af7877@upmyrank.test",
+    "student_id": "b81c70f0-1986-4493-a9a1-95187f1be817",
+    "persona": "Diag Persona",
+    "n_flows": 9,
+    "n_prompts": 19,
+    "generated_at": "2026-04-25 06:54:48 IST",
+    "duration_s": 651.0
+  },
+  "turns": [
+    {
+      "flow_id": "V20.7.1-PIV01",
+      "flow_class": "sudden_pivot",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "A projectile is fired at 60 degrees with 40 m/s. Find time of flight.",
+      "subject_sent": "Physics",
+      "duration_ms": 33591,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "625da216-8f81-4868-806f-eb0842bd0ec1",
+      "doubt_session_id": "3de6e42b-9efc-4fcf-ad42-b78050e8f5ec",
+      "hint_level": null,
+      "response_text": "You have a projectile launched at 60\u00b0 with an initial speed of 40 m/s. To find the time of flight, you need to consider the vertical motion and how gravity affects it. \n\nFirst, do you know how to find the vertical component of the initial velocity from the given angle and speed?",
+      "response_len": 279,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Projectile Motion",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-PIV01",
+      "flow_class": "sudden_pivot",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "Wait, what's the integral of sin(x^2)? Is there a closed form?",
+      "subject_sent": "Physics",
+      "duration_ms": 35221,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "3f8c1b18-6c37-4911-9eca-cf3d33ca1a34",
+      "doubt_session_id": "5973ba5c-f24e-4af9-907e-ed74ec1d4b82",
+      "hint_level": null,
+      "response_text": "You\u2019re asking about the integral of $\\sin(x^2)$, which is a tricky one. You know how some integrals you can find an antiderivative easily using basic formulas or substitution. This function inside the sine, $x^2$, makes it more complex. To get started, what integration techniques or substitutions have you tried so far with this integral?",
+      "response_len": 339,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Integration",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Maths",
+      "error": null,
+      "expected": {
+        "subject": "Maths",
+        "topic_shift": true,
+        "fix": "v0.20.7.1"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-PIV02",
+      "flow_class": "sudden_pivot",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Calculate pH of 0.01 M HCl.",
+      "subject_sent": "Chemistry",
+      "duration_ms": 32897,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "f8904b55-bc71-404d-959b-dc337a975cef",
+      "doubt_session_id": "37132e73-0c45-429c-9ab0-9b880af791ac",
+      "hint_level": null,
+      "response_text": "You\u2019re working on finding the pH of a 0.01 M HCl solution. Since HCl is a strong acid, it fully dissociates in water. That means the concentration of hydrogen ions $[\\text{H}^+]$ will be equal to the concentration of HCl itself. \n\nCan you recall how to calculate pH from the hydrogen ion concentration?",
+      "response_len": 302,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Acids and Bases",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Chemistry",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-PIV02",
+      "flow_class": "sudden_pivot",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "hmm actually can you help me with derivatives of trig functions?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 35213,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "e3bedef4-5cbf-443f-bb31-265e66c60292",
+      "doubt_session_id": "7848bab1-83aa-47bc-a4a3-44f9cb2bd2a4",
+      "hint_level": null,
+      "response_text": "You\u2019ve got a solid base in trigonometry already, so we can connect your existing knowledge of sine and cosine functions to their derivatives. When you think about the derivative of, say, $\\sin x$, what do you expect it to represent in terms of the graph or rate of change of $\\sin x$?",
+      "response_len": 284,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Physics",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Chemistry",
+      "error": null,
+      "expected": {
+        "subject": "Maths",
+        "topic_shift": true,
+        "fix": "v0.20.7.1"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-PIV03",
+      "flow_class": "sudden_pivot",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Calculate pH of 0.01 M HCl.",
+      "subject_sent": "Chemistry",
+      "duration_ms": 32433,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "729ddf5a-9582-4274-b1b6-92bd05a9433f",
+      "doubt_session_id": "c82aae65-ee28-4284-b80a-c31fd7feaf52",
+      "hint_level": null,
+      "response_text": "Let\u2019s take this one step at a time. You know HCl is a strong acid, right. What does that tell you about how it dissociates in water, especially at a concentration of 0.01 M. How would you write the expression for the hydrogen ion concentration $[\\text{H}^+]$ in this solution?",
+      "response_len": 276,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Acids and Bases",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Chemistry",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-PIV03",
+      "flow_class": "sudden_pivot",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "hmm actually can you help me with derivatives of trig functions?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 33039,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "7b43adde-96ea-4483-bb1a-f14dff88078f",
+      "doubt_session_id": "86e97032-2be0-4838-8723-a62f9f4e0ec2",
+      "hint_level": null,
+      "response_text": "Since you\u2019re interested in derivatives of trig functions, let's start from what you already know: do you remember the basic derivative of $\\sin x$ with respect to $x$?",
+      "response_len": 167,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Calculus",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Maths",
+      "error": null,
+      "expected": {
+        "subject": "Maths",
+        "topic_shift": true
+      }
+    },
+    {
+      "flow_id": "V20.7.1-PIV03",
+      "flow_class": "sudden_pivot",
+      "turn_idx": 2,
+      "endpoint": "ask",
+      "prompt": "oh wait I also don't understand Newton's third law \u2014 explain?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 28782,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "43fcbc10-a0aa-4e82-9c29-f06c16bf0e62",
+      "doubt_session_id": "5cb9d525-db8e-4884-b3b3-ad5d621c4d73",
+      "hint_level": null,
+      "response_text": "You\u2019re asking about Newton\u2019s third law, which says that forces always come in pairs: if object A pushes on object B, then object B pushes back on object A with a force equal in size but opposite in direction. Imagine you\u2019re standing on the ground and you push against a wall\u2014what do you feel on your hand as you push?",
+      "response_len": 317,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Laws of Motion",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "subject": "Physics",
+        "topic_shift": true,
+        "fix": "v0.20.7.1"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-PIV04",
+      "flow_class": "short_pivot",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Evaluate d/dx (x^2).",
+      "subject_sent": "Maths",
+      "duration_ms": 28108,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "6ff43ed3-3e65-4b8e-8197-393fc655520b",
+      "doubt_session_id": "b974c6c1-0adc-49e2-8580-f6dbcbfcd2f5",
+      "hint_level": null,
+      "response_text": "You\u2019re starting with the derivative of $x^2$, which is a classic example to understand the power rule in differentiation. Since you\u2019re new to differentiation, let\u2019s build from the basics: when you have a function $x^n$, the derivative involves multiplying by the power and then reducing the power by one. \n\nThink about $x^2$ as $x$ multiplied by $x$. If you consider the exponent 2 here, what do you think the power rule says you should do to find its derivative?",
+      "response_len": 463,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Differentiation",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Maths",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-PIV04",
+      "flow_class": "short_pivot",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "what is pH?",
+      "subject_sent": "Maths",
+      "duration_ms": 19591,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "6ff43ed3-3e65-4b8e-8197-393fc655520b",
+      "doubt_session_id": "b974c6c1-0adc-49e2-8580-f6dbcbfcd2f5",
+      "hint_level": 1,
+      "response_text": "I see what you're thinking \u2014 but be careful, pH is a chemistry term related to acidity, not something used in differentiation. Here, we\u2019re focusing on how a function like $x^2$ changes as $x$ changes, which is what differentiation measures. When you think about $x^2$, what does the exponent 2 tell you about how quickly the function grows as $x$ increases?",
+      "response_len": 357,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "subject": "Chemistry",
+        "topic_shift": true,
+        "fix": "v0.20.7.1"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-FU01",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "A 2 kg block is pushed with a 10 N horizontal force on a rough surface with mu = 0.2. Find its acceleration.",
+      "subject_sent": "Physics",
+      "duration_ms": 33216,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "52284df8-6d4f-47f3-ad7c-9153e15606eb",
+      "doubt_session_id": "e440ee74-134e-4cda-882d-e2d090780e64",
+      "hint_level": null,
+      "response_text": "Let\u2019s imagine you are pushing a small box across a rough floor. You apply a force to move it, but the floor resists this motion because of friction \u2014 like when you try to slide a heavy book on a carpet. The friction force acts opposite to your push and depends on how heavy the box is and how rough the surface is.\n\nWhat force do you think opposes the 10 N push on the 2 kg block due to friction?",
+      "response_len": 396,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Laws of Motion",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-FU01",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "why do we subtract the friction force instead of adding it?",
+      "subject_sent": "Physics",
+      "duration_ms": 22242,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "52284df8-6d4f-47f3-ad7c-9153e15606eb",
+      "doubt_session_id": "e440ee74-134e-4cda-882d-e2d090780e64",
+      "hint_level": 1,
+      "response_text": "Right \u2014 friction force acts opposite to the direction of your push because it resists motion, like a brake on a bicycle wheel slowing it down. When we find the net force causing acceleration, we combine all forces as vectors, so forces in opposite directions effectively subtract. \n\nIf your push is 10 N forward and friction pulls 4 N backward, what would be the total force actually moving the block forward?",
+      "response_len": 409,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "regression_guard": "v0.20.7"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-FU02",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Evaluate integral of 1/(1+x^2) dx.",
+      "subject_sent": "Maths",
+      "duration_ms": 30954,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "d5f66d38-bcf6-4e0a-bd42-0409b77b112d",
+      "doubt_session_id": "70fbfdfc-b8d3-4d98-97df-96394e8a3ce4",
+      "hint_level": null,
+      "response_text": "Let's imagine the graph of the function $f(x) = \\frac{1}{1+x^2}$. It forms a smooth curve that looks like a \"hill\" centered around $x=0$. Now, when you integrate this function, you're essentially finding the area under this curve from some starting point to an ending point.\n\nYou might recall that some integrals of functions involving expressions like $1 + x^2$ relate to inverse trigonometric functions, especially arctangent. Before jumping to the answer, can you think of any trigonometric identity or derivative formula that involves $\\frac{1}{1+x^2}$?",
+      "response_len": 557,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Integration",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Maths",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-FU02",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "why does substitution not help here?",
+      "subject_sent": "Maths",
+      "duration_ms": 36255,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "eec71cb6-e2a3-4c17-80ce-0ff70e85eb23",
+      "doubt_session_id": "933deeee-a4af-4748-acd6-dda5b6d18176",
+      "hint_level": null,
+      "response_text": "Let\u2019s think of substitution like changing the lens through which you view a problem. Sometimes it simplifies the view, making the problem easier to solve. But if the original function\u2019s structure or domain doesn\u2019t align well with the substitution, it can actually make things more complicated or invalid.\n\nWhat specific part of the function or integral do you think causes substitution to not help here?",
+      "response_len": 403,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Algebra",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Maths",
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "regression_guard": "v0.20.7"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-FU03",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Why is water a bent molecule and not linear?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 30930,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "8204652a-de01-4e8f-91e6-a4c77b0f3fc6",
+      "doubt_session_id": "f3a749f7-83ed-404d-89c1-4d79e54cf1b3",
+      "hint_level": null,
+      "response_text": "Let's take this one step at a time. You know water is made of one oxygen atom bonded to two hydrogen atoms, right. Now, imagine the oxygen's outer shell electrons: some are shared in bonds, but some are lone pairs\u2014electrons not involved in bonding. How do you think these lone pairs affect the shape of the molecule compared to just the bonded atoms alone?",
+      "response_len": 356,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Molecular Geometry",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Chemistry",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-FU03",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "is H2S bent too for the same reason?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 18452,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "8204652a-de01-4e8f-91e6-a4c77b0f3fc6",
+      "doubt_session_id": "f3a749f7-83ed-404d-89c1-4d79e54cf1b3",
+      "hint_level": 1,
+      "response_text": "Right \u2014 H\u2082S is bent for a similar reason: lone pairs on sulfur repel the bonded hydrogen atoms, distorting the shape. But remember, sulfur is larger and less electronegative than oxygen, so the bond angles and repulsion strengths differ, making H\u2082S\u2019s shape slightly different from water\u2019s. How do you think the size and electronegativity of the central atom affect the bond angle in these molecules?",
+      "response_len": 399,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "regression_guard": "v0.20.7"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-FU04",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Field due to a uniformly charged thin ring on its axis at distance x?",
+      "subject_sent": "Physics",
+      "duration_ms": 34281,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "7f6500fd-d092-4e6a-99a4-a0787cda2bbd",
+      "doubt_session_id": "222a4fc0-345e-4baf-b6c7-acb10ea73fb7",
+      "hint_level": null,
+      "response_text": "Imagine you have a thin ring carrying a uniform positive charge, like a tiny charged hula hoop floating in space. You want to find the electric field at a point along the axis passing through the center of the ring, some distance $x$ away. Because the charge is spread evenly all around the ring, the field contributions from opposite small segments of the ring will have components that cancel each other out sideways, leaving only the components along the axis.\n\nCan you visualize how the symmetry of the ring helps simplify the direction of the electric field at that point?",
+      "response_len": 577,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Electrostatics",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-FU04",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "what happens when x is very large compared to R?",
+      "subject_sent": "Physics",
+      "duration_ms": 21116,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "7f6500fd-d092-4e6a-99a4-a0787cda2bbd",
+      "doubt_session_id": "222a4fc0-345e-4baf-b6c7-acb10ea73fb7",
+      "hint_level": 1,
+      "response_text": "Right \u2014 when the distance $x$ is much larger than the ring radius $R$, the ring\u2019s charge distribution starts to look like a single point charge from that far away. This is similar to how a distant city\u2019s lights blend into one bright spot rather than many separate bulbs. So, the electric field should behave like that of a point charge, decreasing with the square of the distance.\n\nHow do you think the electric field\u2019s magnitude changes with $x$ in this large-distance limit?",
+      "response_len": 476,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "regression_guard": "v0.20.7"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-FU05",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "A 5 kg block on a 30 degree incline, find acceleration.",
+      "subject_sent": "Physics",
+      "duration_ms": 33102,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "68803237-a1cd-442b-bc48-09d62520c1e4",
+      "doubt_session_id": "1bb354c3-819c-4d92-ba31-3ff281742994",
+      "hint_level": null,
+      "response_text": "Let\u2019s picture the block on the incline like a little car parked on a sloped driveway. The car\u2019s weight pulls straight down, but because the driveway is slanted, some of that pull tries to slide it down the slope, and some pushes it into the surface. To find the block\u2019s acceleration, you first need to figure out how much of its weight actually pushes it down the incline.\n\nWhat trigonometric function relates the angle of the slope to the components of the block\u2019s weight?",
+      "response_len": 473,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Laws of Motion",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7.1-FU05",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "ok so then what would happen if mu was 0.6?",
+      "subject_sent": "Physics",
+      "duration_ms": 18683,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "68803237-a1cd-442b-bc48-09d62520c1e4",
+      "doubt_session_id": "1bb354c3-819c-4d92-ba31-3ff281742994",
+      "hint_level": 1,
+      "response_text": "Right \u2014 introducing friction means there\u2019s a force pushing back uphill, opposing the block\u2019s slide down. Think of friction like a brake that tries to hold the block in place, and its strength depends on how hard the block presses against the incline and the coefficient $\\mu$. \n\nFor this 5 kg block on a 30\u00b0 slope, what force acts perpendicular to the incline that friction depends on?",
+      "response_len": 385,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "regression_guard": "v0.20.7"
+      }
+    }
+  ],
+  "db": {
+    "judge": [
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation about friction and its dependence on the normal force is factually accurate.\", \"pedagogical\": \"The response uses a Socratic question to guide the student towards understanding the forces involved.\", \"context_relevance\": \"The response is relevant to the student's question about the forces acting on the block on an incline.\", \"hint_appropriateness\": \"The hint level is appropriate as it encourages the student to think critically about the problem.\"}",
+        "question": "A 5 kg block on a 30 degree incline, find acceleration.",
+        "evaluated_at": "2026-04-25 01:24:39.221572+00:00",
+        "doubt_session_id": "1bb354c3-819c-4d92-ba31-3ff281742994"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.85,
+        "rationale_json": "{\"factual\": \"The explanation about the electric field behaving like that of a point charge at large distances is factually accurate.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to think critically about the relationship between distance and electric field strength.\", \"context_relevance\": \"The response does not leverage any specific context since none was provided, making it somewhat generic.\", \"hint_appropriateness\": \"The hint level is appropriate for the student's current understanding and prior attempts.\"}",
+        "question": "Field due to a uniformly charged thin ring on its axis at distance x?",
+        "evaluated_at": "2026-04-25 01:23:40.629505+00:00",
+        "doubt_session_id": "222a4fc0-345e-4baf-b6c7-acb10ea73fb7"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.85,
+        "rationale_json": "{\"factual\": \"The explanation regarding the influence of lone pairs and the comparison between H\u2082S and water is factually accurate.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to think critically about the factors affecting molecular shape.\", \"context_relevance\": \"The response does not directly address the student's question about water, focusing instead on H\u2082S without context.\", \"hint_appropriateness\": \"The hint level is appropriate as it encourages deeper thinking without providing a direct answer.\"}",
+        "question": "Why is water a bent molecule and not linear?",
+        "evaluated_at": "2026-04-25 01:22:37.926670+00:00",
+        "doubt_session_id": "f3a749f7-83ed-404d-89c1-4d79e54cf1b3"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.85,
+        "rationale_json": "{\"factual\": \"The explanation of substitution is accurate and relevant to the concept.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to think critically about the problem.\", \"context_relevance\": \"The response does not leverage any specific context from the student's question, making it somewhat generic.\", \"hint_appropriateness\": \"The hint depth is appropriate for the given hint level and prior attempts.\"}",
+        "question": "why does substitution not help here?",
+        "evaluated_at": "2026-04-25 01:21:43.814611+00:00",
+        "doubt_session_id": "933deeee-a4af-4748-acd6-dda5b6d18176"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation about the integral relating to arctangent is factually accurate.\", \"pedagogical\": \"The response uses a Socratic approach by prompting the student to recall relevant concepts.\", \"context_relevance\": \"The response is relevant as it directly addresses the integral the student asked about.\", \"hint_appropriateness\": \"The hint level is appropriate for a student who has not attempted the problem before.\"}",
+        "question": "Evaluate integral of 1/(1+x^2) dx.",
+        "evaluated_at": "2026-04-25 01:21:40.211884+00:00",
+        "doubt_session_id": "70fbfdfc-b8d3-4d98-97df-96394e8a3ce4"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The calculation of the friction force is correct based on the given coefficient of friction.\", \"pedagogical\": \"The response uses a Socratic question to guide the student to think about net forces.\", \"context_relevance\": \"The response is relevant as it directly addresses the student's question about forces acting on the block.\", \"hint_appropriateness\": \"The hint level is appropriate for a student who has not attempted the problem before.\"}",
+        "question": "A 2 kg block is pushed with a 10 N horizontal force on a rough surface with mu = 0.2. Find its acceleration.",
+        "evaluated_at": "2026-04-25 01:20:23.739595+00:00",
+        "doubt_session_id": "e440ee74-134e-4cda-882d-e2d090780e64"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.85,
+        "rationale_json": "{\"factual\": \"The explanation about differentiation and the function x^2 is factually accurate.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to think about the implications of the exponent in differentiation.\", \"context_relevance\": \"The mention of pH is irrelevant to the student's question about differentiation.\", \"hint_appropriateness\": \"The hint level is appropriate as it encourages reasoning without giving away the full answer.\"}",
+        "question": "Evaluate d/dx (x^2).",
+        "evaluated_at": "2026-04-25 01:19:22.396936+00:00",
+        "doubt_session_id": "b974c6c1-0adc-49e2-8580-f6dbcbfcd2f5"
+      },
+      {
+        "pedagogical_score": 1,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.65,
+        "rationale_json": "{\"factual\": \"The explanation of Newton's third law is accurate and correctly describes the concept.\", \"pedagogical\": \"The response provides a direct explanation but includes a hint that encourages the student to think about their own experience.\", \"context_relevance\": \"There is no context provided, making the response somewhat generic.\", \"hint_appropriateness\": \"The hint depth is appropriate for the hint level, as it prompts the student to reflect on their own experience.\"}",
+        "question": "oh wait I also don't understand Newton's third law \u2014 explain?",
+        "evaluated_at": "2026-04-25 01:18:34.461689+00:00",
+        "doubt_session_id": "5cb9d525-db8e-4884-b3b3-ad5d621c4d73"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.85,
+        "rationale_json": "{\"factual\": \"The information about the derivative of sine is factually accurate.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to recall prior knowledge.\", \"context_relevance\": \"There is no context provided, making the response somewhat generic.\", \"hint_appropriateness\": \"The hint depth is appropriate for the student's current state and prior attempts.\"}",
+        "question": "hmm actually can you help me with derivatives of trig functions?",
+        "evaluated_at": "2026-04-25 01:18:30.286418+00:00",
+        "doubt_session_id": "86e97032-2be0-4838-8723-a62f9f4e0ec2"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The information about HCl being a strong acid and its dissociation is factually accurate.\", \"pedagogical\": \"The response uses a Socratic approach, prompting the student to think about the dissociation of HCl.\", \"context_relevance\": \"The response is relevant as it directly addresses the student's question about calculating pH.\", \"hint_appropriateness\": \"The hint level is appropriate for a student who has not attempted the problem before.\"}",
+        "question": "Calculate pH of 0.01 M HCl.",
+        "evaluated_at": "2026-04-25 01:18:26.693838+00:00",
+        "doubt_session_id": "c82aae65-ee28-4284-b80a-c31fd7feaf52"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The information about the derivatives of sine and cosine functions is accurate.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to think critically about the concept of derivatives.\", \"context_relevance\": \"The response is relevant as it builds on the student's existing knowledge of trigonometry.\", \"hint_appropriateness\": \"The hint level is appropriate for a student who has not attempted derivatives before.\"}",
+        "question": "hmm actually can you help me with derivatives of trig functions?",
+        "evaluated_at": "2026-04-25 01:16:45.783545+00:00",
+        "doubt_session_id": "7848bab1-83aa-47bc-a4a3-44f9cb2bd2a4"
+      },
+      {
+        "pedagogical_score": 1,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.8,
+        "rationale_json": "{\"factual\": \"The explanation about HCl being a strong acid and fully dissociating is factually accurate.\", \"pedagogical\": \"The response provides a hint that encourages the student to recall the pH calculation without giving the full answer.\", \"context_relevance\": \"The response is relevant as it directly addresses the student's question about calculating pH.\", \"hint_appropriateness\": \"The hint level is appropriate for a student who has not attempted the problem before.\"}",
+        "question": "Calculate pH of 0.01 M HCl.",
+        "evaluated_at": "2026-04-25 01:16:42.423852+00:00",
+        "doubt_session_id": "37132e73-0c45-429c-9ab0-9b880af791ac"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The information about the integral of sin(x^2) being complex is accurate.\", \"pedagogical\": \"The response uses a Socratic approach by prompting the student to think about integration techniques.\", \"context_relevance\": \"The response is relevant as it directly addresses the student's question about the integral.\", \"hint_appropriateness\": \"The hint level is appropriate for a student who has not attempted the problem yet.\"}",
+        "question": "Wait, what's the integral of sin(x^2)? Is there a closed form?",
+        "evaluated_at": "2026-04-25 01:15:27.623426+00:00",
+        "doubt_session_id": "5973ba5c-f24e-4af9-907e-ed74ec1d4b82"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The information provided about the projectile's launch angle and speed is accurate.\", \"pedagogical\": \"The response encourages the student to think critically about the problem by asking a Socratic question.\", \"context_relevance\": \"The response is relevant as it directly addresses the student's question about projectile motion.\", \"hint_appropriateness\": \"The hint level is appropriate for a student who has not attempted the problem before.\"}",
+        "question": "A projectile is fired at 60 degrees with 40 m/s. Find time of flight.",
+        "evaluated_at": "2026-04-25 01:15:23.945621+00:00",
+        "doubt_session_id": "3de6e42b-9efc-4fcf-ad42-b78050e8f5ec"
+      }
+    ],
+    "events": [
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:24:37.840894+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1370,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:24:29.250222+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1543,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:24:08.557986+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:23:38.631050+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1639,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:23:29.719404+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2103,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:23:06.680253+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:22:35.567622+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1317,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:22:27.014400+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1652,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:22:06.610612+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2466,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:21:25.840777+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2482,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:20:49.573342+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:20:22.173563+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2008,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:20:13.556345+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1615,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:19:49.792912+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:19:20.223600+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1516,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:19:11.000816+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": null,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2143,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:18:49.997385+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 1,
+        "retrieval_similarity": 0.678069,
+        "response_latency_ms": 1569,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:18:12.075183+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2595,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:17:43.270314+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1530,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:17:10.022860+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1849,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:16:26.743247+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 1,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2050,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:15:51.404450+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1335,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:15:08.421320+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1247,
+        "misconception_detected": false,
+        "created_at": "2026-04-25 01:14:33.191474+00:00",
+        "doubt_block_id": null
+      }
+    ],
+    "metrics": [
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 4554,
+        "agent_steps": 2,
+        "chunks_retrieved": 2,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 5955,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 6829,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 8184,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 7421,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Maths",
+        "retrieval_latency_ms": 5264,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 8029,
+        "agent_steps": 3,
+        "chunks_retrieved": 4,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Maths",
+        "retrieval_latency_ms": 5396,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 4856,
+        "agent_steps": 2,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 5971,
+        "agent_steps": 2,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 7087,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 5364,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Maths",
+        "retrieval_latency_ms": 5875,
+        "agent_steps": 3,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 5729,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      }
+    ],
+    "mastery": [],
+    "blocks": [
+      {
+        "doubt_block_id": "68803237-a1cd-442b-bc48-09d62520c1e4",
+        "topic": "Laws of Motion",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked about finding the acceleration of a 5 kg block on a 30-degree incline, and the tutor explained the concept of weight components and friction. The student demonstrated understanding by inquiring about the effect of a friction coefficient of 0.6 and engaging with the tutor's explanations regarding the forces involved.",
+        "started_at": "2026-04-25 01:24:09.459764+00:00",
+        "ended_at": "2026-04-25 01:24:34.069996+00:00"
+      },
+      {
+        "doubt_block_id": "7f6500fd-d092-4e6a-99a4-a0787cda2bbd",
+        "topic": "Electrostatics",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked about the electric field due to a uniformly charged thin ring on its axis at a distance \\( x \\) and sought clarification on the behavior of the field when \\( x \\) is much larger than the ring radius \\( R \\). The tutor explained the symmetry of the ring and how, at large distances, the charge distribution resembles a point charge, leading the student to understand that the electric field decreases with the square of the distance.",
+        "started_at": "2026-04-25 01:23:07.675232+00:00",
+        "ended_at": "2026-04-25 01:23:34.902508+00:00"
+      },
+      {
+        "doubt_block_id": "8204652a-de01-4e8f-91e6-a4c77b0f3fc6",
+        "topic": "Molecular Geometry",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked why water is a bent molecule instead of linear, and the tutor explained that the shape is influenced by lone pairs of electrons on the central atom. The student demonstrated understanding by relating this concept to H\u2082S and inquiring about the effects of atomic size and electronegativity on molecular shape.",
+        "started_at": "2026-04-25 01:22:07.512689+00:00",
+        "ended_at": "2026-04-25 01:22:31.973900+00:00"
+      },
+      {
+        "doubt_block_id": "eec71cb6-e2a3-4c17-80ce-0ff70e85eb23",
+        "topic": "Algebra",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked why substitution does not help in a particular problem, and the tutor explained that substitution can simplify a problem but may also complicate it if the function's structure or domain is not compatible. The conversation suggests that the student is seeking to understand the specific aspects of the function that hinder the effectiveness of substitution.",
+        "started_at": "2026-04-25 01:21:26.788326+00:00",
+        "ended_at": "2026-04-25 01:21:32.830747+00:00"
+      },
+      {
+        "doubt_block_id": "d5f66d38-bcf6-4e0a-bd42-0409b77b112d",
+        "topic": "Integration",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked how to evaluate the integral of \\( \\frac{1}{1+x^2} \\, dx \\), which involves the concept of integration and its relation to inverse trigonometric functions. The tutor guided the student to recall relevant trigonometric identities, indicating that the student was engaged in the learning process and likely understood the connection to arctangent.",
+        "started_at": "2026-04-25 01:20:50.594825+00:00",
+        "ended_at": "2026-04-25 01:20:58.375835+00:00"
+      },
+      {
+        "doubt_block_id": "52284df8-6d4f-47f3-ad7c-9153e15606eb",
+        "topic": "Laws of Motion",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked how to find the acceleration of a 2 kg block being pushed with a 10 N force on a rough surface, involving the concept of friction. The tutor explained the opposing nature of friction and clarified that forces in opposite directions subtract, leading the student to understand the calculation of net force.",
+        "started_at": "2026-04-25 01:19:50.717796+00:00",
+        "ended_at": "2026-04-25 01:20:18.586005+00:00"
+      },
+      {
+        "doubt_block_id": "6ff43ed3-3e65-4b8e-8197-393fc655520b",
+        "topic": "Differentiation",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked about evaluating the derivative of \\(x^2\\), which involves the power rule in differentiation. The tutor explained the concept and clarified that the student was mistakenly thinking of pH, emphasizing the focus on how the function changes with respect to \\(x\\), but it seems the student did not fully grasp the differentiation concept yet.",
+        "started_at": "2026-04-25 01:18:50.803643+00:00",
+        "ended_at": "2026-04-25 01:19:16.104671+00:00"
+      },
+      {
+        "doubt_block_id": "43fcbc10-a0aa-4e82-9c29-f06c16bf0e62",
+        "topic": "Laws of Motion",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked for clarification on Newton's third law, which states that forces come in pairs. The tutor explained the concept using a relatable example, suggesting that the student may have begun to understand it.",
+        "started_at": "2026-04-25 01:18:12.905507+00:00",
+        "ended_at": "2026-04-25 01:18:18.685654+00:00"
+      },
+      {
+        "doubt_block_id": "7b43adde-96ea-4483-bb1a-f14dff88078f",
+        "topic": "Calculus",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked for help with derivatives of trigonometric functions, specifically starting with the derivative of $\\sin x$. The tutor aimed to assess the student's prior knowledge, indicating that they were beginning to explore the concept together, but it is unclear if the student understood it at this point.",
+        "started_at": "2026-04-25 01:17:44.105150+00:00",
+        "ended_at": "2026-04-25 01:17:52.194867+00:00"
+      },
+      {
+        "doubt_block_id": "729ddf5a-9582-4274-b1b6-92bd05a9433f",
+        "topic": "Acids and Bases",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked how to calculate the pH of a 0.01 M HCl solution, and the tutor guided them through the concept of strong acids and their dissociation in water. The student appeared to be engaged and was prompted to express the hydrogen ion concentration, indicating they were beginning to understand the concept.",
+        "started_at": "2026-04-25 01:17:10.877665+00:00",
+        "ended_at": "2026-04-25 01:17:18.610800+00:00"
+      },
+      {
+        "doubt_block_id": "e3bedef4-5cbf-443f-bb31-265e66c60292",
+        "topic": "Physics",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked for help with the derivatives of trigonometric functions, specifically sine and cosine. The tutor connected these derivatives to the student's existing knowledge and prompted them to consider the graphical representation and rate of change, indicating that the student was engaged and likely to understand the concept.",
+        "started_at": "2026-04-25 01:16:27.608171+00:00",
+        "ended_at": "2026-04-25 01:16:33.491349+00:00"
+      },
+      {
+        "doubt_block_id": "f8904b55-bc71-404d-959b-dc337a975cef",
+        "topic": "Acids and Bases",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked how to calculate the pH of a 0.01 M HCl solution, which involves understanding that HCl fully dissociates in water. The tutor confirmed this concept and prompted the student to recall how to calculate pH from the hydrogen ion concentration, indicating that the student was engaged in the learning process.",
+        "started_at": "2026-04-25 01:15:52.346144+00:00",
+        "ended_at": "2026-04-25 01:16:01.241705+00:00"
+      },
+      {
+        "doubt_block_id": "3f8c1b18-6c37-4911-9eca-cf3d33ca1a34",
+        "topic": "Integration",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked about the integral of \\(\\sin(x^2)\\) and whether it has a closed form. The tutor explained the complexity of the integral due to the \\(x^2\\) term and prompted the student to discuss any integration techniques they had already attempted, indicating that the student may not fully understand the concept yet.",
+        "started_at": "2026-04-25 01:15:09.369567+00:00",
+        "ended_at": "2026-04-25 01:15:15.141700+00:00"
+      },
+      {
+        "doubt_block_id": "625da216-8f81-4868-806f-eb0842bd0ec1",
+        "topic": "Projectile Motion",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked how to find the time of flight for a projectile launched at 60 degrees with an initial speed of 40 m/s. The tutor explained that the vertical motion and gravity need to be considered, and prompted the student to find the vertical component of the initial velocity, indicating that the student was beginning to understand the concept.",
+        "started_at": "2026-04-25 01:14:34.028535+00:00",
+        "ended_at": "2026-04-25 01:14:41.925974+00:00"
+      }
+    ],
+    "ctq": [
+      {
+        "validation_score": 1,
+        "appropriateness": 1,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-25 01:24:31.625497+00:00"
+      },
+      {
+        "validation_score": 2,
+        "appropriateness": 2,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-25 01:23:32.021981+00:00"
+      },
+      {
+        "validation_score": 2,
+        "appropriateness": 2,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-25 01:22:29.004785+00:00"
+      },
+      {
+        "validation_score": 2,
+        "appropriateness": 2,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-25 01:20:16.404357+00:00"
+      },
+      {
+        "validation_score": 1,
+        "appropriateness": 1,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-25 01:19:14.294038+00:00"
+      }
+    ]
+  },
+  "render_logs_sample": [],
+  "analysis": {
+    "pillars": {
+      "quality_communication": {
+        "socratic_adherence_pct_peda_ge_1": 100.0,
+        "avg_pedagogical_0_2": 1.857,
+        "avg_factual_0_1": 1,
+        "avg_context_rel_0_1": 0.571,
+        "avg_hint_app_0_1": 1,
+        "avg_overall_0_1": 0.907,
+        "n_judge_rows": 14,
+        "ctq_validation_avg": 1.6,
+        "ctq_appropriateness_avg": 1.6,
+        "ctq_single_question_pct": 100.0
+      },
+      "knowledge_genome": {
+        "mastery_rows_written": 0,
+        "blocks_opened": 14,
+        "blocks_resolved": 0,
+        "blocks_ended": 14,
+        "genome_update_rate_pct": 0.0,
+        "n_concepts_touched": 0
+      },
+      "personalized_response": {
+        "response_len_avg": 379.737,
+        "response_len_stdev": 101.5,
+        "len_stdev_over_avg": 0.267,
+        "note": "Heuristic: higher stdev/avg ratio = responses varied in structure/length per context (signal, not proof)."
+      },
+      "easy_learning": {
+        "hint_ladder_progression_monotonic": true,
+        "median_latency_ms": 32433,
+        "p95_latency_ms": 35221,
+        "forced_attempt_triggered_count": 0,
+        "full_solution_triggered_count": 0
+      }
+    },
+    "scenario_class_rollups": {
+      "sudden_pivot": {
+        "prompts": 7,
+        "http_ok": 7,
+        "http_ok_pct": 100.0,
+        "intents": {
+          "subject_doubt": 7
+        },
+        "avg_latency_ms": 33025.143
+      },
+      "short_pivot": {
+        "prompts": 2,
+        "http_ok": 2,
+        "http_ok_pct": 100.0,
+        "intents": {
+          "subject_doubt": 1,
+          "continuation": 1
+        },
+        "avg_latency_ms": 23849.5
+      },
+      "followup": {
+        "prompts": 10,
+        "http_ok": 10,
+        "http_ok_pct": 100.0,
+        "intents": {
+          "subject_doubt": 6,
+          "continuation": 4
+        },
+        "avg_latency_ms": 27923.1
+      }
+    },
+    "expected_intent_match": {
+      "sudden_pivot": {
+        "checked": 3,
+        "matched": 3,
+        "match_pct": 100.0
+      },
+      "short_pivot": {
+        "checked": 1,
+        "matched": 1,
+        "match_pct": 100.0
+      },
+      "followup": {
+        "checked": 10,
+        "matched": 9,
+        "match_pct": 90.0
+      }
+    },
+    "topic_shift_checks": [
+      {
+        "flow_id": "V20.7.1-PIV01",
+        "turn_idx": 1,
+        "prior_block": "625da216",
+        "new_block": "3f8c1b18",
+        "opened_new_block": true
+      },
+      {
+        "flow_id": "V20.7.1-PIV02",
+        "turn_idx": 1,
+        "prior_block": "f8904b55",
+        "new_block": "e3bedef4",
+        "opened_new_block": true
+      },
+      {
+        "flow_id": "V20.7.1-PIV03",
+        "turn_idx": 1,
+        "prior_block": "729ddf5a",
+        "new_block": "7b43adde",
+        "opened_new_block": true
+      },
+      {
+        "flow_id": "V20.7.1-PIV03",
+        "turn_idx": 2,
+        "prior_block": "7b43adde",
+        "new_block": "43fcbc10",
+        "opened_new_block": true
+      },
+      {
+        "flow_id": "V20.7.1-PIV04",
+        "turn_idx": 1,
+        "prior_block": "6ff43ed3",
+        "new_block": "6ff43ed3",
+        "opened_new_block": false
+      }
+    ],
+    "topic_shift_pass_pct": 80.0,
+    "misconception_detection_rate_pct": 0.0,
+    "emotional_counselor_mode_rate_pct": 0.0,
+    "vague_http_ok_pct": 0.0,
+    "out_of_scope_routing_correct_pct": 0.0,
+    "followup_continuation_rate_pct": 80.0,
+    "n_checks": {
+      "shift": 5,
+      "followup": 5,
+      "misconception": 0,
+      "emotional": 0,
+      "vague": 0,
+      "out_of_scope": 0
+    },
+    "errors": [],
+    "render_log_errors": [],
+    "render_log_topic_shift_hits": [],
+    "render_log_autoclose_hits": []
+  }
+}

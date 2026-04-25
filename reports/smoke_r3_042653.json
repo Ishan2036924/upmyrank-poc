@@ -1,0 +1,839 @@
+{
+  "meta": {
+    "run_id": "diag-20260425-042653",
+    "backend": "http://localhost:8000",
+    "email": "diag-diag-20260425-042653-714501@upmyrank.test",
+    "student_id": "27c666ba-9aff-4ce8-85c3-19c7ebf099c6",
+    "persona": "Diag Persona",
+    "n_flows": 9,
+    "n_prompts": 12,
+    "generated_at": "2026-04-25 04:34:16 IST",
+    "duration_s": 435.4
+  },
+  "turns": [
+    {
+      "flow_id": "V20.7-FU01",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "A 2 kg block is pushed with a 10 N horizontal force on a rough surface with mu = 0.2. Find its acceleration.",
+      "subject_sent": "Physics",
+      "duration_ms": 31151,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "a1a5ee71-d982-4971-92a4-efd8226b521c",
+      "doubt_session_id": "a60ffae6-38af-4cc3-881a-4d614f090af2",
+      "hint_level": null,
+      "response_text": "Let\u2019s take this one step at a time. You have a 2 kg block pushed by a 10 N force on a surface with friction coefficient $\\mu = 0.2$. What forces act on the block horizontally, and how will friction affect the net force that causes acceleration?",
+      "response_len": 244,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Laws of Motion",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7-FU01",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "why do we subtract the friction force instead of adding it?",
+      "subject_sent": "Physics",
+      "duration_ms": 18660,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "a1a5ee71-d982-4971-92a4-efd8226b521c",
+      "doubt_session_id": "a60ffae6-38af-4cc3-881a-4d614f090af2",
+      "hint_level": 1,
+      "response_text": "The frictional force always acts opposite to the direction in which the block is trying to move. Since the 10 N force is pushing the block forward, friction resists this motion and acts backward. That\u2019s why we subtract the friction force from the applied force to get the net force causing acceleration.\n\nCan you identify the direction of friction relative to the applied force in this problem?",
+      "response_len": 394,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "fix": "v0.20.7"
+      }
+    },
+    {
+      "flow_id": "V20.7-FU02",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Evaluate integral of 1/(1+x^2) dx.",
+      "subject_sent": "Maths",
+      "duration_ms": 30683,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "d2edade0-bdc5-4d1e-95e4-a1688aefaef8",
+      "doubt_session_id": "fcae7721-54e1-4f38-92ff-2c0da4f5f929",
+      "hint_level": null,
+      "response_text": "You\u2019re working on the integral of $\\frac{1}{1+x^2}$ with respect to $x$. This is a classic integral that connects closely to inverse trigonometric functions, which you might have encountered in your NCERT class 12 Maths. \n\nBefore we proceed, what function do you recall whose derivative gives $\\frac{1}{1+x^2}$?",
+      "response_len": 311,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Integration",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Maths",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7-FU02",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "why does substitution not help here?",
+      "subject_sent": "Maths",
+      "duration_ms": 20333,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "d2edade0-bdc5-4d1e-95e4-a1688aefaef8",
+      "doubt_session_id": "fcae7721-54e1-4f38-92ff-2c0da4f5f929",
+      "hint_level": 1,
+      "response_text": "Substitution usually helps when the integral\u2019s integrand can be simplified by changing variables, but here the function $\\frac{1}{1+x^2}$ is already in a standard form. This form is special because it directly matches the derivative of a well-known inverse trigonometric function. \n\nCan you recall which inverse trigonometric function has a derivative exactly equal to $\\frac{1}{1+x^2}$?",
+      "response_len": 387,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "fix": "v0.20.7"
+      }
+    },
+    {
+      "flow_id": "V20.7-FU03",
+      "flow_class": "followup",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "Why is water a bent molecule and not linear?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 31353,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "baeccb84-e661-4575-88ae-1d1e2f46d2c6",
+      "doubt_session_id": "68feb0a4-6bc1-43e4-b48d-046adf2de92d",
+      "hint_level": null,
+      "response_text": "You\u2019re asking why water (H\u2082O) isn\u2019t a straight line but bent instead. Since you\u2019re starting fresh with molecular geometry, think about the electron pairs around the oxygen atom. Oxygen has two bonded pairs (with hydrogen) and also two lone pairs of electrons. How do you think these lone pairs might affect the space and angles between the atoms compared to just bonding pairs?",
+      "response_len": 377,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Molecular Geometry",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Chemistry",
+      "error": null,
+      "expected": {
+        "intent": "subject_doubt"
+      }
+    },
+    {
+      "flow_id": "V20.7-FU03",
+      "flow_class": "followup",
+      "turn_idx": 1,
+      "endpoint": "ask",
+      "prompt": "is H2S bent too for the same reason?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 16970,
+      "http_ok": true,
+      "intent": "continuation",
+      "doubt_block_id": "baeccb84-e661-4575-88ae-1d1e2f46d2c6",
+      "doubt_session_id": "68feb0a4-6bc1-43e4-b48d-046adf2de92d",
+      "hint_level": 1,
+      "response_text": "Right \u2014 H\u2082S is bent too because it also has lone pairs on the sulfur atom that repel the bonded hydrogen atoms, just like in water. However, the bond angle in H\u2082S is smaller than in H\u2082O because sulfur is larger and less electronegative, so its lone pairs repel less strongly. How do you think the size and electronegativity of the central atom affect the bond angle in these molecules?",
+      "response_len": 385,
+      "mentor_mode": "COUNSELOR",
+      "topic": null,
+      "is_misconception_correction": null,
+      "is_full_solution": false,
+      "analysis_subject": null,
+      "error": null,
+      "expected": {
+        "intent": "continuation",
+        "fix": "v0.20.7"
+      }
+    },
+    {
+      "flow_id": "V20.8-MC01",
+      "flow_class": "misconception",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "When the car turns, I feel an outward force pushing me \u2014 is that centrifugal force?",
+      "subject_sent": "Physics",
+      "duration_ms": 35502,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "307b39e1-5d72-47da-99b9-eccd17e49cd6",
+      "doubt_session_id": "70e1cb1e-db48-4c1c-9ad2-d7e9a78d801c",
+      "hint_level": null,
+      "response_text": "When your car turns, your body wants to keep moving straight due to inertia, but the car is changing direction, so it pushes you toward the inside of the curve to make that turn. That \"push\" you feel outward is actually your body resisting this change in motion. If you think about Newton\u2019s First Law, what force is actually acting on your body to make it follow the curved path inside the car\u2019s turn?",
+      "response_len": 401,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Laws of Motion",
+      "is_misconception_correction": true,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "misconception": true,
+        "fix": "v0.20.8"
+      }
+    },
+    {
+      "flow_id": "V20.8-MC02",
+      "flow_class": "misconception",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "So a stone on a string has a centrifugal force pulling it outward, right?",
+      "subject_sent": "Physics",
+      "duration_ms": 38939,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "e17d1132-1645-4f12-b0f4-2aa9c3a9e05d",
+      "doubt_session_id": "168c8953-214f-4726-8adf-9706100167a9",
+      "hint_level": null,
+      "response_text": "You\u2019re thinking about a stone tied to a string and swung around in a circle, right. From your everyday experience, you might feel like the stone is being pulled outward\u2014this is often called the \"centrifugal force.\" But if you carefully consider the forces acting on the stone itself (in an inertial frame), do you think there is an actual force pulling it outward, or is there something else keeping it moving in a circle?",
+      "response_len": 422,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Laws of Motion",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "misconception": true,
+        "fix": "v0.20.8"
+      }
+    },
+    {
+      "flow_id": "V20.8-MC03",
+      "flow_class": "misconception",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "When swinging a bucket of water in a vertical circle, the water stays in because of centrifugal force, correct?",
+      "subject_sent": "Physics",
+      "duration_ms": 32988,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "b82bd463-276d-44bc-8f81-1472e9fcc96f",
+      "doubt_session_id": "644bd8b0-3d82-4e78-8aa2-fe19619137eb",
+      "hint_level": null,
+      "response_text": "You\u2019re thinking about the forces on the water as you swing the bucket in a vertical circle. It\u2019s good to connect this with what you know about circular motion\u2014specifically, what force actually keeps an object moving in a circle. When the bucket is upside down at the top of the swing, what force is acting on the water to keep it from falling out?",
+      "response_len": 347,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Laws of Motion",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Physics",
+      "error": null,
+      "expected": {
+        "misconception": true,
+        "fix": "v0.20.8"
+      }
+    },
+    {
+      "flow_id": "V21-EX01",
+      "flow_class": "short_pivot",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "what is atom?",
+      "subject_sent": "Physics",
+      "duration_ms": 33319,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "ebe6a079-05cd-4d01-bbca-f0c348bd48a2",
+      "doubt_session_id": "d1fb846f-7377-4b6c-ba0f-43518ece1f13",
+      "hint_level": null,
+      "response_text": "You\u2019re asking about what an atom is, which is great because it\u2019s the foundation of everything we see around us. You already have some background in atomic structure, so think about this: what do you imagine is the smallest piece of matter that still behaves like the element it comes from?",
+      "response_len": 289,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Atomic Structure",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Chemistry",
+      "error": null,
+      "expected": {
+        "opens_block": true,
+        "fix": "v0.21"
+      }
+    },
+    {
+      "flow_id": "V21-EX02",
+      "flow_class": "short_pivot",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "what is log?",
+      "subject_sent": "Maths",
+      "duration_ms": 30233,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "2d79e5c2-dd86-47a2-b00a-ee95f4a6b12e",
+      "doubt_session_id": "e593b27e-a0cb-4b49-910e-233a7a4bde0b",
+      "hint_level": null,
+      "response_text": "Since your current mastery of logarithms is just starting, let's begin with something simple. You might already know about exponents \u2014 for example, $2^3 = 8$ means multiplying 2 by itself 3 times gives 8. Logarithms are closely connected to this idea; they basically tell you the power to which a number (called the base) must be raised to get another number.\n\nThinking along these lines, if $2^3 = 8$, what would $\\log_2 8$ represent in terms of exponents?",
+      "response_len": 457,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Logarithms",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Maths",
+      "error": null,
+      "expected": {
+        "opens_block": true,
+        "fix": "v0.21"
+      }
+    },
+    {
+      "flow_id": "V21-EX03",
+      "flow_class": "short_pivot",
+      "turn_idx": 0,
+      "endpoint": "ask",
+      "prompt": "what's a mole in chemistry?",
+      "subject_sent": "Chemistry",
+      "duration_ms": 30660,
+      "http_ok": true,
+      "intent": "subject_doubt",
+      "doubt_block_id": "1d1826e1-2fff-480c-afaa-3400a275b962",
+      "doubt_session_id": "f7e9b5db-09fd-4899-898d-1caa8990937d",
+      "hint_level": null,
+      "response_text": "You\u2019re starting fresh with the concept of a mole, which is great\u2014it\u2019s one of the building blocks of stoichiometry. Think about it this way: when you buy eggs, you don\u2019t count each egg individually; you buy them by the dozen (12 eggs). Similarly, in chemistry, atoms and molecules are so tiny and numerous that we count them in groups called moles. \n\nCan you guess what number of particles might make up one mole, and why we need such a huge number to count atoms or molecules?",
+      "response_len": 476,
+      "mentor_mode": "COUNSELOR",
+      "topic": "Stoichiometry",
+      "is_misconception_correction": false,
+      "is_full_solution": null,
+      "analysis_subject": "Chemistry",
+      "error": null,
+      "expected": {
+        "opens_block": true,
+        "fix": "v0.21"
+      }
+    }
+  ],
+  "db": {
+    "judge": [
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation of a mole and its comparison to a dozen is factually accurate.\", \"pedagogical\": \"The response uses a relatable analogy and asks a Socratic question to encourage deeper thinking.\", \"context_relevance\": \"The response is relevant as it introduces the concept of a mole without any prior context needed.\", \"hint_appropriateness\": \"The hint level is appropriate as it encourages the student to think critically about the concept.\"}",
+        "question": "what's a mole in chemistry?",
+        "evaluated_at": "2026-04-24 23:04:07.808331+00:00",
+        "doubt_session_id": "f7e9b5db-09fd-4899-898d-1caa8990937d"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation of logarithms and their relationship to exponents is accurate.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to connect logarithms with exponents.\", \"context_relevance\": \"The response is relevant as it addresses the student's basic understanding of logarithms without assuming prior knowledge.\", \"hint_appropriateness\": \"The hint level is appropriate for a student just starting to learn about logarithms.\"}",
+        "question": "what is log?",
+        "evaluated_at": "2026-04-24 23:03:30.480509+00:00",
+        "doubt_session_id": "e593b27e-a0cb-4b49-910e-233a7a4bde0b"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.85,
+        "rationale_json": "{\"factual\": \"The information about atoms being the foundation of matter is factually accurate.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to think critically about the concept of an atom.\", \"context_relevance\": \"There is no context provided, making the response somewhat generic.\", \"hint_appropriateness\": \"The hint depth is appropriate for the given hint level, encouraging exploration without giving a direct answer.\"}",
+        "question": "what is atom?",
+        "evaluated_at": "2026-04-24 23:02:52.274509+00:00",
+        "doubt_session_id": "d1fb846f-7377-4b6c-ba0f-43518ece1f13"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation is factually accurate regarding the forces in circular motion.\", \"pedagogical\": \"The response uses a Socratic question to guide the student to think critically about the forces involved.\", \"context_relevance\": \"The response is relevant as it directly addresses the student's misconception about centrifugal force.\", \"hint_appropriateness\": \"The hint level is appropriate for a student who has not attempted the problem before.\"}",
+        "question": "When swinging a bucket of water in a vertical circle, the water stays in because of centrifugal force, correct?",
+        "evaluated_at": "2026-04-24 23:02:11.440986+00:00",
+        "doubt_session_id": "644bd8b0-3d82-4e78-8aa2-fe19619137eb"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation accurately describes the misconception of centrifugal force and encourages deeper understanding.\", \"pedagogical\": \"The response uses a Socratic approach, prompting the student to think critically about the concept of centrifugal force.\", \"context_relevance\": \"The response is relevant to the student's question about the forces acting on the stone.\", \"hint_appropriateness\": \"The hint level is appropriate as it encourages reasoning without giving away the full answer.\"}",
+        "question": "So a stone on a string has a centrifugal force pulling it outward, right?",
+        "evaluated_at": "2026-04-24 23:01:31.186930+00:00",
+        "doubt_session_id": "168c8953-214f-4726-8adf-9706100167a9"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation accurately describes inertia and the forces involved in a car turning.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to think critically about the concept of forces during a turn.\", \"context_relevance\": \"The response is relevant to the student's question about centrifugal force and provides a clear connection to the concept of inertia.\", \"hint_appropriateness\": \"The hint level is appropriate as it encourages deeper thinking without giving away the answer.\"}",
+        "question": "When the car turns, I feel an outward force pushing me \u2014 is that centrifugal force?",
+        "evaluated_at": "2026-04-24 23:00:44.094481+00:00",
+        "doubt_session_id": "70e1cb1e-db48-4c1c-9ad2-d7e9a78d801c"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 0,
+        "hint_appropriateness_score": 1,
+        "overall_score": 0.85,
+        "rationale_json": "{\"factual\": \"The explanation regarding the bond angles and the influence of electronegativity and size is accurate.\", \"pedagogical\": \"The response uses a Socratic question to encourage the student to think critically about the factors affecting molecular shape.\", \"context_relevance\": \"The response introduces H\u2082S without any context, making it seem somewhat generic and not directly related to the student's question about water.\", \"hint_appropriateness\": \"The hint level is appropriate as it encourages further exploration of the topic without giving away the answer.\"}",
+        "question": "Why is water a bent molecule and not linear?",
+        "evaluated_at": "2026-04-24 23:00:01.485842+00:00",
+        "doubt_session_id": "68feb0a4-6bc1-43e4-b48d-046adf2de92d"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The information provided about the integral and its relation to inverse trigonometric functions is accurate.\", \"pedagogical\": \"The response encourages the student to think critically about the relationship between the integral and inverse trigonometric functions.\", \"context_relevance\": \"The response is relevant as it directly addresses the integral posed by the student.\", \"hint_appropriateness\": \"The hint level is appropriate, prompting the student to recall relevant knowledge without giving away the answer.\"}",
+        "question": "Evaluate integral of 1/(1+x^2) dx.",
+        "evaluated_at": "2026-04-24 22:59:03.339434+00:00",
+        "doubt_session_id": "fcae7721-54e1-4f38-92ff-2c0da4f5f929"
+      },
+      {
+        "pedagogical_score": 2,
+        "factual_score": 1,
+        "context_relevance_score": 1,
+        "hint_appropriateness_score": 1,
+        "overall_score": 1.0,
+        "rationale_json": "{\"factual\": \"The explanation of the frictional force and its direction is accurate.\", \"pedagogical\": \"The response encourages the student to think critically about the forces acting on the block.\", \"context_relevance\": \"The response is relevant to the student's question about the forces acting on the block.\", \"hint_appropriateness\": \"The hint level is appropriate as it prompts the student to engage with the problem without giving away the full solution.\"}",
+        "question": "A 2 kg block is pushed with a 10 N horizontal force on a rough surface with mu = 0.2. Find its acceleration.",
+        "evaluated_at": "2026-04-24 22:58:05.678494+00:00",
+        "doubt_session_id": "a60ffae6-38af-4cc3-881a-4d614f090af2"
+      }
+    ],
+    "events": [
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.664878,
+        "response_latency_ms": 1874,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 23:03:55.453171+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1825,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 23:03:17.278393+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2379,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 23:02:38.786926+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1406,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 23:01:58.320042+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2519,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 23:01:17.743680+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "misconception_detected",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 23:00:30.728737+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2705,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 23:00:29.841630+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:59:59.435005+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1397,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:59:51.171556+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1539,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:59:32.568589+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:59:01.945680+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 2139,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:58:53.565884+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1377,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:58:31.721496+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "session_terminal",
+        "scaffolding_score": null,
+        "retrieval_similarity": null,
+        "response_latency_ms": null,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:58:04.095902+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "hint_requested",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1390,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:57:55.528115+00:00",
+        "doubt_block_id": null
+      },
+      {
+        "event_type": "question_asked",
+        "scaffolding_score": 2,
+        "retrieval_similarity": 0.0,
+        "response_latency_ms": 1800,
+        "misconception_detected": false,
+        "created_at": "2026-04-24 22:57:35.164645+00:00",
+        "doubt_block_id": null
+      }
+    ],
+    "metrics": [
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 7792,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Maths",
+        "retrieval_latency_ms": 9008,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Maths",
+        "retrieval_latency_ms": 7211,
+        "agent_steps": 3,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 5508,
+        "agent_steps": 2,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 10093,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 7325,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 10812,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Physics",
+        "retrieval_latency_ms": 8481,
+        "agent_steps": 3,
+        "chunks_retrieved": 5,
+        "has_similar_problem": false
+      },
+      {
+        "subject": "Chemistry",
+        "retrieval_latency_ms": 5590,
+        "agent_steps": 2,
+        "chunks_retrieved": 3,
+        "has_similar_problem": false
+      }
+    ],
+    "mastery": [],
+    "blocks": [
+      {
+        "doubt_block_id": "1d1826e1-2fff-480c-afaa-3400a275b962",
+        "topic": "Stoichiometry",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked about the concept of a mole in chemistry, and the tutor explained it as a unit used to count atoms and molecules, comparing it to buying eggs by the dozen. The student seemed to grasp the basic idea, as the tutor encouraged them to think about the number of particles in a mole and its significance.",
+        "started_at": "2026-04-24 23:03:56.390014+00:00",
+        "ended_at": "2026-04-24 23:04:02.019678+00:00"
+      },
+      {
+        "doubt_block_id": "2d79e5c2-dd86-47a2-b00a-ee95f4a6b12e",
+        "topic": "Logarithms",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked about the concept of logarithms, and the tutor explained that logarithms indicate the power to which a base must be raised to obtain a specific number, relating it to the student's prior knowledge of exponents. The conversation suggests that the student is beginning to grasp the concept, as the tutor prompts them to think about the relationship between logarithms and exponents.",
+        "started_at": "2026-04-24 23:03:18.305360+00:00",
+        "ended_at": "2026-04-24 23:03:24.177367+00:00"
+      },
+      {
+        "doubt_block_id": "ebe6a079-05cd-4d01-bbca-f0c348bd48a2",
+        "topic": "Atomic Structure",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked about the definition of an atom, and the tutor explained that it is the fundamental building block of matter, prompting the student to consider the smallest piece of matter that retains the properties of its element. The conversation indicates that the student has some understanding of atomic structure but may need further clarification on the concept.",
+        "started_at": "2026-04-24 23:02:39.827566+00:00",
+        "ended_at": "2026-04-24 23:02:46.019392+00:00"
+      },
+      {
+        "doubt_block_id": "b82bd463-276d-44bc-8f81-1472e9fcc96f",
+        "topic": "Laws of Motion",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked whether centrifugal force is responsible for keeping water in a bucket swung in a vertical circle. The tutor guided the student to consider the actual forces involved in circular motion, indicating that the student needed to understand the role of centripetal force in this context, suggesting they may not fully grasp the concept yet.",
+        "started_at": "2026-04-24 23:01:59.242230+00:00",
+        "ended_at": "2026-04-24 23:02:05.323901+00:00"
+      },
+      {
+        "doubt_block_id": "e17d1132-1645-4f12-b0f4-2aa9c3a9e05d",
+        "topic": "Laws of Motion",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked about the concept of centrifugal force related to a stone on a string being swung in a circle. The tutor clarified that while it may seem like there is an outward force, it is important to consider the actual forces at play, suggesting the student may need to rethink their understanding of the concept.",
+        "started_at": "2026-04-24 23:01:18.787890+00:00",
+        "ended_at": "2026-04-24 23:01:24.393467+00:00"
+      },
+      {
+        "doubt_block_id": "307b39e1-5d72-47da-99b9-eccd17e49cd6",
+        "topic": "Laws of Motion",
+        "hint_level": 0,
+        "solved": false,
+        "summary": "The student asked about the sensation of an outward force when a car turns, inquiring if it was centrifugal force. The tutor explained that this feeling is due to inertia and the body's resistance to the change in motion, helping the student understand the concept related to Newton\u2019s First Law.",
+        "started_at": "2026-04-24 23:00:31.592848+00:00",
+        "ended_at": "2026-04-24 23:00:38.205284+00:00"
+      },
+      {
+        "doubt_block_id": "baeccb84-e661-4575-88ae-1d1e2f46d2c6",
+        "topic": "Molecular Geometry",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked why water is a bent molecule instead of linear, leading to a discussion about molecular geometry and the influence of lone pairs on bond angles. The student demonstrated understanding by relating the concept to H\u2082S and inquiring about the effects of atom size and electronegativity on bond angles.",
+        "started_at": "2026-04-24 22:59:33.388280+00:00",
+        "ended_at": "2026-04-24 22:59:55.555254+00:00"
+      },
+      {
+        "doubt_block_id": "d2edade0-bdc5-4d1e-95e4-a1688aefaef8",
+        "topic": "Integration",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked about evaluating the integral of \\( \\frac{1}{1+x^2} \\, dx \\), and the tutor explained that this integral is related to inverse trigonometric functions. The student expressed confusion about why substitution wouldn't help, and the tutor clarified that the integrand is already in a standard form, indicating that the student was beginning to understand the concept.",
+        "started_at": "2026-04-24 22:58:32.552250+00:00",
+        "ended_at": "2026-04-24 22:58:58.510691+00:00"
+      },
+      {
+        "doubt_block_id": "a1a5ee71-d982-4971-92a4-efd8226b521c",
+        "topic": "Laws of Motion",
+        "hint_level": 1,
+        "solved": false,
+        "summary": "The student asked about calculating the acceleration of a 2 kg block being pushed with a 10 N force on a rough surface, specifically questioning why the friction force is subtracted rather than added. The tutor explained that friction acts in the opposite direction to the applied force, helping the student understand the concept of net force and its role in determining acceleration.",
+        "started_at": "2026-04-24 22:57:35.999375+00:00",
+        "ended_at": "2026-04-24 22:58:00.540871+00:00"
+      }
+    ],
+    "ctq": [
+      {
+        "validation_score": 2,
+        "appropriateness": 2,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-24 22:59:54.110237+00:00"
+      },
+      {
+        "validation_score": 2,
+        "appropriateness": 2,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-24 22:58:56.427026+00:00"
+      },
+      {
+        "validation_score": 2,
+        "appropriateness": 2,
+        "restart_detected": false,
+        "single_question": true,
+        "scored_at": "2026-04-24 22:57:58.339466+00:00"
+      }
+    ]
+  },
+  "render_logs_sample": [],
+  "analysis": {
+    "pillars": {
+      "quality_communication": {
+        "socratic_adherence_pct_peda_ge_1": 100.0,
+        "avg_pedagogical_0_2": 2,
+        "avg_factual_0_1": 1,
+        "avg_context_rel_0_1": 0.778,
+        "avg_hint_app_0_1": 1,
+        "avg_overall_0_1": 0.967,
+        "n_judge_rows": 9,
+        "ctq_validation_avg": 2,
+        "ctq_appropriateness_avg": 2,
+        "ctq_single_question_pct": 100.0
+      },
+      "knowledge_genome": {
+        "mastery_rows_written": 0,
+        "blocks_opened": 9,
+        "blocks_resolved": 0,
+        "blocks_ended": 9,
+        "genome_update_rate_pct": 0.0,
+        "n_concepts_touched": 0
+      },
+      "personalized_response": {
+        "response_len_avg": 374.167,
+        "response_len_stdev": 67.3,
+        "len_stdev_over_avg": 0.18,
+        "note": "Heuristic: higher stdev/avg ratio = responses varied in structure/length per context (signal, not proof)."
+      },
+      "easy_learning": {
+        "hint_ladder_progression_monotonic": true,
+        "median_latency_ms": 31151,
+        "p95_latency_ms": 35502,
+        "forced_attempt_triggered_count": 0,
+        "full_solution_triggered_count": 0
+      }
+    },
+    "scenario_class_rollups": {
+      "followup": {
+        "prompts": 6,
+        "http_ok": 6,
+        "http_ok_pct": 100.0,
+        "intents": {
+          "subject_doubt": 3,
+          "continuation": 3
+        },
+        "avg_latency_ms": 24858.333
+      },
+      "misconception": {
+        "prompts": 3,
+        "http_ok": 3,
+        "http_ok_pct": 100.0,
+        "intents": {
+          "subject_doubt": 3
+        },
+        "avg_latency_ms": 35809.667
+      },
+      "short_pivot": {
+        "prompts": 3,
+        "http_ok": 3,
+        "http_ok_pct": 100.0,
+        "intents": {
+          "subject_doubt": 3
+        },
+        "avg_latency_ms": 31404
+      }
+    },
+    "expected_intent_match": {
+      "followup": {
+        "checked": 6,
+        "matched": 6,
+        "match_pct": 100.0
+      }
+    },
+    "topic_shift_checks": [],
+    "topic_shift_pass_pct": 0.0,
+    "misconception_detection_rate_pct": 33.3,
+    "emotional_counselor_mode_rate_pct": 0.0,
+    "vague_http_ok_pct": 0.0,
+    "out_of_scope_routing_correct_pct": 0.0,
+    "followup_continuation_rate_pct": 100.0,
+    "n_checks": {
+      "shift": 0,
+      "followup": 3,
+      "misconception": 3,
+      "emotional": 0,
+      "vague": 0,
+      "out_of_scope": 0
+    },
+    "errors": [],
+    "render_log_errors": [],
+    "render_log_topic_shift_hits": [],
+    "render_log_autoclose_hits": []
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "name": "diagnostic_smoke_fixes",
+    "purpose": "Targeted smoke test — the exact prompts that FAILED in diagnostic_2026-04-23 for bugs #1/#2/#3. If every prompt here now passes, all three fixes landed correctly."
+  },
+  "flows": [
+    { "flow_id": "V20.7-FU01", "class": "followup", "subject": "Physics", "topic": "Laws of Motion", "turns": [
+      {"prompt": "A 2 kg block is pushed with a 10 N horizontal force on a rough surface with mu = 0.2. Find its acceleration.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "why do we subtract the friction force instead of adding it?", "expect": {"intent": "continuation", "fix": "v0.20.7"}}
+    ]},
+    { "flow_id": "V20.7-FU02", "class": "followup", "subject": "Maths", "topic": "Integration", "turns": [
+      {"prompt": "Evaluate integral of 1/(1+x^2) dx.", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "why does substitution not help here?", "expect": {"intent": "continuation", "fix": "v0.20.7"}}
+    ]},
+    { "flow_id": "V20.7-FU03", "class": "followup", "subject": "Chemistry", "topic": "Chemical Bonding", "turns": [
+      {"prompt": "Why is water a bent molecule and not linear?", "expect": {"intent": "subject_doubt"}},
+      {"prompt": "is H2S bent too for the same reason?", "expect": {"intent": "continuation", "fix": "v0.20.7"}}
+    ]},
+
+    { "flow_id": "V20.8-MC01", "class": "misconception", "subject": "Physics", "topic": "Circular Motion", "turns": [
+      {"prompt": "When the car turns, I feel an outward force pushing me — is that centrifugal force?", "expect": {"misconception": true, "fix": "v0.20.8"}}
+    ]},
+    { "flow_id": "V20.8-MC02", "class": "misconception", "subject": "Physics", "topic": "Circular Motion", "turns": [
+      {"prompt": "So a stone on a string has a centrifugal force pulling it outward, right?", "expect": {"misconception": true, "fix": "v0.20.8"}}
+    ]},
+    { "flow_id": "V20.8-MC03", "class": "misconception", "subject": "Physics", "topic": "Circular Motion", "turns": [
+      {"prompt": "When swinging a bucket of water in a vertical circle, the water stays in because of centrifugal force, correct?", "expect": {"misconception": true, "fix": "v0.20.8"}}
+    ]},
+
+    { "flow_id": "V21-EX01", "class": "short_pivot", "subject": "Physics", "topic": "Laws of Motion", "turns": [
+      {"prompt": "what is atom?", "expect": {"opens_block": true, "fix": "v0.21"}}
+    ]},
+    { "flow_id": "V21-EX02", "class": "short_pivot", "subject": "Maths", "topic": "Logarithms", "turns": [
+      {"prompt": "what is log?", "expect": {"opens_block": true, "fix": "v0.21"}}
+    ]},
+    { "flow_id": "V21-EX03", "class": "short_pivot", "subject": "Chemistry", "topic": "Mole Concept", "turns": [
+      {"prompt": "what's a mole in chemistry?", "expect": {"opens_block": true, "fix": "v0.21"}}
+    ]}
+  ]
+}

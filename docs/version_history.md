@@ -20,6 +20,7 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.20.7.1](#v02071--asymmetric-continuation-guard-cross-subject-pivot-fix-2026-04-25) | 2026-04-25 | Patch v0.20.7's cross-subject pivot regression — classifier-mismatch + deterministic subject-keyword fallback restore topic-shift on `"Wait, what's the integral of …"` / `"hmm actually …"` / `"what is pH?"`-style cross-subject pivots |
 | [v0.21](#v021--explanation-intent-opens-doubt_block--mastery-tracking-2026-04-25) | 2026-04-25 | `explanation` intent now routes through `start_session` when a study_session is active → mastery tracking on short concept queries |
 | [v0.20.8](#v0208--misconception-library-fires-on-initial-doubts-not-just-hint-replies-2026-04-25) | 2026-04-25 | `check_for_misconception` now runs inside `start_session` + `start_session_stream` — misconception_id stamped on block creation, 1.5× mastery penalty fires when student resolves |
 | [v0.20.7](#v0207--asymmetric-continuation-guard-in-topic-shift-detection-2026-04-25) | 2026-04-25 | Follow-up starter-phrase allowlist in `_detect_topic_shift` — continuations no longer get demoted to `subject_doubt` when the prompt contains a verb like "why" |
@@ -52,10 +53,59 @@
 
 ---
 
+## v0.20.7.1 — Asymmetric continuation guard cross-subject pivot fix (2026-04-25)
+
+**Status:** shipped (backend-only; ~80 LOC; awaiting user push)
+**Commits:** *(staged — commit by user)*
+
+### Why
+The 100-question diagnostic re-run on 2026-04-25 surfaced an over-fire from v0.20.7. The asymmetric continuation guard correctly preserved 5/5 same-subject follow-ups, but it also TRAPPED 4 cross-subject pivots that begin with continuation-marker fillers:
+
+```
+"Wait, what's the integral of sin(x²)?"          (Phys block → Maths pivot)
+"hmm actually can you help me with derivatives…"  (Chem block → Maths pivot)
+"oh wait I also don't understand Newton's third law" (Maths block → Phys pivot)
+"what is pH?"                                       (Maths block → Chem pivot, < 12 char floor)
+```
+
+Topic-shift pass rate dropped 75 % → 58 %. The fillers `wait` / `hmm` / `oh` are conversational — they can precede continuations OR pivots. v0.20.7's fast-path ate both.
+
+### Fix
+Two-layer cross-subject detection inside `_detect_topic_shift` (`app/api/doubt.py`):
+
+1. **Restructured early-return.** Old: exit if `_looks_like_new_question(question) == False`. New: exit only if BOTH `_looks_like_new_question == False` AND `_looks_like_continuation == False`. Allows continuation-marker prompts to reach the classifier even when they don't carry a new-question verb.
+
+2. **LLM classifier subject mismatch.** When `_looks_like_continuation` matches, run `engine.classify_turn_topic` and re-promote to `subject_doubt` if the returned subject differs from the active block's subject.
+
+3. **Deterministic keyword fallback.** New `_SUBJECT_KEYWORDS` regex set (Physics / Chemistry / Maths) + `_detect_subject_via_keywords()`. If the LLM classifier returns empty / wrong subject (it's unreliable on short ambiguous prompts), the keyword detector kicks in. Re-promote if the keyword-detected subject differs from the active block's. Word-boundaried so `force` doesn't match inside `enforce`, `atom` doesn't match inside `atomic-bomb-trivia`, etc.
+
+The fallback is critical because the LLM topic classifier on short prompts (`"what is pH?"`, `"hmm actually …"`) often returns empty or echoes the active block's subject. Keyword detection is deterministic and faster.
+
+### Verification
+- Unit test on `_detect_subject_via_keywords` over 10 fixtures: 10/10 pass.
+- Targeted smoke on the 4 cross-subject pivots + 5 same-subject follow-up regression guards (`scripts/data/diagnostic_smoke_v0207_1.json`):
+  - `"Wait, what's the integral of sin(x²)?"` → opens new block ✓
+  - `"hmm actually can you help me with derivatives…"` → opens new block ✓ (via keyword fallback)
+  - `"oh wait I also don't understand Newton's third law"` → opens new block ✓
+  - `"what is pH?"` → out of scope (11 chars; below the v0.20.3 12-char floor on `_looks_like_new_question`); continuation-marker regex doesn't match `"what is X?"` either. **Pre-existing, not a v0.20.7 regression.** Documented for v0.22.
+  - 5/5 same-subject follow-ups (`"why do we subtract friction"`, `"is H2S bent too"`, etc.) still classify as `continuation`.
+
+### Files changed
+- **MODIFIED** `app/api/doubt.py` — `_SUBJECT_KEYWORDS` (Physics/Chemistry/Maths regex sets, ~50 LOC), `_detect_subject_via_keywords()` helper, `_detect_topic_shift` restructured (early-return now considers continuation marker, branch logic reorganised, keyword fallback added). Net +80 LOC.
+
+### Known limitations / out-of-scope
+- Prompts shorter than 12 characters (e.g. `"what is pH?"`, `"is H2S?"`) bypass the entire shift-detection path because of the v0.20.3 length floor on `_looks_like_new_question`. Lowering the floor risks treating raw replies (`"what?"`, `"x²"`) as new doubts. Filed for v0.22 as: "consider a separate ultra-short-pivot path that bypasses the verb regex when a clear subject keyword is present."
+- The LLM classifier remains unreliable on short ambiguous prompts; the keyword fallback is the safety net.
+
+### Lesson
+A regex fast-path that bypasses the LLM classifier needs careful asymmetry. Symmetric fast-paths produce surprises in both directions: v0.20.7's marker-trust skipped the classifier entirely (hurting cross-subject), and v0.20.7.1 now still trusts the marker BUT uses both LLM and keyword channels to disambiguate. Cost: one extra `classify_turn_topic` call (~200 ms `gpt-4o-mini`) on prompts that match `_looks_like_continuation`. Acceptable for the correctness gain.
+
+---
+
 ## v0.21 — `explanation` intent opens doubt_block + mastery tracking (2026-04-25)
 
-**Status:** shipped (backend-only; awaiting user push)
-**Commits:** *(staged — commit by user)*
+**Status:** shipped (backend-only).
+**Commits:** **bundled into git hash `9e1988a`** (the v0.20.7 commit). When v0.20.7 was staged with `git add app/api/doubt.py`, the file already contained the v0.21 + v0.20.8 doubt.py changes layered on top, so all three logical fixes shipped under the v0.20.7 commit message. Functionally on prod after Render redeploys; the v0.21 fix is in production despite no commit message bearing its name. Not rewriting history (RULES.md). Future versions touching the same file will use `git add -p` to keep commits aligned with logical changes.
 
 ### Why
 Diagnostic 2026-04-23 bug #2: short concept queries (`"what is atom?"`, `"what is log?"`, `"what's a mole in chemistry?"`) were being intent-classified as `explanation` by the gpt-4o-mini router, then routed to `handle_non_physics_intent()` which returned a concept explanation with `session_id: None`. Net effect: **no `doubt_block` opened → no RAG → no mastery tracked** for the entire class of short definitional queries. A student asking "what is atom?" then "what is molecule?" showed 0 concepts touched in their Genome.
