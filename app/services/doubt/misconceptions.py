@@ -32,8 +32,14 @@ MISCONCEPTION_LIBRARY: list[Misconception] = [
     Misconception(
         id="centripetal_outward_force",
         pattern_keywords=[
-            "centrifugal", "outward force", "pushed outward", "outward pull",
-            "flying outward", "force outward", "outward push", "moves outward because of force",
+            "centrifugal", "centrifugal force", "outward force",
+            "pushed outward", "pushes outward", "pulling outward",
+            "pulling it outward", "pulling them outward",
+            "outward pull", "outward push",
+            "flying outward", "force outward",
+            "moves outward because of force",
+            "stays in because of centrifugal",
+            "water stays in because",
         ],
         pattern_description="Student treats centrifugal / outward force as a real inertial force in a free body diagram.",
         correction_prompt=(
@@ -1068,21 +1074,36 @@ def check_for_misconception(
     response_lower = student_response.lower()
     topic_lower = topic.lower()
 
+    # First pass: topic + keyword match (strict — the original behaviour).
     for m in MISCONCEPTION_LIBRARY:
-        # Subject filter: only check misconceptions for the active subject
         if m.subject != subject:
             continue
-
-        # Topic scope filter: skip if no concept_affected overlaps with topic
         topic_match = any(
             ca.lower() in topic_lower or topic_lower in ca.lower()
             for ca in m.concepts_affected
         )
         if not topic_match:
             continue
-
-        # Keyword match
         if any(kw in response_lower for kw in m.pattern_keywords):
+            return m
+
+    # v0.20.8 second pass: topic-agnostic fallback. The problem-analysis LLM
+    # sometimes classifies a circular-motion misconception prompt under the
+    # coarser "Laws of Motion" topic, or returns a generic subtopic that
+    # doesn't overlap concepts_affected. When that happens, the first pass
+    # misses even though the student's response has strong misconception
+    # signal (multiple pattern_keywords present).
+    #
+    # Safe expansion: require ≥2 keyword hits (so a single incidental word
+    # like "outward" won't false-trigger). Pattern keywords are specific
+    # enough — "centrifugal", "outward force", "flying outward" — that two
+    # co-occurring hits in one student turn is overwhelmingly a real
+    # misconception.
+    for m in MISCONCEPTION_LIBRARY:
+        if m.subject != subject:
+            continue
+        hits = sum(1 for kw in m.pattern_keywords if kw in response_lower)
+        if hits >= 2:
             return m
 
     return None

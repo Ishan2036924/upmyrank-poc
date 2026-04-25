@@ -682,6 +682,40 @@ class SocraticEngine:
 
         asyncio.create_task(_run_judge_start())
 
+        # ── 11c. v0.20.8: misconception detection on INITIAL doubt ──────────────
+        # Until v0.20.8, check_for_misconception() was only called inside
+        # get_hint() — meaning a student who OPENS a doubt with a misconception
+        # ("I think centripetal force pulls the ball outward, is that right?")
+        # got a perfectly good Socratic response but the library match was
+        # never flagged → no misconception_id stamp on doubt_blocks, no 1.5×
+        # mastery penalty when resolved, no persona_profile.common_misconceptions
+        # growth. Diagnostic 2026-04-23 caught 0/10 misconception-shaped
+        # initial doubts being flagged.
+        #
+        # Pure keyword check (< 1 ms), no LLM. Adds misconception_id to the
+        # response payload + logs a session_event for telemetry symmetry with
+        # the hint-response path at engine.py:~1353.
+        _mc_hit = None
+        try:
+            _mc_topic = str(analysis.get("topic", "") or "")
+            if _mc_topic:
+                _mc_hit = check_for_misconception(
+                    question, _mc_topic, subject=_effective_subject,
+                )
+        except Exception as exc:
+            logger.warning("check_for_misconception on start_session failed (non-fatal): %s", exc)
+
+        if _mc_hit is not None:
+            logger.info(
+                "v0.20.8 misconception flagged on start_session: id=%s topic=%s subject=%s",
+                _mc_hit.id, _mc_topic, _effective_subject,
+            )
+            await self._log_event(
+                session_id=session_id,
+                event_type="misconception_detected",
+                payload={"misconception_id": _mc_hit.id, "hint_level": 0, "source": "start_session"},
+            )
+
         result = {
             "session_id": str(session_id),
             "analysis": analysis,
@@ -691,6 +725,8 @@ class SocraticEngine:
             "retrieved_context_count": rag["chunk_count"],
             "out_of_scope": out_of_scope,
             "cache_hit": False,
+            "is_misconception_correction": _mc_hit is not None,
+            "misconception_id": _mc_hit.id if _mc_hit is not None else None,
             # RAG telemetry — consumed by doubt.py to write session_metrics
             "_rag_metrics": {
                 "retrieval_latency_ms": rag.get("retrieval_latency_ms", 0),
@@ -1028,6 +1064,35 @@ class SocraticEngine:
 
             asyncio.create_task(_run_judge_stream())
 
+            # ── 11c. v0.20.8: misconception detection on INITIAL streamed doubt
+            _mc_hit_stream = None
+            try:
+                _mc_subj_stream = analysis.get("detected_subject") or subject
+                _mc_topic_stream = str(analysis.get("topic", "") or "")
+                if _mc_topic_stream:
+                    _mc_hit_stream = check_for_misconception(
+                        question, _mc_topic_stream, subject=_mc_subj_stream,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "check_for_misconception on start_session_stream failed (non-fatal): %s",
+                    exc,
+                )
+            if _mc_hit_stream is not None:
+                logger.info(
+                    "v0.20.8 misconception flagged on start_session_stream: id=%s",
+                    _mc_hit_stream.id,
+                )
+                await self._log_event(
+                    session_id=session_id,
+                    event_type="misconception_detected",
+                    payload={
+                        "misconception_id": _mc_hit_stream.id,
+                        "hint_level": 0,
+                        "source": "start_session_stream",
+                    },
+                )
+
             # ── 12. Cache response (background) ─────────────────────────────────
             # Strip student-specific keys before caching — the cache is student-agnostic.
             if _query_embedding:
@@ -1054,6 +1119,8 @@ class SocraticEngine:
                 "out_of_scope": out_of_scope,
                 "cache_hit": False,
                 "sanitized_response": socratic_response,
+                "is_misconception_correction": _mc_hit_stream is not None,
+                "misconception_id": _mc_hit_stream.id if _mc_hit_stream is not None else None,
             }
 
         except Exception as exc:
