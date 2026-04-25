@@ -48,6 +48,52 @@ _NEW_QUESTION_MARKERS = re.compile(
     re.IGNORECASE,
 )
 
+# v0.20.7 — follow-up starter phrases. A prompt that BEGINS with any of these
+# is overwhelmingly a continuation of the active block, even if the verb
+# regex above marks it as "new-question-shaped". Without this guard, messages
+# like "why does substitution not help here?" (classified as `continuation`
+# by the intent LLM) got demoted back to `subject_doubt` inside
+# _detect_topic_shift because a sub-topic re-classification drifted from the
+# active block's topic, opening a phantom block and diluting mastery.
+#
+# Prod evidence: diagnostic_2026-04-23.md bug #1 — 5/10 follow-up turns
+# wrongly opened new blocks. All 5 start with a phrase in this list.
+_CONTINUATION_STARTERS_RE = re.compile(
+    r"^\s*("
+    r"why\s+(?:does|doesn't|is|isn't|do|don't|would|wouldn't|can't|would)|"
+    r"(?:ok(?:ay)?|so)\s+(?:so\s+)?then|"
+    r"(?:ok(?:ay)?|alright|got\s+it|cool)\b|"
+    r"but(?:\s+(?:isn't|doesn't|why|what))?\b|"
+    r"what\s+(?:about|happens\s+(?:when|if)|if)|"
+    r"(?:can|could|would)\s+you\s+(?:explain|show|clarify|repeat).*(?:again|once\s+more|one\s+more\s+time)|"
+    r"hmm\b|wait\b|(?:oh\s+(?:wait|but))|(?:i|so)\s+see\b|"
+    r"is\s+(?:that|this|it)\s+because|"
+    r"(?:so|then)\s+(?:is\s+it|does\s+that\s+mean)|"
+    r"is\s+\w+\s+(?:the\s+same|also).*(?:for|too|as\s+well)|"
+    r"is\s+\w+\s+\w+\s+(?:too|also)\b"       # "is H2S bent too …" — subj verb adverb
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_continuation(text: str) -> bool:
+    """v0.20.7 — asymmetric guard against false topic-shift promotions.
+
+    If the message starts with a continuation marker (why does, ok so, but,
+    what happens when, can you explain … again, hmm, wait, …) trust the
+    intent classifier's `continuation` label and keep the active block open,
+    even when the prompt also trips _looks_like_new_question.
+
+    Symmetry note: this complements FIX A3's "< 100 chars short-reply" net —
+    the starter phrase captures continuations that exceed 100 chars OR
+    happen to contain a math verb (integrate, differentiate) but are still
+    asking "why" about something in the active block.
+    """
+    if not text:
+        return False
+    stripped = text.strip().lower()
+    return bool(_CONTINUATION_STARTERS_RE.match(stripped))
+
 # Math-symbol heuristic — covers the "wait, what's the integral of sin(x²)?"
 # class of pivots that the verb regex misses (no verb present, just notation).
 _MATH_SYMBOL_HINTS = re.compile(
@@ -191,6 +237,18 @@ async def _detect_topic_shift(
     Never raises — classifier failures return False (preserves continuation).
     """
     if not active_block or not _looks_like_new_question(question):
+        return False
+
+    # v0.20.7 — asymmetric trust: if the prompt begins with a continuation
+    # starter, skip the shift check entirely. The intent LLM already flagged
+    # this as `continuation`; our job is to demote `continuation` only when
+    # the shape is *really* ambiguous, not to second-guess obvious follow-ups.
+    if _looks_like_continuation(question):
+        logger.info(
+            "v0.20.7 continuation_trusted: starter phrase matched, skipping shift "
+            "(block=%s, question=%r)",
+            active_block.get("doubt_block_id"), question[:80],
+        )
         return False
 
     try:
@@ -1003,10 +1061,43 @@ async def ask_doubt(
             intent = "subject_doubt"
 
     # ── 3. Non-subject intents → immediate response, NO DB writes ─────────────
+    # v0.21: `explanation` intent REMOVED from this bucket. Previously short
+    # concept queries like "what is atom?" / "what is log?" / "what's a mole?"
+    # routed to handle_non_physics_intent() → returned a concept explanation
+    # with session_id=None → no doubt_block opened → no mastery tracked. The
+    # Knowledge Genome never saw the student touch the concept.
+    #
+    # Diagnostic 2026-04-23 bug #2: 0 mastery-tracked sessions from the 6
+    # short-form concept queries in the 100-prompt set. Fix: let explanation
+    # fall through to the full start_session path so RAG + concept-id lookup
+    # + mastery writes happen. The engine's Socratic response to "what is
+    # atom?" is pedagogically stronger than a lecture anyway ("what do you
+    # already know about atoms?") — this aligns response style with UpMyRank's
+    # ask-don't-tell thesis.
     if intent in ("greeting", "meta", "meta_identity", "meta_pricing", "meta_competitor",
-                  "emotional", "out_of_scope", "conversational", "explanation"):
+                  "emotional", "out_of_scope", "conversational"):
         result = await engine.handle_non_physics_intent(intent, question)
         return result
+
+    # v0.21: explanation intent is handled as a lighter variant of subject_doubt.
+    # When no study_session_id is present, fall back to the legacy concept-explain
+    # response (keeps the classic "what can you do?" style Q&A for unauth'd or
+    # pre-session usage). When a study_session IS present, fall through to the
+    # start_session path below so mastery is tracked.
+    if intent == "explanation" and not body.study_session_id:
+        logger.info(
+            "v0.21 explanation without study_session → legacy handle_non_physics_intent (q=%r)",
+            question[:80],
+        )
+        result = await engine.handle_non_physics_intent(intent, question, subject=body.subject)
+        return result
+
+    if intent == "explanation":
+        logger.info(
+            "v0.21 explanation WITH study_session → routing through start_session for mastery tracking (q=%r)",
+            question[:80],
+        )
+        # Fall through — the same start_session path as subject_doubt handles it
 
     # ── 3b. Recap — summarise completed doubt blocks in this session ───────────
     if intent == "recap":
@@ -1154,6 +1245,26 @@ async def ask_doubt(
             topic,
             student_confidence=body.student_confidence,
         )
+        # v0.20.8: stamp misconception_id on the block if engine.start_session
+        # detected one on the initial doubt. Mirrors the continuation-path
+        # write at line ~1120 so _genome_update_task picks up the 1.5× penalty
+        # when the block closes — the whole reason we bothered detecting.
+        _mc_id_new = result.get("misconception_id")
+        if _mc_id_new and doubt_block_id:
+            try:
+                await pool.execute(
+                    """
+                    UPDATE doubt_blocks
+                    SET misconception_detected = TRUE,
+                        misconception_id       = $1
+                    WHERE doubt_block_id = $2
+                    """,
+                    _mc_id_new, doubt_block_id,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "v0.20.8 stamp misconception_id on new block failed (non-fatal): %s", exc,
+                )
 
     # Get current doubt count
     doubt_count = 0
@@ -1560,6 +1671,24 @@ async def ask_doubt_stream(
                             topic,
                             student_confidence=body.student_confidence,
                         )
+                        # v0.20.8: stamp misconception_id on new block if engine detected one
+                        _mc_id_stream = chunk.get("misconception_id")
+                        if _mc_id_stream and doubt_block_id:
+                            try:
+                                await pool.execute(
+                                    """
+                                    UPDATE doubt_blocks
+                                    SET misconception_detected = TRUE,
+                                        misconception_id       = $1
+                                    WHERE doubt_block_id = $2
+                                    """,
+                                    _mc_id_stream, doubt_block_id,
+                                )
+                            except Exception as exc:
+                                logger.warning(
+                                    "v0.20.8 (stream) stamp misconception_id on new block failed (non-fatal): %s",
+                                    exc,
+                                )
                     final_metadata = {
                         "intent":           "subject_doubt",
                         "doubt_block_id":   doubt_block_id,
@@ -1568,6 +1697,8 @@ async def ask_doubt_stream(
                         "mentor_mode":      chunk.get("mentor_mode"),
                         "out_of_scope":     chunk.get("out_of_scope", False),
                         "cache_hit":        chunk.get("cache_hit", False),
+                        "is_misconception_correction": chunk.get("is_misconception_correction", False),
+                        "misconception_id":  chunk.get("misconception_id"),
                     }
                     yield f"data: {_json.dumps({'token': '', 'done': True, **final_metadata})}\n\n"
                 else:

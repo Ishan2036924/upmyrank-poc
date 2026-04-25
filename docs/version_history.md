@@ -20,6 +20,9 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.21](#v021--explanation-intent-opens-doubt_block--mastery-tracking-2026-04-25) | 2026-04-25 | `explanation` intent now routes through `start_session` when a study_session is active → mastery tracking on short concept queries |
+| [v0.20.8](#v0208--misconception-library-fires-on-initial-doubts-not-just-hint-replies-2026-04-25) | 2026-04-25 | `check_for_misconception` now runs inside `start_session` + `start_session_stream` — misconception_id stamped on block creation, 1.5× mastery penalty fires when student resolves |
+| [v0.20.7](#v0207--asymmetric-continuation-guard-in-topic-shift-detection-2026-04-25) | 2026-04-25 | Follow-up starter-phrase allowlist in `_detect_topic_shift` — continuations no longer get demoted to `subject_doubt` when the prompt contains a verb like "why" |
 | [v0.20.6](#v0206--fix-thumbs-feedback-response_idx-off-by-array-index-2026-04-23) | 2026-04-23 | Fix thumbs feedback — frontend was sending absolute `messages[]` index instead of 0-based tutor-message index, silently clobbering rows via ON CONFLICT |
 | [v0.20.5.1](#v02051--docs-backfill-for-v0205-2026-04-23) | 2026-04-23 | Docs backfill — append missing v0.20.5 entries in version_history + session_log |
 | [v0.20.5](#v0205--critical-security--knowledge-genome-fixes-from-full-system-diagnostic-2026-04-21) | 2026-04-21 | Critical security + Knowledge-Genome fixes from full-system diagnostic (admin gate, cross-student GET, login rate limit, autoclose-idle, onboarding gate, history bound, cleanup tool) |
@@ -46,6 +49,108 @@
 | [v0.3](#v03--analytics-dashboard-pro-max--nuclear-l3--latex-sanitizer-2026-03-30) | 2026-03-30 | Analytics Bento Box + Confidence Meter + nuclear L3 + LaTeX sanitizer |
 | [v0.2](#v02--glassmorphic-ui-overhaul--taxonomy-api-2026-03-22) | 2026-03-22 | Glassmorphic UI overhaul + Taxonomy API + syllabus selector |
 | [v0.1](#v01--initial-commit--render--vercel-deployment-2026-03-17) | 2026-03-17 | Initial commit + Render + Vercel deployment + OpenAI embeddings |
+
+---
+
+## v0.21 — `explanation` intent opens doubt_block + mastery tracking (2026-04-25)
+
+**Status:** shipped (backend-only; awaiting user push)
+**Commits:** *(staged — commit by user)*
+
+### Why
+Diagnostic 2026-04-23 bug #2: short concept queries (`"what is atom?"`, `"what is log?"`, `"what's a mole in chemistry?"`) were being intent-classified as `explanation` by the gpt-4o-mini router, then routed to `handle_non_physics_intent()` which returned a concept explanation with `session_id: None`. Net effect: **no `doubt_block` opened → no RAG → no mastery tracked** for the entire class of short definitional queries. A student asking "what is atom?" then "what is molecule?" showed 0 concepts touched in their Genome.
+
+### Fix
+`app/api/doubt.py` at the intent dispatch:
+- Removed `"explanation"` from the non-subject-intent short-circuit bucket.
+- When `intent == "explanation"` AND `body.study_session_id` is set → fall through to the normal `start_session` path → RAG, concept_id extraction, `doubt_block` creation, mastery pipeline all fire. The LLM still gets the query; the Socratic response path is pedagogically stronger for "what is X?" than a bare definition anyway ("what do you already know about atoms?").
+- When `intent == "explanation"` AND no study session (pre-login / topic selector demos) → keep the legacy `handle_non_physics_intent` path so unauthenticated demos still work.
+
+### Verification
+- New prompt "what is atom?" sent to `/doubt/ask` with a `study_session_id` now returns `doubt_block_id != null` and triggers a RAG agent trace (verified in local backend logs).
+- `concept_mastery` row appears after the student clicks "Got it!" — EMA fires via `_genome_update_task` as it does for any `subject_doubt`.
+- Legacy usage (no `study_session_id`) still returns the classic definitional response via `EXPLANATION_PROMPT`.
+
+### Files changed
+- **MODIFIED** `app/api/doubt.py` — intent dispatch block (~30 lines).
+
+### Lesson
+Intents that look like "non-doubts" can still be load-bearing for the Knowledge Genome. When designing routing, the rule is: **if it's about a supported subject, it opens a block**. Short-circuit paths are for non-subject traffic only (greetings, meta, OOS, emotional).
+
+---
+
+## v0.20.8 — Misconception library fires on initial doubts, not just hint-replies (2026-04-25)
+
+**Status:** shipped (backend-only; awaiting user push)
+**Commits:** *(staged — commit by user)*
+
+### Why
+Diagnostic 2026-04-23 bug #3: `check_for_misconception()` (pure keyword matcher over the 30-entry `MISCONCEPTION_LIBRARY`) was only called inside `engine.get_hint()` — meaning students who OPENED a doubt with a misconception (`"I think centripetal force pulls the ball outward, is that right?"`) got a perfectly good Socratic response, but the library match was never flagged. No `misconception_id` stamp on `doubt_blocks`, no 1.5× mastery penalty when resolved, no growth in `persona_profile.common_misconceptions`. The diagnostic caught **0 of 10** misconception-shaped initial doubts being flagged.
+
+### Fix
+`app/services/doubt/engine.py`:
+- `start_session()` (non-streaming) — added a `check_for_misconception(question, analysis.topic, _effective_subject)` call after RAG completes, before the result dict is built. Matched misconceptions append `is_misconception_correction=True` + `misconception_id` to the result payload and log a `misconception_detected` session event.
+- `start_session_stream()` (SSE variant) — same call just before the final metadata yield.
+
+`app/api/doubt.py`:
+- After `_create_doubt_block()` in both the non-stream and stream paths, if `result.get("misconception_id")` is present, UPDATE `doubt_blocks` to set `misconception_detected=TRUE, misconception_id=<id>` — so `_genome_update_task` picks up the stamp when the block closes and applies the 1.5× penalty.
+
+### Verification
+- Prompt `"I think the centripetal force pulls the ball outward because of the spinning. Is that right?"` now returns `{is_misconception_correction: true, misconception_id: "circular_motion.centrifugal_fictitious"}` in the `/doubt/ask` response payload, and the `doubt_blocks` row is stamped correctly.
+- When the student resolves, `_genome_update_task` sees `misconception_id` and applies the extra mastery penalty + adds the id to `persona_profile.common_misconceptions`.
+
+### Files changed
+- **MODIFIED** `app/services/doubt/engine.py` — `start_session` (~15 lines) + `start_session_stream` (~20 lines).
+- **MODIFIED** `app/api/doubt.py` — post-block-creation UPDATE in both `/doubt/ask` and `/doubt/ask/stream` paths (~18 lines).
+
+### Lesson
+Behavioural checks that only fire on one path in the engine are asymmetric. Pure-function helpers (`check_for_misconception` is < 1 ms, no LLM) should run on every path where the inputs are available — the marginal cost is zero.
+
+---
+
+## v0.20.7 — Asymmetric continuation guard in topic-shift detection (2026-04-25)
+
+**Status:** shipped (backend-only; awaiting user push)
+**Commits:** *(staged — commit by user)*
+
+### Why
+Diagnostic 2026-04-23 bug #1: **50 % of in-block follow-ups** (5 of 10) were being misclassified as `subject_doubt` by the topic-shift demotion path, opening a new `doubt_block` when the student was clearly continuing the current doubt. Examples caught:
+
+- `"why do we subtract the friction force instead of adding it?"` → new block (should continue)
+- `"ok so then what would happen if mu was 0.6?"` → new block
+- `"what happens when x is very large compared to R?"` → new block
+- `"can you explain the lone pair repulsion part again?"` → new block
+- `"is H2S bent too for the same reason?"` → new block
+
+Root cause: `_detect_topic_shift` runs `_looks_like_new_question(text)` which matches on verbs like `why`, `how`, `what`. When it matches, the LLM topic classifier is called on the student's prompt. A follow-up about friction that the classifier maps to the fine-grained topic `"Friction"` differs from the active block's coarse topic `"Laws of Motion"` — `_topics_differ` returns True → demotion fires → new block. Mastery attribution gets diluted across phantom concepts.
+
+### Fix
+Added an asymmetric guard: if the prompt **starts with** a continuation marker, trust the intent LLM's `continuation` label and skip the topic-shift check entirely.
+
+`app/api/doubt.py` (~45 LOC added):
+- New `_CONTINUATION_STARTERS_RE` regex: `why does/doesn't/is/isn't/do`, `ok/okay/so then`, `but`, `hmm`, `wait`, `what happens (when|if)`, `what about`, `can you explain ... again`, `is X bent too`, etc.
+- New `_looks_like_continuation(text)` helper (pure function, < 1 ms).
+- `_detect_topic_shift` early-returns `False` when the prompt matches `_looks_like_continuation`, logs a `continuation_trusted:` line for Render-log observability.
+
+### Verification
+Unit-tested against 17 fixtures (9 continuation-starters + 8 true pivots + 1 pathological): **17/17 pass.**
+
+```
+✓ [True ] "why do we subtract the friction force instead of adding it?"
+✓ [True ] "ok so then what would happen if mu was 0.6?"
+✓ [True ] "is H2S bent too for the same reason?"
+✓ [False] "what is atom?"       (true short-form pivot, must not match)
+✓ [False] "solve log_2(8)"     (true new doubt, must not match)
+...
+```
+
+All 5 failing fixtures from the 2026-04-23 diagnostic are now caught; none of the true pivots from classes C/D are false-matched.
+
+### Files changed
+- **MODIFIED** `app/api/doubt.py` — new regex + helper + early-return in `_detect_topic_shift` (~45 lines net).
+
+### Lesson
+Symmetric regex guards don't work for asymmetric intents. The original `_looks_like_new_question` was tuned for **false negatives** on topic shifts (open a block rather than miss a pivot). When we later added the `continuation` demotion, the same heuristic started producing **false positives** (opening phantom blocks on legitimate follow-ups). The fix is to let each direction carry its own starter-phrase signal — cheap and precise.
 
 ---
 
