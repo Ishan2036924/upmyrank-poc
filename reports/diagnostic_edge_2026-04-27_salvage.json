@@ -1,0 +1,1164 @@
+{
+  "meta": {
+    "student_id": "0714c6d3-f8d5-4d6d-b8fb-8d2bdc463a3b",
+    "email": "edge-edge-2026-04-27-a01-8eaa4@upmyrank.test",
+    "flows_recovered": 35,
+    "salvaged_from_crash": true,
+    "crash_reason": "JWT 401 on /session/start mid-run (Supabase token lifetime ~50min on free tier)"
+  },
+  "arc": [
+    {
+      "flow_id": "A01",
+      "edge_class": "A",
+      "turn_count": 6,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.6,
+      "rationale": "The conversation maintains a mostly coherent flow, but there are noticeable breaks in threading as the AI struggles to connect with the student's insistence on wanting a direct answer. The AI attempts to adapt its approach but does so only once, and while it provides some closure, the student remains frustrated and unsatisfied with the interaction.",
+      "scored_at": "2026-04-27 11:38:57.373708+00:00"
+    },
+    {
+      "flow_id": "A02",
+      "edge_class": "A",
+      "turn_count": 6,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.6,
+      "rationale": "The conversation maintains a mostly coherent flow, but there are noticeable breaks in threading as the AI does not fully align with the student's request for direct answers. The AI attempts to adapt its approach but ultimately does not provide the straightforward answer the student desires, leading to partial closure and understanding.",
+      "scored_at": "2026-04-27 11:40:37.583128+00:00"
+    },
+    {
+      "flow_id": "A03",
+      "edge_class": "A",
+      "turn_count": 6,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.6,
+      "rationale": "The conversation maintains a mostly coherent flow, but there are noticeable breaks in threading, particularly in the AI's responses to the student's insistence on direct answers. The AI attempts to adapt its approach but does not fully shift to a step-by-step method until the final turn. While the AI maintains context and provides some closure, the student remains somewhat frustrated, indicating a lack of complete resolution.",
+      "scored_at": "2026-04-27 11:42:22.887880+00:00"
+    },
+    {
+      "flow_id": "A04",
+      "edge_class": "A",
+      "turn_count": 4,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.6,
+      "rationale": "The conversation maintains a mostly coherent flow, but there is a noticeable break when the AI shifts from the initial explanation to the student's request for a direct answer. The AI adapts its approach slightly in response to the student's frustration, but it does not fully address the student's desire for a straightforward answer. While the student shows some understanding, they do not fully grasp the distinction between force and acceleration, leading to a lack of complete closure.",
+      "scored_at": "2026-04-27 11:43:32.888866+00:00"
+    },
+    {
+      "flow_id": "A06",
+      "edge_class": "A",
+      "turn_count": 6,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.6,
+      "rationale": "The conversation maintains a mostly coherent flow, but the AI's insistence on guiding the student through the process without providing the final answer leads to some frustration. While the AI adapts slightly by reiterating the method, it does not fully adjust to the student's repeated requests for a direct answer. The closure is somewhat unsatisfying as the student remains frustrated, and the pedagogy arc shows partial movement but not full understanding.",
+      "scored_at": "2026-04-27 11:45:30.166854+00:00"
+    },
+    {
+      "flow_id": "A07",
+      "edge_class": "A",
+      "turn_count": 8,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with the AI building on previous turns effectively. The AI adapts its hints and explanations based on the student's requests for more guidance. However, there is a slight issue with context persistence as the AI does not fully acknowledge the student's frustration in the last turn. Closure is somewhat lacking as the student does not arrive at a clear answer or understanding, but the session is still deemed useful.",
+      "scored_at": "2026-04-27 11:47:13.092332+00:00"
+    },
+    {
+      "flow_id": "A08",
+      "edge_class": "A",
+      "turn_count": 6,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.6,
+      "rationale": "The conversation maintains a mostly coherent flow, but there are noticeable breaks in threading as the AI struggles to meet the student's demand for a direct answer. The AI attempts to adapt its approach but does so only once, and while it provides some closure, the student remains frustrated and does not fully engage with the learning process.",
+      "scored_at": "2026-04-27 11:48:45.469170+00:00"
+    },
+    {
+      "flow_id": "A09",
+      "edge_class": "A",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 2,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 1.0,
+      "rationale": "The conversation maintains a coherent flow, with the AI effectively adapting its explanations based on the student's requests for clarity and detail. The AI also provides a clear closure by guiding the student to apply the concepts discussed. However, there is a slight inconsistency in context persistence, as the AI could have better acknowledged the student's emotional connection to their grandma throughout.",
+      "scored_at": "2026-04-27 11:50:21.030071+00:00"
+    },
+    {
+      "flow_id": "A10",
+      "edge_class": "A",
+      "turn_count": 8,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.6,
+      "rationale": "The conversation maintains a mostly coherent flow, but there are noticeable breaks in threading, especially as the student becomes frustrated. The AI attempts to adapt its approach but ultimately repeats similar explanations without fully addressing the student's request for a direct answer. While there is some closure with the final answer provided, the student remains unsatisfied, indicating a lack of effective pedagogical movement.",
+      "scored_at": "2026-04-27 11:52:10.889265+00:00"
+    },
+    {
+      "flow_id": "E01",
+      "edge_class": "E",
+      "turn_count": 8,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.925,
+      "rationale": "The conversation maintains coherence throughout, with each turn building on the previous one. The AI adapts its explanations effectively based on the student's responses, providing different angles and analogies. However, there is a slight lack of context persistence in the final turn, as the AI does not directly address the student's last question about the stone's motion after the string breaks. The closure is somewhat unsatisfying as the student is asked for a final answer without a clear resolution to their inquiry.",
+      "scored_at": "2026-04-27 11:54:03.099925+00:00"
+    },
+    {
+      "flow_id": "E02",
+      "edge_class": "E",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with each turn building on the previous one. The AI adapts its explanations effectively, addressing the student's confusion about classical versus quantum models. However, while the AI provides a solid explanation, the student does not fully grasp the concepts by the end, leading to a lack of complete closure and understanding.",
+      "scored_at": "2026-04-27 11:55:37.409711+00:00"
+    },
+    {
+      "flow_id": "E03",
+      "edge_class": "E",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with the AI effectively building on the student's responses. The AI adapts its explanations and introduces new concepts when the student struggles with inertia. However, while the AI provides a structured approach, the student does not fully grasp the distinction between inertia and friction by the end, leading to only partial closure and understanding.",
+      "scored_at": "2026-04-27 11:57:18.925775+00:00"
+    },
+    {
+      "flow_id": "E04",
+      "edge_class": "E",
+      "turn_count": 8,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with the AI effectively building on the student's responses. The AI adapts its explanations to address the student's persistent confusion about the concept of work. However, there is a slight inconsistency in context persistence, as the AI does not fully acknowledge the student's emotional perspective on effort. Closure is somewhat lacking, as the student is still struggling with the concept at the end, and while there is some movement in understanding, it is not fully realized.",
+      "scored_at": "2026-04-27 11:59:14.522591+00:00"
+    },
+    {
+      "flow_id": "E05",
+      "edge_class": "E",
+      "turn_count": 8,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.925,
+      "rationale": "The conversation maintains coherence throughout, with each turn building on the previous one. The AI adapts its explanations effectively based on the student's responses, providing different angles and examples. However, there is a slight lack of context persistence in the final turn, as the AI does not directly address the student's last question about friction's role in motion. The closure is somewhat unsatisfying as the student is asked for a final answer without a clear next step.",
+      "scored_at": "2026-04-27 12:01:26.729589+00:00"
+    },
+    {
+      "flow_id": "E06",
+      "edge_class": "E",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 2,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 1.0,
+      "rationale": "The conversation maintains a coherent flow, with each turn building on the previous one. The AI adapts its explanations effectively to the student's misunderstandings and provides a clear structure for solving the problem. However, there is a slight inconsistency in the AI's earlier mention of energy conservation, which could confuse the student, affecting context persistence.",
+      "scored_at": "2026-04-27 12:03:02.963116+00:00"
+    },
+    {
+      "flow_id": "E07",
+      "edge_class": "E",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with the AI effectively building on the student's misunderstandings and adapting its explanations. However, while the AI provides a consistent framework, the student does not fully grasp the concept by the end, leading to a lack of complete closure.",
+      "scored_at": "2026-04-27 12:04:50.798201+00:00"
+    },
+    {
+      "flow_id": "E08",
+      "edge_class": "E",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 2,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 1.0,
+      "rationale": "The conversation maintains coherence throughout, with each turn building on the previous one. The AI adapts its explanations effectively to address the student's confusion about mass and weight, providing different examples and a formula to clarify the concepts. While the AI maintains consistent claims, there is a slight lack of context persistence when the student expresses confusion about the relationship between mass and weight. However, the conversation ends with a clear explanation and a productive next step for the student.",
+      "scored_at": "2026-04-27 12:06:52.634119+00:00"
+    },
+    {
+      "flow_id": "E09",
+      "edge_class": "E",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 2,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 1.0,
+      "rationale": "The conversation maintains a coherent flow, with the AI effectively adapting its explanations to address the student's misunderstandings. The context is mostly consistent, though there is a slight lack of clarity in the AI's earlier statements about force and mass. The conversation concludes with a clear explanation and a productive next step for the student, demonstrating a solid pedagogical arc.",
+      "scored_at": "2026-04-27 12:08:24.591316+00:00"
+    },
+    {
+      "flow_id": "E10",
+      "edge_class": "E",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 2,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 1.0,
+      "rationale": "The conversation maintains coherence throughout, with each turn building on the previous one. The AI adapts its explanations effectively to the student's concerns about simplification and real-world application. While the AI maintains consistent claims, there is a slight lack of context persistence regarding the student's initial confusion about frictionless scenarios. However, the conversation ends with a clear explanation and a productive question for the student, indicating a strong pedagogy arc.",
+      "scored_at": "2026-04-27 12:10:07.435366+00:00"
+    },
+    {
+      "flow_id": "F01",
+      "edge_class": "F",
+      "turn_count": 8,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with the AI building on previous turns effectively. The AI adapts its approach by providing explanations and equations when the student struggles. However, the context persistence is slightly lacking as the AI does not fully integrate the student's responses into its guidance. Closure is partial, as the student is still confused at the end, and while there is some movement towards understanding, the student does not demonstrate full comprehension of the concept.",
+      "scored_at": "2026-04-27 12:11:52.127130+00:00"
+    },
+    {
+      "flow_id": "F02",
+      "edge_class": "F",
+      "turn_count": 8,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with the AI building on the student's responses effectively. The AI adapts its explanations and strategies based on the student's misunderstandings. However, the closure is somewhat lacking as the student does not arrive at a complete answer, and while there is some movement towards understanding, the student does not fully articulate the integration process.",
+      "scored_at": "2026-04-27 12:13:35.648466+00:00"
+    },
+    {
+      "flow_id": "F03",
+      "edge_class": "F",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with the AI building on previous turns effectively. The AI adapts its explanations to clarify the student's misunderstanding about the forces involved. However, while the AI provides a clear path to the solution, the student does not demonstrate significant movement toward understanding by the end, resulting in a partial closure.",
+      "scored_at": "2026-04-27 12:15:23.579574+00:00"
+    },
+    {
+      "flow_id": "F04",
+      "edge_class": "F",
+      "turn_count": 4,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 0,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 0,
+      "composite_score": 0.475,
+      "rationale": "The conversation lacks closure as the student remains frustrated and does not receive a direct answer, which is critical given their time constraint. While the AI attempts to adapt its approach, it does not fully address the student's urgent need for a quick answer, leading to a sense of frustration.",
+      "scored_at": "2026-04-27 12:16:39.785380+00:00"
+    },
+    {
+      "flow_id": "F05",
+      "edge_class": "F",
+      "turn_count": 4,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 2,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 1.0,
+      "rationale": "The conversation maintains coherence throughout, with each turn building on the previous one. The AI adapts its explanations effectively, using analogies to enhance understanding. While context is mostly consistent, there is a slight lack of clarity in the AI's follow-up question about the physical quantity, which could confuse the student. However, the overall interaction is productive and leaves the student feeling engaged.",
+      "scored_at": "2026-04-27 12:17:51.813884+00:00"
+    },
+    {
+      "flow_id": "F06",
+      "edge_class": "F",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 2,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 1.0,
+      "rationale": "The conversation maintains a coherent flow, with each turn building on the previous one. The AI adapts its explanations effectively based on the student's responses, providing hints and confirming understanding. However, there is a slight inconsistency in context persistence regarding the student's initial setup of the integral, which could have been reinforced more clearly.",
+      "scored_at": "2026-04-27 12:19:24.465392+00:00"
+    },
+    {
+      "flow_id": "F07",
+      "edge_class": "F",
+      "turn_count": 6,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.6,
+      "rationale": "The conversation maintains a mostly coherent flow, but there are noticeable breaks in threading, particularly with the student's vague requests for hints. The AI adapts slightly by rephrasing its hints but does not significantly change its approach. While the AI maintains context, the student does not demonstrate clear movement toward understanding, as they remain stuck on the same question without progressing.",
+      "scored_at": "2026-04-27 12:21:01.493716+00:00"
+    },
+    {
+      "flow_id": "F08",
+      "edge_class": "F",
+      "turn_count": 6,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.6,
+      "rationale": "The conversation maintains a mostly coherent flow, but there are noticeable breaks in threading, particularly when the student expresses frustration. The AI attempts to adapt its explanations but does not fully address the student's needs, leading to a lack of effective closure. The student does not demonstrate significant movement toward understanding by the end.",
+      "scored_at": "2026-04-27 12:22:25.034605+00:00"
+    },
+    {
+      "flow_id": "F09",
+      "edge_class": "F",
+      "turn_count": 8,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with the AI building on previous turns effectively. The AI adapts its approach by providing hints and guiding the student through the problem. However, the context persistence is slightly lacking as the AI does not fully address the student's unclear response in Turn 7. Closure is partial since the student does not arrive at a final answer, and while there is some movement towards understanding, the student does not fully articulate the principle or reach a solution.",
+      "scored_at": "2026-04-27 12:24:08.394810+00:00"
+    },
+    {
+      "flow_id": "F10",
+      "edge_class": "F",
+      "turn_count": 8,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with each turn building on the previous one. The AI adapts its explanations and strategies effectively when the student struggles with squaring the fraction. However, there is a lack of closure as the student does not arrive at the correct final answer, and while they show some understanding, they do not fully internalize the concept by the end.",
+      "scored_at": "2026-04-27 12:25:55.432878+00:00"
+    },
+    {
+      "flow_id": "G01",
+      "edge_class": "G",
+      "turn_count": 8,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with each turn building on the previous one. The AI adapts its explanations effectively based on the student's responses. However, there is a slight inconsistency in the AI's explanation of the normal force in the last turn, which could confuse the student. The conversation ends with some closure but leaves the student with an unclear next step, impacting the overall satisfaction.",
+      "scored_at": "2026-04-27 12:27:48.313031+00:00"
+    },
+    {
+      "flow_id": "G02",
+      "edge_class": "G",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with each turn building on the previous one. The AI adapts its explanations based on the student's requests for clarification and provides relevant examples. However, there is a slight inconsistency in context persistence as the AI does not fully recall the student's previous knowledge, leading to some confusion. The closure is somewhat lacking as the student does not leave with a complete understanding, but the session is still deemed useful.",
+      "scored_at": "2026-04-27 12:29:20.659525+00:00"
+    },
+    {
+      "flow_id": "G03",
+      "edge_class": "G",
+      "turn_count": 6,
+      "coherence": 1,
+      "adaptation": 1,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.6,
+      "rationale": "The conversation has some coherence but is interrupted by the student's unrelated question about integration, which causes a noticeable break in the flow. The AI attempts to adapt by redirecting back to projectile motion but does not fully address the student's confusion about integration. While there is some movement towards understanding, the student does not demonstrate a complete grasp of the concept by the end.",
+      "scored_at": "2026-04-27 12:30:57.776564+00:00"
+    },
+    {
+      "flow_id": "G04",
+      "edge_class": "G",
+      "turn_count": 8,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 1,
+      "pedagogy_arc": 1,
+      "back_and_forth_overall": 1,
+      "composite_score": 0.825,
+      "rationale": "The conversation maintains coherence throughout, with the AI building on previous turns effectively. The AI adapts its approach by providing hints and asking guiding questions when the student struggles. However, there is a slight inconsistency in context persistence regarding the normal force explanation in the last turn. The closure is somewhat lacking as the student does not leave with a clear next step, and while there is some movement towards understanding, the student does not fully grasp the concept by the end.",
+      "scored_at": "2026-04-27 12:32:48.611033+00:00"
+    },
+    {
+      "flow_id": "G05",
+      "edge_class": "G",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 2,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 1.0,
+      "rationale": "The conversation maintains a coherent flow, with the AI effectively adapting its explanations to the student's evolving questions. The context is mostly consistent, though there is a slight shift in focus when the student introduces a new scenario. The conversation concludes with a clear direction for the student to apply their understanding, demonstrating a productive struggle and movement towards comprehension.",
+      "scored_at": "2026-04-27 12:34:26.305658+00:00"
+    },
+    {
+      "flow_id": "G06",
+      "edge_class": "G",
+      "turn_count": 6,
+      "coherence": 2,
+      "adaptation": 2,
+      "context_persistence": 1,
+      "closure": 2,
+      "pedagogy_arc": 2,
+      "back_and_forth_overall": 1,
+      "composite_score": 1.0,
+      "rationale": "The conversation maintains coherence throughout, with each turn building on the previous one. The AI adapts its explanations effectively when the student changes their question, providing relevant analogies and guiding the student through the differentiation process. There is a clear progression towards understanding, as the student correctly identifies the use of the product rule and is prompted to compute derivatives explicitly, leading to a productive end.",
+      "scored_at": "2026-04-27 12:36:02.976327+00:00"
+    }
+  ],
+  "judge": [
+    {
+      "pedagogical_score": 0,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.3
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 2,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.7
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 0,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.3
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 0,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.3
+    },
+    {
+      "pedagogical_score": 0,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.3
+    },
+    {
+      "pedagogical_score": 0,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.3
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 0,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.3
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.8
+    },
+    {
+      "pedagogical_score": 2,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.85
+    },
+    {
+      "pedagogical_score": 0,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.3
+    },
+    {
+      "pedagogical_score": 2,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 1.0
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 2,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 1.0
+    },
+    {
+      "pedagogical_score": 2,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 1.0
+    },
+    {
+      "pedagogical_score": 0,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.3
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.8
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.8
+    },
+    {
+      "pedagogical_score": 0,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.3
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.8
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 2,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 1.0
+    },
+    {
+      "pedagogical_score": 0,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 0,
+      "overall_score": 0.3
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.8
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.8
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 1,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.8
+    },
+    {
+      "pedagogical_score": 1,
+      "factual_score": 1,
+      "context_relevance_score": 0,
+      "hint_appropriateness_score": 1,
+      "overall_score": 0.65
+    }
+  ],
+  "ctq": [
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": false
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 2,
+      "appropriateness": 2,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    },
+    {
+      "validation_score": 1,
+      "appropriateness": 1,
+      "restart_detected": false,
+      "single_question": true
+    }
+  ]
+}
