@@ -20,6 +20,7 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.20.10](#v02010--latex-sanitizer-orphan-and-bare-frac-fix-2026-04-27) | 2026-04-27 | LaTeX sanitizer now auto-wraps bare `\frac`/`\int`/`\mathrm` lines + drops orphan `$$` markers + fixes the close-`$$`-jamming-prose bug. Hard fix for the 2026-04-27 prod incident where Units & Dimensions responses showed broken `kg² m³ s⁻⁴` rendering. |
 | [v0.20.7.1](#v02071--asymmetric-continuation-guard-cross-subject-pivot-fix-2026-04-25) | 2026-04-25 | Patch v0.20.7's cross-subject pivot regression — classifier-mismatch + deterministic subject-keyword fallback restore topic-shift on `"Wait, what's the integral of …"` / `"hmm actually …"` / `"what is pH?"`-style cross-subject pivots |
 | [v0.21](#v021--explanation-intent-opens-doubt_block--mastery-tracking-2026-04-25) | 2026-04-25 | `explanation` intent now routes through `start_session` when a study_session is active → mastery tracking on short concept queries |
 | [v0.20.8](#v0208--misconception-library-fires-on-initial-doubts-not-just-hint-replies-2026-04-25) | 2026-04-25 | `check_for_misconception` now runs inside `start_session` + `start_session_stream` — misconception_id stamped on block creation, 1.5× mastery penalty fires when student resolves |
@@ -53,10 +54,58 @@
 
 ---
 
+## v0.20.10 — LaTeX sanitizer orphan-`$$` and bare-`\frac` fix (2026-04-27)
+
+**Status:** ✅ shipped to working tree (awaiting user push).
+**Commits:** *(staged — commit by user)*
+
+### Why
+A live prod chat on 2026-04-27 (Physics → Units & Dimensions) showed three concrete LaTeX rendering failures on the same response:
+
+1. **Orphan `$$`** — the LLM emitted `X = \frac{M^2 L^3}{T^4 I}$$where $M$, $L$ ...` — only a CLOSING `$$`, no opener. The frontend rendered the equation as broken text and showed literal `$$where` mid-paragraph.
+2. **Raw display LaTeX with no delimiters** — `\mathrm{kg}^a , \mathrm{m}^b , \mathrm{s}^c , \mathrm{A}^d` appeared bare on its own line. KaTeX never saw it as math; the markdown renderer fragmented it (`kg \n 2 \n m \n 3 \n …`).
+3. **Closing `$$` jamming next prose** — pre-existing bug in step 4 of `_sanitize_latex`: closing marker was `\n$$` (no trailing newline), so even paired blocks rendered as `…$$Done.` instead of `…$$\nDone.`.
+
+### Fix
+`app/services/doubt/engine.py` `_sanitize_latex()`:
+
+1. **Auto-wrap orphan display-LaTeX** (NEW step 2 in the pipeline). On NON-math segments (those outside any `$$` pair), detect lines that start with `\frac`, `\int`, `\sum`, `\sqrt`, `\mathrm`, `\mathbb`, `\mathbf`, `\cdot`, `\left`, `\right`, `\partial`, etc. — optionally preceded by `X = ` or `= ` — and wrap them in `$$\n…\n$$`. New helper `_wrap_orphan_display_latex()`.
+2. **Drop unpaired `$$` markers** (NEW step 3). If `text.count('$$')` is odd after normalisation, the LAST `$$` is orphan. Strip it (better to lose the delimiter than render literal `$$` to the user). Logs a `WARNING` so we can audit how often this fires.
+3. **Fix the close-`$$` newline bug** (step 4 — pre-existing). Closing marker now appended as `\n$$\n` (was `\n$$`), preserving the paragraph break the LLM intended between math and prose.
+
+`app/services/doubt/prompts.py` `TUTOR_SYSTEM_PROMPT`:
+
+4. **Strengthened MATH FORMATTING section** with two new explicit rules:
+   - Rule 8: NEVER emit a bare `\frac`/`\int`/`\sum`/`\sqrt`/`\mathrm` outside `$...$` or `$$...$$`. CORRECT vs WRONG examples drawn from the actual prod failure.
+   - Rule 9: Pair every `$$` exactly. Odd `$$` count means a missing delimiter.
+
+### Verification
+- **Unit-tested 7 fixtures** (5 prior + 2 prod-incident replays):
+  ```
+  ✓ orphan_$$_closing_only          (the prod incident — auto-wrapped + dropped)
+  ✓ raw_display_no_delim            ("\frac{...}" alone on a line — wrapped)
+  ✓ already_wrapped_no_jam          (regression guard for the close-$$ jam bug)
+  ✓ inline_math_preserved           ($M$ and $L$ untouched)
+  ✓ mixed                            (display + inline + prose interleaved)
+  ✓ prod_full_solution_excerpt      ("\mathrm{kg}^a..." line — wrapped)
+  ✓ LLM_inline_then_orphan          ("$X = \frac{...}$ $$where..." → orphan dropped)
+  ```
+  7/7 pass.
+- Smoke against local backend (the 50-flow edge-case diagnostic running in parallel was using the pre-fix sanitizer — those transcripts may show the bug; future runs after restart will not).
+
+### Files changed
+- **MODIFIED** `app/services/doubt/engine.py` — `_sanitize_latex` rewrite (~85 lines net) + new `_wrap_orphan_display_latex` helper + 2 class-level compiled regexes (`_LATEX_DISPLAY_LINE_RE`, `_LATEX_INLINE_PATTERN_RE`).
+- **MODIFIED** `app/services/doubt/prompts.py` — `TUTOR_SYSTEM_PROMPT` MATH FORMATTING rules 8–9 added (~8 lines).
+
+### Lesson
+Sanitizer rules that operate on substrings need to think about what they REMOVE as well as what they ADD. The pre-existing bug was clean code-review-passing logic that nonetheless dropped a trailing `\n` on close because `f'\n$$'` looked like a complete close marker. Whenever you write `text[a:b]` slices that consume a delimiter, replay the slice arithmetic mentally before assuming both edges are preserved.
+
+---
+
 ## v0.20.7.1 — Asymmetric continuation guard cross-subject pivot fix (2026-04-25)
 
-**Status:** shipped (backend-only; ~80 LOC; awaiting user push)
-**Commits:** *(staged — commit by user)*
+**Status:** ✅ **LIVE on prod** (deploy `3eb7a67`, finished 2026-04-25 02:04 UTC). Redis (Upstash Free tier) provisioned in the same window — verified zero `connection refused` warnings on real probe traffic.
+**Commits:** `3eb7a67`
 
 ### Why
 The 100-question diagnostic re-run on 2026-04-25 surfaced an over-fire from v0.20.7. The asymmetric continuation guard correctly preserved 5/5 same-subject follow-ups, but it also TRAPPED 4 cross-subject pivots that begin with continuation-marker fillers:
@@ -131,8 +180,8 @@ Intents that look like "non-doubts" can still be load-bearing for the Knowledge 
 
 ## v0.20.8 — Misconception library fires on initial doubts, not just hint-replies (2026-04-25)
 
-**Status:** shipped (backend-only; awaiting user push)
-**Commits:** *(staged — commit by user)*
+**Status:** ✅ **LIVE on prod** (commit `cb26e18`, deployed via auto-deploy; first deploy timed out, retry-succeeded after Redis env-var was added).
+**Commits:** `cb26e18`
 
 ### Why
 Diagnostic 2026-04-23 bug #3: `check_for_misconception()` (pure keyword matcher over the 30-entry `MISCONCEPTION_LIBRARY`) was only called inside `engine.get_hint()` — meaning students who OPENED a doubt with a misconception (`"I think centripetal force pulls the ball outward, is that right?"`) got a perfectly good Socratic response, but the library match was never flagged. No `misconception_id` stamp on `doubt_blocks`, no 1.5× mastery penalty when resolved, no growth in `persona_profile.common_misconceptions`. The diagnostic caught **0 of 10** misconception-shaped initial doubts being flagged.
@@ -160,8 +209,8 @@ Behavioural checks that only fire on one path in the engine are asymmetric. Pure
 
 ## v0.20.7 — Asymmetric continuation guard in topic-shift detection (2026-04-25)
 
-**Status:** shipped (backend-only; awaiting user push)
-**Commits:** *(staged — commit by user)*
+**Status:** ✅ **LIVE on prod** (commit `9e1988a`). Note: this commit's `app/api/doubt.py` diff also contains the v0.20.8 block-stamp UPDATE and the v0.21 explanation routing changes (single-file staging order — see v0.21 entry below). All three logical fixes are functionally on prod under this commit hash.
+**Commits:** `9e1988a`
 
 ### Why
 Diagnostic 2026-04-23 bug #1: **50 % of in-block follow-ups** (5 of 10) were being misclassified as `subject_doubt` by the topic-shift demotion path, opening a new `doubt_block` when the student was clearly continuing the current doubt. Examples caught:

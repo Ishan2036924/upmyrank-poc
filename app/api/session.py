@@ -31,6 +31,10 @@ async def _run_judge_for_session(study_session_id: str, pool, openai_client) -> 
     """
     Background task: run 4-dim judge evaluation for every doubt_session in a study session.
     Fires fire-and-forget from POST /session/end — never blocks the response.
+
+    v0.20.9 (2026-04-26): also fires the conversation-arc judge per doubt_session
+    once all per-response scores are stored. Arc judge scores the full multi-turn
+    conversation as a unit (coherence, adaptation, closure, pedagogy_arc, ...).
     """
     try:
         session_uuid = uuid.UUID(study_session_id)
@@ -38,6 +42,7 @@ async def _run_judge_for_session(study_session_id: str, pool, openai_client) -> 
             """
             SELECT ds.id AS doubt_session_id,
                    ds.conversation_history,
+                   ds.subject AS doubt_subject,
                    db.topic,
                    db.hint_level
             FROM doubt_sessions ds
@@ -117,6 +122,49 @@ async def _run_judge_for_session(study_session_id: str, pool, openai_client) -> 
 
             except Exception as exc:
                 logger.warning("Judge eval failed for doubt_session %s: %s", row.get("doubt_session_id"), exc)
+
+            # ── v0.20.9 — conversation-arc judge ───────────────────────────────
+            # Score the WHOLE multi-turn conversation as a unit. Independent of
+            # the per-response judge above; runs once per doubt_session.
+            # Fire-and-forget — never blocks, never raises (per RULES.md #3).
+            try:
+                from app.services.eval.conversation_arc_judge import score_arc  # noqa: PLC0415
+                # `history` is defined in the outer try-block (parsed from
+                # row["conversation_history"]). If the row was skipped earlier,
+                # this branch is unreachable, so referencing it is safe here.
+                conv_history = history if isinstance(history, list) else []
+                # Pull diagnostic-run tags from analysis if present (synthetic
+                # harnesses stamp these). Organic prod traffic leaves NULL.
+                analysis_row = await pool.fetchrow(
+                    "SELECT analysis FROM doubt_sessions WHERE id = $1",
+                    uuid.UUID(doubt_session_id),
+                )
+                analysis_dict: dict = {}
+                if analysis_row and analysis_row["analysis"]:
+                    analysis_raw = analysis_row["analysis"]
+                    if isinstance(analysis_raw, str):
+                        try:
+                            analysis_dict = json.loads(analysis_raw)
+                        except Exception:
+                            analysis_dict = {}
+                    elif isinstance(analysis_raw, dict):
+                        analysis_dict = analysis_raw
+                _flow_id    = analysis_dict.get("flow_id")
+                _edge_class = analysis_dict.get("edge_class")
+                await score_arc(
+                    pool=pool,
+                    doubt_session_id=doubt_session_id,
+                    history=conv_history,
+                    subject=row["doubt_subject"] or "Physics",
+                    topic=row["topic"] or "General",
+                    flow_id=_flow_id,
+                    edge_class=_edge_class,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Arc judge failed for doubt_session %s (non-fatal): %s",
+                    row.get("doubt_session_id"), exc,
+                )
 
     except Exception as exc:
         logger.warning("_run_judge_for_session failed (non-fatal): %s", exc)
