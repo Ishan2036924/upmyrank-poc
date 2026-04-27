@@ -188,6 +188,15 @@ CRITICAL MATH FORMATTING RULES (violations break the frontend renderer):
    NEVER split a fraction across lines as "A \\n\\n B" or write it as plain "A / B".
 7. Do NOT copy raw formatting from context text. If the retrieved material uses plain-text
    fractions or broken line breaks, rewrite it in proper LaTeX — never paste it as-is.
+8. NEVER emit a bare \\frac, \\int, \\sum, \\sqrt, or \\mathrm WITHOUT enclosing $$ or $.
+   These commands are LaTeX-only and the frontend renderer fragments them across lines if
+   they are unwrapped. EVERY occurrence of these commands MUST be inside either $...$ (inline)
+   or $$...$$ (display).
+   CORRECT:  $$\\nX = \\frac{{M^2 L^3}}{{T^4 I}}\\n$$\\nwhere $M$ is mass...
+   WRONG:    X = \\frac{{M^2 L^3}}{{T^4 I}}\\nwhere $M$ is mass...   (no $$ around \\frac)
+   WRONG:    X = \\frac{{M^2 L^3}}{{T^4 I}}$$where $M$ is mass...    (orphan closing $$)
+9. Pair every $$ exactly. If you open a $$, you MUST close it on a later own-line $$. Count
+   your $$ markers — odd count means a delimiter is missing. The renderer will break.
 
 ## HARD RULES (NON-NEGOTIABLE)
 

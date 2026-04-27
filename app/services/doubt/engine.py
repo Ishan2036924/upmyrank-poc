@@ -2719,25 +2719,90 @@ class SocraticEngine:
             lines.append(f"{role}: {content}")
         return "\n".join(lines)
 
+    # ── LaTeX sanitizer (Rule #6 — runs on every LLM response) ─────────────
+    # Class-level constants so they're compiled once.
+    _LATEX_DISPLAY_LINE_RE = re.compile(
+        # Lines that LOOK like display math but aren't wrapped in $$:
+        # - start with "X = \frac{...}" or "\frac{...}" or "\int..." or "\sum..."
+        # - OR contain a \frac{}{}, \int, \sum, \sqrt at line scope with no
+        #   surrounding $...$ or $$...$$.
+        # Conservative: only matches lines where LaTeX dominates (≥1 \cmd at
+        # the start or after an "X = " or "= " prefix, no English mid-line
+        # except at the very end like "= 2 J").
+        r'^(?P<prefix>\s*(?:[A-Za-z_][A-Za-z0-9_]*\s*=\s*|=\s*)?)'
+        r'(?P<body>'
+            r'\\(?:frac|int|sum|prod|sqrt|lim|mathrm|mathbb|mathbf|cdot|'
+                r'left|right|partial|infty|to|forall|exists)\b'
+            r'.*?'
+        r')\s*$',
+        re.MULTILINE,
+    )
+    _LATEX_INLINE_PATTERN_RE = re.compile(
+        # Detects bare LaTeX commands that should have been wrapped:
+        # \frac, \int, \sum, \sqrt, \mathrm, etc.
+        r'\\(?:frac|int|sum|prod|sqrt|lim|mathrm|mathbb|mathbf)\b',
+    )
+
     def _sanitize_latex(self, text: str) -> str:
         """
         Post-process LLM output to fix common LaTeX rendering bugs before
         sending to the frontend KaTeX renderer.
 
-        Fixes applied:
-        1. Ensure every $$ delimiter is on its own line (adds surrounding newlines).
-        2. Collapse \\n\\n inside $$ ... $$ blocks — RAG chunks sometimes inject
-           blank lines into equations, breaking the renderer.
-        3. Collapse 3+ consecutive newlines globally to at most 2.
+        Fixes applied (in order):
+        1. Normalise every $$ delimiter to its own line.
+        2. Auto-wrap orphan display-LaTeX (lines starting with \\frac / \\int
+           / \\sum / \\sqrt / \\mathrm that aren't already in $$ blocks).
+           This catches the most common LLM mode failure where the model
+           emits raw LaTeX without delimiters — KaTeX never sees it as math
+           and the markdown renderer fragments it across lines.
+        3. Drop UNPAIRED $$ markers (odd count). Better to lose the delimiter
+           than render literal "$$" as text.
+        4. Collapse blank lines inside $$ ... $$ blocks (RAG chunks sometimes
+           inject \\n\\n into equations, breaking the renderer).
+        5. Cap consecutive newlines at 2 globally.
         """
-        # 1. Ensure $$ always has a newline before and after it
+        if not text:
+            return text
+
+        # ── 1. Normalise $$ delimiters to their own lines ───────────────────
         text = re.sub(r'(?<!\n)\$\$', r'\n$$', text)
         text = re.sub(r'\$\$(?!\n)', r'$$\n', text)
 
-        # 2. Inside every $$ block, collapse multiple blank lines to a single newline.
-        # Previous implementation used re.sub with a single pattern, which only fixed
-        # the FIRST $$ pair due to non-overlapping match semantics. This loop processes
-        # all blocks by scanning through the string explicitly.
+        # ── 2. Auto-wrap orphan display-LaTeX (v0.20.10) ────────────────────
+        # Only operate on regions OUTSIDE existing $$ blocks. Split on the
+        # normalised \n$$\n pattern: even-indexed segments are "outside math",
+        # odd-indexed are "inside math". Auto-wrap inside outside-math only.
+        segments = text.split('\n$$\n')
+        for i in range(len(segments)):
+            if i % 2 == 1:
+                continue  # inside an existing $$ block — leave alone
+            segments[i] = self._wrap_orphan_display_latex(segments[i])
+        text = '\n$$\n'.join(segments)
+
+        # Re-normalise after auto-wrap (we may have inserted new $$ markers).
+        text = re.sub(r'(?<!\n)\$\$', r'\n$$', text)
+        text = re.sub(r'\$\$(?!\n)', r'$$\n', text)
+
+        # ── 3. Drop unpaired $$ markers ─────────────────────────────────────
+        # If $$ count is odd, the LAST one is orphan (couldn't find its pair).
+        # Strip it — better than rendering literal "$$" in the UI.
+        if text.count('$$') % 2 == 1:
+            last = text.rfind('$$')
+            if last >= 0:
+                # Remove the orphan $$ + the surrounding newline if any
+                before = text[:last].rstrip('\n')
+                after = text[last + 2:].lstrip('\n')
+                text = before + '\n' + after
+                logger.warning(
+                    "_sanitize_latex: dropped orphan $$ marker (LLM produced unpaired delimiter)"
+                )
+
+        # ── 4. Collapse blank lines inside $$ blocks ────────────────────────
+        # Bug fix v0.20.10: previous version appended `\n$$` (no trailing
+        # newline) for the close marker but consumed all 4 chars of `\n$$\n`
+        # from `remaining`, which jammed the closing $$ against the next
+        # prose ("$$where..." instead of "$$\nwhere..."). Now we explicitly
+        # append the trailing newline back.
         result_parts: list[str] = []
         remaining = text
         while True:
@@ -2747,22 +2812,48 @@ class SocraticEngine:
                 break
             close_idx = remaining.find('\n$$\n', open_idx + 4)
             if close_idx == -1:
-                # Unclosed $$ block — leave as-is
+                # Unclosed (shouldn't happen after step 3, but defensive)
                 result_parts.append(remaining)
                 break
-            # Append text before the block unchanged
             result_parts.append(remaining[:open_idx])
-            # Extract and clean the block interior
-            inner = remaining[open_idx + 4 : close_idx]
+            inner = remaining[open_idx + 4: close_idx]
             inner = re.sub(r'\n{2,}', '\n', inner).strip()
-            result_parts.append(f'\n$$\n{inner}\n$$')
+            # Note the trailing \n after the closing $$ — preserves the
+            # paragraph break the LLM intended between math and prose.
+            result_parts.append(f'\n$$\n{inner}\n$$\n')
             remaining = remaining[close_idx + 4:]
         text = ''.join(result_parts)
 
-        # 3. No more than 2 consecutive newlines anywhere in the output
+        # ── 5. Cap consecutive newlines at 2 ────────────────────────────────
         text = re.sub(r'\n{3,}', '\n\n', text)
 
         return text
+
+    def _wrap_orphan_display_latex(self, segment: str) -> str:
+        """
+        Within a NON-math segment, find lines that look like display LaTeX
+        (start with \\frac, \\int, \\sum, \\sqrt, \\mathrm, OR "X = \\frac...")
+        and wrap them in $$ ... $$ so KaTeX picks them up.
+
+        Conservative: leaves lines that mix LaTeX with significant English
+        prose alone (those should use $...$ inline math; we don't second-guess).
+
+        v0.20.10 — addresses the 2026-04-27 prod incident where prompts like
+        "Give me a JEE problem on Physical Quantities" caused the LLM to emit
+        raw \\frac{M^2 L^3}{T^4 I} with no $$ wrapping → frontend renderer
+        fragmented the equation across lines.
+        """
+        if not segment or '\\' not in segment:
+            return segment
+
+        # Pattern: lines that are "pure display math" — optional "X = " or "= "
+        # prefix, then a LaTeX command, then math content to end of line.
+        def _wrap(match: re.Match) -> str:
+            prefix = match.group('prefix') or ''
+            body = match.group('body') or ''
+            return f'$$\n{prefix}{body}\n$$'
+
+        return self._LATEX_DISPLAY_LINE_RE.sub(_wrap, segment)
 
     async def _call_llm(
         self,
