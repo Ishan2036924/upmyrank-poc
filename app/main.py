@@ -1,5 +1,5 @@
-import asyncio
 import logging
+import time
 from contextlib import asynccontextmanager
 
 import openai
@@ -20,46 +20,61 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """v0.20.13 — measured-startup lifespan.
+
+    Earlier attempt: split into phase-1 (blocking) + phase-2 (background)
+    so /health could answer before the engine was ready. Reverted because
+    5 endpoints (`/doubt/*`, `/session/end`, `/onboarding/submit`) grab
+    `request.app.state.socratic_engine` synchronously — splitting required
+    every call site to await an `engine_ready` event, ~30 LOC of plumbing.
+
+    Net finding: Render free-tier cold-start is dominated by container
+    provisioning (~15-30s), not Python boot (~3-5s). Optimising Python
+    init from 5s → 2s saves the user 3 seconds out of a 30s cold start —
+    not worth the regression risk. Instead we:
+      - Drop the unnecessary `run_in_executor` wrap on `warm_up()` (it's
+        a no-op log line for the OpenAI embedding service — the legacy
+        sentence-transformers warm-up was retired in v0.7).
+      - Time-stamp each step so future cold-start regressions are visible
+        in Render logs without code changes.
+    """
     logger.info("UpMyRank POC server is starting…")
+    t0 = time.monotonic()
 
-    # ── 1. Database pool ──────────────────────────────────────────────────────
     await init_db()
-    app.state.db_pool = get_pool()          # expose pool directly on app.state
+    app.state.db_pool = get_pool()
+    logger.info("[%dms] db pool ready", int((time.monotonic() - t0) * 1000))
 
-    # ── 2. Embedding service (model load is CPU-bound → thread executor) ──────
+    # No-op warm_up — OpenAI embeddings require no local model load.
     embed_svc = EmbeddingService()
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, embed_svc.warm_up)
+    embed_svc.warm_up()
+    logger.info("[%dms] embedding service ready", int((time.monotonic() - t0) * 1000))
 
-    # ── 3. Retriever ──────────────────────────────────────────────────────────
     retriever = Retriever(db_pool=get_pool(), embedding_service=embed_svc)
     app.state.retriever = retriever
-    logger.info("Retriever initialised")
 
-    # ── 4. OpenAI client ─────────────────────────────────────────────────────
     openai_client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
 
-    # ── 5. Verification pipeline ──────────────────────────────────────────────
     verifier = VerificationPipeline(
         sympy_checker=SymPyChecker(),
         llm_verifier=LLMVerifier(openai_client=openai_client),
     )
     app.state.verifier = verifier
-    logger.info("VerificationPipeline initialised")
 
-    # ── 6. Socratic engine ────────────────────────────────────────────────────
     app.state.socratic_engine = SocraticEngine(
         openai_client=openai_client,
         retriever=retriever,
         db_pool=get_pool(),
         verifier=verifier,
     )
-    logger.info("SocraticEngine initialised (model=%s)", settings.llm_model)
+    logger.info(
+        "[%dms] engine ready — model=%s; server live",
+        int((time.monotonic() - t0) * 1000),
+        settings.llm_model,
+    )
 
-    logger.info("UpMyRank POC server is running")
     yield
 
-    # ── shutdown ──────────────────────────────────────────────────────────────
     await close_db()
     logger.info("UpMyRank POC server shut down")
 

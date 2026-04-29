@@ -9,7 +9,7 @@ import {
   Atom, FlaskConical, Calculator, BookOpen,
 } from 'lucide-react'
 import AppShell from '@/components/AppShell'
-import { apiGet } from '@/lib/api'
+import { apiGet, pingBackend } from '@/lib/api'
 import { StudentGenome } from '@/lib/types'
 import AuthGuard from '@/components/AuthGuard'
 import { useAuth } from '@/lib/auth'
@@ -179,6 +179,12 @@ export default function Home() {
   const { studentId } = useAuth()
   const [genome, setGenome] = useState<StudentGenome | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+
+  // v0.20.13 — wake the Render free-tier instance the moment the user lands
+  // on home, so by the time they click "Ask Doubt" the backend is already
+  // warm. Combined with the keep-alive ping from UptimeRobot, this almost
+  // entirely eliminates the cold-start UX tax for returning users.
+  useEffect(() => { pingBackend() }, [])
 
   useEffect(() => {
     if (studentId) {

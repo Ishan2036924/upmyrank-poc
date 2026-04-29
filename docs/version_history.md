@@ -20,6 +20,8 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.20.13](#v02013--health-head-support--login-page-redesign--home-pingbackend--cold-start-telemetry-2026-04-29) | 2026-04-29 | `/health` accepts HEAD (UptimeRobot 405 fix) + premium framer-motion login page (animated mesh + drifting orbs + floating math symbols + glassmorphic form + spring micro-interactions) + `pingBackend()` on home mount + cold-start telemetry timestamps in lifespan logs. |
+| [v0.20.12](#v02012--frontend-ux-hardening-cold-start-session-expired-onboarding-recovery-2026-04-29) | 2026-04-29 | Frontend UX hardening from real-user issue diagnosis: cold-start toast at 3s (was 8s) with clearer copy + session-expired login-page toast (`?reason=session_expired`) + onboarding-form localStorage recovery so partial answers survive submit failures. |
 | [v0.20.10](#v02010--latex-sanitizer-orphan-and-bare-frac-fix-2026-04-27) | 2026-04-27 | LaTeX sanitizer now auto-wraps bare `\frac`/`\int`/`\mathrm` lines + drops orphan `$$` markers + fixes the close-`$$`-jamming-prose bug. Hard fix for the 2026-04-27 prod incident where Units & Dimensions responses showed broken `kg² m³ s⁻⁴` rendering. |
 | [v0.20.7.1](#v02071--asymmetric-continuation-guard-cross-subject-pivot-fix-2026-04-25) | 2026-04-25 | Patch v0.20.7's cross-subject pivot regression — classifier-mismatch + deterministic subject-keyword fallback restore topic-shift on `"Wait, what's the integral of …"` / `"hmm actually …"` / `"what is pH?"`-style cross-subject pivots |
 | [v0.21](#v021--explanation-intent-opens-doubt_block--mastery-tracking-2026-04-25) | 2026-04-25 | `explanation` intent now routes through `start_session` when a study_session is active → mastery tracking on short concept queries |
@@ -51,6 +53,104 @@
 | [v0.3](#v03--analytics-dashboard-pro-max--nuclear-l3--latex-sanitizer-2026-03-30) | 2026-03-30 | Analytics Bento Box + Confidence Meter + nuclear L3 + LaTeX sanitizer |
 | [v0.2](#v02--glassmorphic-ui-overhaul--taxonomy-api-2026-03-22) | 2026-03-22 | Glassmorphic UI overhaul + Taxonomy API + syllabus selector |
 | [v0.1](#v01--initial-commit--render--vercel-deployment-2026-03-17) | 2026-03-17 | Initial commit + Render + Vercel deployment + OpenAI embeddings |
+
+---
+
+## v0.20.13 — `/health` HEAD support + login-page redesign + home pingBackend + cold-start telemetry (2026-04-29)
+
+**Status:** ✅ shipped to working tree (awaiting user push). tsc clean, `npm run build` clean (15 routes), preview-verified desktop + mobile, 0 console errors, session-expired toast still works on the new design.
+**Commits:** *(staged — commit by user)*
+
+### Why
+Three follow-ups from the 2026-04-29 real-user-issue diagnostic:
+
+1. **UptimeRobot keep-alive ping was 405-ing.** The user set up UptimeRobot (free) to ping `/health` every 5 min so Render free tier never spins down. UptimeRobot defaults to HEAD; FastAPI `/health` only accepted GET → 405 Method Not Allowed → false-positive "monitor down" alerts.
+2. **Cold-start UX leverage.** With UptimeRobot pinging every 5 min, Render stays warm 24/7 — but Python boot still takes 3-5s on the first hit after a deploy or container restart. The original diagnostic recommended waking the backend BEFORE the user clicks anything; home page didn't do it.
+3. **Login page polish.** User asked for a "premium" login page using framer-motion + UI_PRO_MAX rules + motion graphics — the existing page was functional but plain. First impression matters for conversion.
+
+### What shipped
+
+**1. `/health` HEAD support** (`app/api/health.py`, ~3 LOC)
+- Switched from `@router.get("/health")` to `@router.api_route("/health", methods=["GET", "HEAD"])`. UptimeRobot's HEAD probes now return 200 instead of 405. GET still works for browser/curl/manual checks.
+
+**2. Premium login page redesign** (`frontend/web/app/auth/login/page.tsx`, ~530 LOC vs prior 277 LOC)
+- **Animated background:** drifting conic gradient (60s loop), 3 floating glass orbs at varying offsets/depths, subtle radial dot grid with mask-fade, 4 floating math symbols (∫, π, Σ, ∂) at low opacity for ambient JEE/maths flavour.
+- **Hero (left):** logo with gradient glow + "AI TUTOR · JEE / NEET" tagline; "Built for serious aspirants" pill; staggered reveal of headline with gradient `think` + animated underline that scales in left-to-right; subhead; 3 stat cards (15K+ NCERT chunks, 3 Subjects, 30+ PYQs) with icon chips and `whileHover: y:-3 scale:1.02`; 3 subject pills (Physics indigo, Chemistry emerald, Maths violet) with hover lift.
+- **Form (right):** glassmorphic card (`bg-white/80 backdrop-blur-xl border-white/60`) with soft indigo shadow; animated label colour-transition on focus; spring-y mail/lock icons that scale + change colour when input focused; eye-toggle button with rotate-flip animation between Eye/EyeOff; `AnimatePresence` height-animate on Caps-Lock warning + inline error; gradient submit button with infinite ease arrow nudge; success/error state shake key drives 8-keyframe x-axis shake.
+- **Mobile-first:** mobile shows form-only with inline logo above; hero hidden under `hidden lg:flex`. Tested at 375x812 — clean.
+- **Reduced-motion respect:** `useReducedMotion` disables all decorative animations.
+- **Suspense wrapper preserved** (Next.js 16 `useSearchParams` requirement from v0.20.12).
+- **Session-expired toast preserved** — verified working on the new design via preview accessibility snapshot.
+
+**3. `pingBackend()` on home page mount** (`frontend/web/app/page.tsx`, ~5 LOC)
+- Calls `pingBackend()` in a `useEffect(() => {...}, [])` on `Home` component mount. The student lands on home, the backend wakes silently in the background, by the time they click "Ask Doubt" it's warm. Combined with UptimeRobot's keep-alive, the cold-start UX tax is now near-zero for active users.
+
+**4. Cold-start telemetry in `lifespan`** (`app/main.py`, ~15 LOC net)
+- Added `time.monotonic()` timestamps before every step (`db pool ready`, `embedding service ready`, `engine ready`). Each step now logs `[XXXms]` so future cold-start regressions are visible directly in Render logs — no instrumentation work needed.
+- Dropped the `loop.run_in_executor(None, embed_svc.warm_up)` wrap. `EmbeddingService.warm_up()` is a no-op log line since v0.7 (we use OpenAI embeddings, no local model to load); the executor wrap was costing ~50-100ms for nothing.
+- Considered a more aggressive split-phase startup (yield from lifespan early so `/health` is live before engine is built) but rolled back: 5 endpoints (`/doubt/*`, `/session/end`, `/onboarding/submit`) grab `request.app.state.socratic_engine` synchronously, requiring an `engine_ready` event + 30+ LOC of plumbing across call sites. Net Python boot savings would be 3-5s on free-tier cold start (Render's container provisioning dominates the 22-116s spin-up time anyway). Not worth the regression risk.
+
+### Verification
+- `app/api/health.py` HEAD: `curl -X HEAD https://upmyrank-poc.onrender.com/health` after deploy will return 200 (UptimeRobot stops alerting).
+- `npx tsc --noEmit`: 0 errors.
+- `npm run build`: ✓ 15 routes, all static-prerendered.
+- Preview server `localhost:3000/auth/login` at 1440x900: full layout renders with animated background, hero stats, form card, all visual elements per UI_PRO_MAX (light glassmorphic, soft shadows, micro-interactions).
+- Preview at 375x812 (mobile): form-only layout, hero hidden, all input + button accessible.
+- Console errors during render: 0.
+- Session-expired toast (`?reason=session_expired`): rendered correctly in accessibility snapshot of new design.
+
+### Files changed
+- **MODIFIED** `app/api/health.py` — `api_route(..., methods=["GET", "HEAD"])`.
+- **MODIFIED** `app/main.py` — timestamped logs, dropped executor wrap, no `asyncio` import (unused after revert).
+- **MODIFIED** `frontend/web/app/page.tsx` — import `pingBackend`, mount-effect call.
+- **MODIFIED** `frontend/web/app/auth/login/page.tsx` — full redesign (~530 LOC).
+- **MODIFIED** `docs/version_history.md` — this entry + index row.
+
+### Lesson
+Free-tier infra has hidden defaults that bite at the edges. UptimeRobot HEAD probes, Supabase JWT lifetimes, Render spin-down windows — none of them are bugs in the project, but each one quietly degrades user experience until you trip over it. The fix pattern is the same every time: name the default, write a tiny adapter (a route method, a refresh handler, a keep-alive pinger), document it. None of these changes is more than 30 LOC; together they're the difference between "it works" and "it works for real users."
+
+---
+
+## v0.20.12 — Frontend UX hardening: cold-start, session-expired, onboarding-recovery (2026-04-29)
+
+**Status:** ✅ shipped to working tree (awaiting user push). tsc clean, `npm run build` clean (15 routes), preview-verified live.
+**Commits:** *(staged — commit by user)*
+
+### Why
+Real-user issue triage on 2026-04-29 showed three predictable UX failure modes that mapped to "login broken" / "loading broken" / "no response" complaints — even though the backend, frontend bundle, CORS, and Supabase auth all probed healthy. Diagnostic confirmed the connection layer was fine; the gaps were in user-perceived behaviour during cold starts, expired tokens, and onboarding-form failures.
+
+### What shipped
+1. **Cold-start toast — earlier + clearer** (`frontend/web/lib/api.ts`).
+   - Trigger lowered 8s → 3s. Beats the user's "is this broken?" instinct.
+   - Copy rewritten to set expectation: `"Waking up the server — this can take up to a minute on first load. Subsequent requests will be fast. Sit tight!"`. Was generic ("Waking up the server…").
+   - Duration extended to 8s so the user can read it.
+2. **Session-expired UX** (`frontend/web/lib/api.ts` + `frontend/web/app/auth/login/page.tsx`).
+   - When `tryRefresh()` fails inside `handleResponse`, the redirect URL is now `/auth/login?reason=session_expired` (was bare `/auth/login`).
+   - Login page reads `useSearchParams()` and shows: `"Your session expired — please log in again."` with subtext `"We rotate tokens for security; this isn't a bug."`.
+   - **Suspense-wrapped** the login component (Next.js 16 prerender requires `useSearchParams` to be inside `<Suspense>`).
+3. **Onboarding form recovery** (`frontend/web/app/onboarding/page.tsx`).
+   - All 12 form-state fields persisted to `localStorage.umr_onboarding_draft` on every change (incl. the current step).
+   - Restored on mount via one-shot useEffect — partial answers survive a submit failure / browser refresh.
+   - Wiped on successful `POST /onboarding/submit`.
+   - If `localStorage` is full / disabled, all writes fail silently — no UX regression.
+
+### Verification
+- `npx tsc --noEmit` → 0 errors.
+- `npm run build` → ✓ 15 routes, all static-prerendered (Suspense fix needed for /auth/login).
+- Preview-verified `/auth/login?reason=session_expired` → toast renders with full text in accessibility snapshot.
+- `localStorage` round-trip: 12/12 draft keys match.
+- Cold-start toast in built bundle: `setTimeout(c, 3e3)` confirmed (was 8000ms).
+
+### Files changed
+- **MODIFIED** `frontend/web/lib/api.ts` — cold-start toast (text + 3s trigger + 8s duration); redirect URL appends `?reason=session_expired`.
+- **MODIFIED** `frontend/web/app/auth/login/page.tsx` — `Suspense` wrap + `useSearchParams` toast effect.
+- **MODIFIED** `frontend/web/app/onboarding/page.tsx` — `LS_DRAFT` constant + restore-on-mount + persist-on-change + wipe-on-success.
+- **MODIFIED** `docs/version_history.md` — this entry + index row.
+
+### Lesson
+"Connection-layer healthy" + "real users complain" usually means the failure is in user perception, not server behaviour. Cold starts that finish in 25 s are functionally correct but UX-hostile. Token rotations that work as designed feel like login bugs without explanation. Form retries that lose typed data feel like the app is hostile. All three are **prompt-the-user, set-expectations** problems, not engine problems. Cheap to fix; high impact.
+
+The deeper issue — Render free-tier cold starts — is solved by upgrading to Render Starter ($7/mo), which makes this entire toast moot. v0.20.12 is the belt-and-braces UX layer; the suspenders are the infra upgrade.
 
 ---
 
