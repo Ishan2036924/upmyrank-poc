@@ -42,10 +42,15 @@ async function handleResponse(res: Response, retry: () => Promise<Response>): Pr
       if (!retried.ok) throw new Error(await retried.text())
       return retried.json()
     }
+    // v0.20.12 — surface the silent-logout transition. When the refresh
+    // token is also expired we must redirect to /auth/login, but users who
+    // experienced "I was logged in yesterday, why am I logged out?" need
+    // the WHY. The login page reads `?reason=session_expired` and shows
+    // a clarifying toast.
     if (typeof window !== 'undefined') {
       localStorage.removeItem(LS_TOKEN)
       localStorage.removeItem(LS_REFRESH_TOKEN)
-      window.location.href = '/auth/login'
+      window.location.href = '/auth/login?reason=session_expired'
     }
     throw new Error('Session expired. Please log in again.')
   }
@@ -53,9 +58,11 @@ async function handleResponse(res: Response, retry: () => Promise<Response>): Pr
   return res.json()
 }
 
-// v0.20.2 — show a soft toast when the request takes >8s (Render cold start).
-// Loaded lazily so this module doesn't pull sonner into auth-page bundles
-// where it isn't needed.
+// v0.20.12 — earlier + more specific cold-start toast. Was 8s + generic;
+// now 3s + sets the right expectation ("up to 60 sec on free tier"). When
+// Render Starter is provisioned this toast effectively never fires (warm
+// requests return in <2 s); on free tier it converts the "is it broken?"
+// reflex into a "ah, just waking up" reaction.
 let _coldStartToastShown = false
 async function _showColdStartToast() {
   if (_coldStartToastShown) return
@@ -63,9 +70,9 @@ async function _showColdStartToast() {
   setTimeout(() => { _coldStartToastShown = false }, 60_000)  // re-arm after 1 min
   try {
     const { toast } = await import('sonner')
-    toast.info('Waking up the server…', {
-      description: 'First request takes a moment on the free tier. Hang tight.',
-      duration: 5000,
+    toast.info('Waking up the server — this can take up to a minute on first load.', {
+      description: 'Subsequent requests will be fast. Sit tight!',
+      duration: 8000,
     })
   } catch {
     // sonner may not be available — fail silent.
@@ -78,10 +85,11 @@ async function fetchWithRetry(input: string, init: RequestInit): Promise<Respons
   const delays = [5000, 15000, 30000]
   let lastError: unknown
   for (let i = 0; i <= delays.length; i++) {
-    // Cold-start toast after 8s on the FIRST attempt only (so retries don't spam).
+    // v0.20.12 — toast at 3 s (was 8 s) so we beat the user's "is this
+    // broken?" instinct. Only fires on the FIRST attempt; retries don't spam.
     let toastTimer: ReturnType<typeof setTimeout> | null = null
     if (i === 0 && typeof window !== 'undefined') {
-      toastTimer = setTimeout(_showColdStartToast, 8000)
+      toastTimer = setTimeout(_showColdStartToast, 3000)
     }
     try {
       const res = await fetch(input, init)

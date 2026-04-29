@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Eye, EyeOff, Sparkles, Mail, Lock, ArrowRight,
-  Atom, FlaskConical, Calculator, Zap, BookOpen, Target,
+  Atom, FlaskConical, Calculator, Zap, Target, Lightbulb, GraduationCap,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion, useReducedMotion, AnimatePresence } from 'framer-motion'
@@ -76,7 +76,7 @@ function LoginPageInner() {
   useEffect(() => {
     const reason = searchParams.get('reason')
     if (reason === 'session_expired') {
-      toast.info('Your session expired — please log in again.', {
+      toast.info('Your session expired. Please log in again.', {
         description: "We rotate tokens for security; this isn't a bug.",
         duration: 6000,
       })
@@ -170,6 +170,21 @@ function LoginPageInner() {
         <motion.div variants={fadeUp} className="flex items-center gap-3">
           <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-indigo-500 to-blue-500 shadow-lg shadow-indigo-300/40">
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500/40 via-indigo-500/40 to-blue-500/40 blur-xl" aria-hidden />
+            {/* v0.20.14 — pulse-ring rippling outward from the logo on a 2.4s
+                loop. Three concentric rings phased 0/0.8/1.6s give a continuous
+                "live signal" feel without flashing. */}
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 rounded-2xl border-2 border-indigo-400/50"
+              animate={{ scale: [1, 1.6], opacity: [0.6, 0] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeOut' }}
+            />
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 rounded-2xl border-2 border-violet-400/50"
+              animate={{ scale: [1, 1.6], opacity: [0.6, 0] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeOut', delay: 0.8 }}
+            />
             <Sparkles className="relative h-5 w-5 text-white" />
           </div>
           <div>
@@ -202,19 +217,28 @@ function LoginPageInner() {
                 animate={{ scaleX: 1 }}
                 transition={{ duration: 0.9, delay: 0.7, ease: EASE_OUT_EXPO }}
               />
+              {/* v0.20.14 — sparkle particles emitted around "think" once the
+                  underline finishes drawing. Reads as "this is the moment the
+                  insight clicks." Six little sparkles fly outward + fade. */}
+              <SparkleEmit />
             </span>
             .
           </motion.h1>
 
           <motion.p variants={fadeUp} className="text-base xl:text-lg text-slate-600 leading-relaxed">
-            Socratic hints. Misconception detection. A persona that evolves with every doubt.
-            Built for the rank you actually want — not the answer you can google.
+            Socratic hints. A tutor that adapts to how you learn. Built for the rank you
+            actually want, not the answer you could just google.
           </motion.p>
 
-          {/* stats */}
-          <motion.div variants={fadeUp} className="grid grid-cols-3 gap-3 pt-2">
-            {STATS.map((s) => (
-              <StatCard key={s.label} {...s} />
+          {/* live demo chat preview */}
+          <motion.div variants={fadeUp}>
+            <ChatPreview />
+          </motion.div>
+
+          {/* student-facing benefits (replaces engineer-facing stat cards) */}
+          <motion.div variants={fadeUp} className="grid grid-cols-3 gap-3 pt-1">
+            {BENEFITS.map((b) => (
+              <BenefitCard key={b.label} {...b} />
             ))}
           </motion.div>
 
@@ -228,7 +252,7 @@ function LoginPageInner() {
         </div>
 
         <motion.p variants={fadeIn} className="text-[11px] text-slate-400">
-          © {new Date().getFullYear()} UpMyRank · 15K+ NCERT chunks · 30+ JEE PYQs
+          © {new Date().getFullYear()} UpMyRank · For JEE & NEET aspirants
         </motion.p>
       </motion.section>
 
@@ -475,7 +499,7 @@ function LoginPageInner() {
           {/* Trust footer */}
           <motion.div variants={fadeIn} className="flex items-center justify-center gap-1.5 mt-5 text-[11px] text-slate-400">
             <Lock className="h-3 w-3" />
-            <span>Bank-grade encryption · Your data never leaves Supabase</span>
+            <span>Bank-grade encryption · Your data never leaves our database</span>
           </motion.div>
         </motion.div>
       </motion.section>
@@ -578,35 +602,184 @@ function FloatingSymbol({ char, className, delay }: { char: string; className: s
   )
 }
 
-// ── Stat cards ────────────────────────────────────────────────────────────────
-const STATS = [
-  { label: 'NCERT chunks', value: '15K+', icon: <BookOpen className="h-3.5 w-3.5" />, tone: 'violet' as const },
-  { label: 'Subjects',     value: '3',    icon: <Atom     className="h-3.5 w-3.5" />, tone: 'indigo' as const },
-  { label: 'PYQs indexed', value: '30+',  icon: <Target   className="h-3.5 w-3.5" />, tone: 'blue'   as const },
+// ── Student-facing benefits (replaces engineer-facing stat cards) ─────────────
+// These speak to the student's experience, not the system's metrics. Every line
+// is an answer to "what's in it for me as a JEE/NEET aspirant?"
+const BENEFITS = [
+  {
+    label:   'Think it through',
+    desc:    'Hints that guide, never spoil',
+    icon:    <Lightbulb className="h-4 w-4" />,
+    tone:    'violet' as const,
+  },
+  {
+    label:   'Tutor for you',
+    desc:    'Adapts to how you learn',
+    icon:    <GraduationCap className="h-4 w-4" />,
+    tone:    'indigo' as const,
+  },
+  {
+    label:   'Catch mistakes',
+    desc:    'Spot errors before exam day',
+    icon:    <Target className="h-4 w-4" />,
+    tone:    'blue' as const,
+  },
 ]
 
-function StatCard({
-  label, value, icon, tone,
+function BenefitCard({
+  label, desc, icon, tone,
 }: {
-  label: string; value: string; icon: React.ReactNode; tone: 'violet' | 'indigo' | 'blue'
+  label: string; desc: string; icon: React.ReactNode; tone: 'violet' | 'indigo' | 'blue'
 }) {
   const accentBg = {
     violet: 'bg-violet-100/70 text-violet-700',
     indigo: 'bg-indigo-100/70 text-indigo-700',
     blue:   'bg-blue-100/70   text-blue-700',
   }[tone]
+  // Tilt-on-hover micro-interaction — subtle 3D feel without a perf hit.
   return (
     <motion.div
-      whileHover={{ y: -3, scale: 1.02 }}
-      transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}
-      className="rounded-2xl border border-white/60 bg-white/70 backdrop-blur-md p-4 shadow-[0_8px_24px_-8px_rgb(99,102,241,0.12)]"
+      whileHover={{ y: -4, rotateX: 4, rotateY: -4, scale: 1.03 }}
+      transition={{ duration: 0.28, ease: EASE_OUT_EXPO }}
+      style={{ transformPerspective: 800 }}
+      className="rounded-2xl border border-white/60 bg-white/70 backdrop-blur-md p-4 shadow-[0_8px_24px_-8px_rgb(99,102,241,0.12)] hover:shadow-[0_14px_30px_-12px_rgb(99,102,241,0.22)]"
     >
-      <div className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${accentBg} mb-2.5`}>
+      <motion.div
+        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${accentBg} mb-2.5`}
+        whileHover={{ rotate: [0, -8, 8, 0] }}
+        transition={{ duration: 0.5 }}
+      >
         {icon}
-      </div>
-      <div className="text-2xl font-bold tracking-tight text-slate-900">{value}</div>
-      <div className="text-[11px] text-slate-500 font-medium mt-0.5">{label}</div>
+      </motion.div>
+      <div className="text-sm font-bold tracking-tight text-slate-900 leading-tight">{label}</div>
+      <div className="text-[11.5px] text-slate-500 font-medium mt-1 leading-snug">{desc}</div>
     </motion.div>
+  )
+}
+
+// ── Live demo chat preview (animated typewriter Socratic exchange) ────────────
+// Shows the student what the tutor experience actually feels like, instead of
+// abstract stats. The AI bubble types out a Socratic question character-by-character;
+// a pulsing emerald dot signals "live."
+function ChatPreview() {
+  return (
+    <div className="rounded-2xl border border-white/70 bg-white/70 backdrop-blur-md p-4 shadow-[0_10px_30px_-10px_rgb(99,102,241,0.18)]">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+        </span>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500 font-semibold">
+          Live tutor
+        </span>
+        <span className="ml-auto text-[10px] text-slate-400 font-medium">Socratic mode</span>
+      </div>
+
+      {/* Student bubble (right-aligned) */}
+      <motion.div
+        initial={{ opacity: 0, x: 16, scale: 0.95 }}
+        animate={{ opacity: 1, x: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: EASE_OUT_EXPO, delay: 0.6 }}
+        className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm border border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50/80 px-3.5 py-2.5 mb-2"
+      >
+        <p className="text-[13px] text-slate-700 leading-snug">
+          I&apos;m stuck on the integral of <span className="font-mono text-indigo-700">x²·eˣ</span>
+        </p>
+      </motion.div>
+
+      {/* AI bubble (left-aligned) with typewriter */}
+      <motion.div
+        initial={{ opacity: 0, x: -16, scale: 0.95 }}
+        animate={{ opacity: 1, x: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: EASE_OUT_EXPO, delay: 1.4 }}
+        className="mr-auto max-w-[90%] rounded-2xl rounded-tl-sm border border-slate-100 bg-white/90 px-3.5 py-2.5"
+      >
+        <p className="text-[13px] text-slate-700 leading-snug">
+          <Typewriter
+            text="What does integration by parts suggest you pick as u and dv?"
+            startDelayMs={1700}
+            speedMs={32}
+          />
+        </p>
+      </motion.div>
+    </div>
+  )
+}
+
+// Typewriter — characters appear one-by-one with a soft caret. Pure framer-motion
+// + useEffect, no extra deps. Caret blinks while typing, fades after completion.
+function Typewriter({
+  text, startDelayMs = 0, speedMs = 30,
+}: { text: string; startDelayMs?: number; speedMs?: number }) {
+  const [shown, setShown] = useState(0)
+  useEffect(() => {
+    const startTimer = setTimeout(() => {
+      const tick = setInterval(() => {
+        setShown((s) => {
+          if (s >= text.length) {
+            clearInterval(tick)
+            return s
+          }
+          return s + 1
+        })
+      }, speedMs)
+      return () => clearInterval(tick)
+    }, startDelayMs)
+    return () => clearTimeout(startTimer)
+  }, [text, speedMs, startDelayMs])
+
+  const isDone = shown >= text.length
+  return (
+    <span>
+      {text.slice(0, shown)}
+      <motion.span
+        aria-hidden
+        className="inline-block w-[2px] align-baseline ml-0.5"
+        style={{ height: '1em', background: '#6366F1' }}
+        animate={{ opacity: isDone ? 0 : [1, 0, 1] }}
+        transition={{ duration: 0.7, repeat: isDone ? 0 : Infinity }}
+      />
+    </span>
+  )
+}
+
+// ── Sparkle emit (fires once on mount, around the "think" underline) ─────────
+// Six small sparkles spawn from a central point and fly outward at evenly
+// spaced angles, fading as they travel. The whole burst completes in ~1.4s
+// and never repeats — it's a one-shot reward visual right after the headline
+// underline finishes drawing.
+function SparkleEmit() {
+  const reduced = useReducedMotion()
+  if (reduced) return null
+  const SPARKS = 6
+  return (
+    <span aria-hidden className="pointer-events-none absolute inset-0 -m-4">
+      {Array.from({ length: SPARKS }).map((_, i) => {
+        const angle = (i / SPARKS) * Math.PI * 2
+        const distance = 28 + (i % 2 === 0 ? 6 : -4)
+        const dx = Math.cos(angle) * distance
+        const dy = Math.sin(angle) * distance
+        return (
+          <motion.span
+            key={i}
+            className="absolute left-1/2 top-1/2"
+            initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
+            animate={{
+              opacity: [0, 1, 0],
+              x: [0, dx],
+              y: [0, dy],
+              scale: [0, 1, 0.6],
+            }}
+            transition={{ duration: 1.4, delay: 1.1 + i * 0.04, ease: EASE_OUT_EXPO }}
+          >
+            <Sparkles
+              className="h-2.5 w-2.5"
+              style={{ color: ['#A78BFA', '#818CF8', '#60A5FA'][i % 3] }}
+            />
+          </motion.span>
+        )
+      })}
+    </span>
   )
 }
 

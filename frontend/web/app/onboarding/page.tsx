@@ -173,6 +173,49 @@ export default function OnboardingPage() {
   // Wake up Render backend on mount so it's warm by the time the user submits
   useEffect(() => { pingBackend() }, [])
 
+  // ── v0.20.12 — onboarding form recovery ───────────────────────────────────
+  // If POST /onboarding/submit fails (cold-start timeout / network blip) the
+  // user previously had to retype everything. We persist form state to
+  // localStorage on every change so a refresh / retry preserves progress.
+  // Wiped on successful submission.
+  const LS_DRAFT = 'umr_onboarding_draft'
+
+  // Restore on mount (one-shot)
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(LS_DRAFT) : null
+      if (!raw) return
+      const d = JSON.parse(raw)
+      if (d.classLevel) setClassLevel(d.classLevel)
+      if (typeof d.prevMarks === 'string') setPrevMarks(d.prevMarks)
+      if (typeof d.chemistryPrevMarks === 'string') setChemistryPrevMarks(d.chemistryPrevMarks)
+      if (typeof d.mathsPrevMarks === 'string') setMathsPrevMarks(d.mathsPrevMarks)
+      if (d.easyTopics) setEasyTopics(d.easyTopics)
+      if (d.hardTopics) setHardTopics(d.hardTopics)
+      if (typeof d.studyHours === 'number') setStudyHours(d.studyHours)
+      if (d.examType) setExamType(d.examType)
+      if (typeof d.examDate === 'string') setExamDate(d.examDate)
+      if (d.prioritySubject) setPrioritySubject(d.prioritySubject)
+      if (d.learningPreference) setLearningPreference(d.learningPreference)
+      if (typeof d.step === 'number' && d.step >= 1 && d.step <= 4) setStep(d.step)
+    } catch { /* corrupted draft — ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist on any form-state change
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.setItem(LS_DRAFT, JSON.stringify({
+        step, classLevel, prevMarks, chemistryPrevMarks, mathsPrevMarks,
+        easyTopics, hardTopics, studyHours, examType, examDate,
+        prioritySubject, learningPreference,
+      }))
+    } catch { /* localStorage full / disabled — silent */ }
+  }, [step, classLevel, prevMarks, chemistryPrevMarks, mathsPrevMarks,
+      easyTopics, hardTopics, studyHours, examType, examDate,
+      prioritySubject, learningPreference])
+
   const go = (n: number) => {
     setDirection(n > step ? 1 : -1)
     setStep(n)
@@ -233,6 +276,9 @@ export default function OnboardingPage() {
       }
       const data = await apiPost('/onboarding/submit', body) as { persona_profile: Record<string, unknown> }
       setPersonaResult(data.persona_profile)
+      // v0.20.12 — successful submit: wipe the draft so a future re-onboard
+      // starts clean instead of restoring the prior session's choices.
+      try { localStorage.removeItem(LS_DRAFT) } catch { /* noop */ }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       // Try to parse the detail from JSON error bodies
