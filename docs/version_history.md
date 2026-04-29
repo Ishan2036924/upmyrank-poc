@@ -20,6 +20,7 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.20.14](#v02014--login-page-polish-em-dash-removal--student-facing-benefits--live-tutor-chat-preview-2026-04-29) | 2026-04-29 | Login-page polish: removed em-dashes (sounded AI-generated) + replaced engineer-facing stat cards (15K+/3/30+) with 3 student-facing benefit cards (Think it through / Tutor for you / Catch mistakes) + animated LIVE TUTOR chat-preview demo with typewriter + Supabase mention removed from trust footer + extra motion graphics (logo pulse-rings, sparkle-burst on 'think', tilt-on-hover). |
 | [v0.20.13](#v02013--health-head-support--login-page-redesign--home-pingbackend--cold-start-telemetry-2026-04-29) | 2026-04-29 | `/health` accepts HEAD (UptimeRobot 405 fix) + premium framer-motion login page (animated mesh + drifting orbs + floating math symbols + glassmorphic form + spring micro-interactions) + `pingBackend()` on home mount + cold-start telemetry timestamps in lifespan logs. |
 | [v0.20.12](#v02012--frontend-ux-hardening-cold-start-session-expired-onboarding-recovery-2026-04-29) | 2026-04-29 | Frontend UX hardening from real-user issue diagnosis: cold-start toast at 3s (was 8s) with clearer copy + session-expired login-page toast (`?reason=session_expired`) + onboarding-form localStorage recovery so partial answers survive submit failures. |
 | [v0.20.10](#v02010--latex-sanitizer-orphan-and-bare-frac-fix-2026-04-27) | 2026-04-27 | LaTeX sanitizer now auto-wraps bare `\frac`/`\int`/`\mathrm` lines + drops orphan `$$` markers + fixes the close-`$$`-jamming-prose bug. Hard fix for the 2026-04-27 prod incident where Units & Dimensions responses showed broken `kg² m³ s⁻⁴` rendering. |
@@ -53,6 +54,57 @@
 | [v0.3](#v03--analytics-dashboard-pro-max--nuclear-l3--latex-sanitizer-2026-03-30) | 2026-03-30 | Analytics Bento Box + Confidence Meter + nuclear L3 + LaTeX sanitizer |
 | [v0.2](#v02--glassmorphic-ui-overhaul--taxonomy-api-2026-03-22) | 2026-03-22 | Glassmorphic UI overhaul + Taxonomy API + syllabus selector |
 | [v0.1](#v01--initial-commit--render--vercel-deployment-2026-03-17) | 2026-03-17 | Initial commit + Render + Vercel deployment + OpenAI embeddings |
+
+---
+
+## v0.20.14 — Login-page polish: em-dash removal + student-facing benefits + LIVE TUTOR chat preview (2026-04-29)
+
+**Status:** ✅ shipped (pushed in bundle commit `e2fb8c8`).
+**Commits:** `e2fb8c8` (bundled with v0.20.12 + v0.20.13).
+
+### Why
+v0.20.13's login page redesign was visually strong but a real-user audit (sir testing on the live URL) flagged three gaps:
+1. **Em-dashes (`—`) in the marketing copy** read as AI-generated content. Modern users have a trained eye for this; even one em-dash undermines the "real product" feel.
+2. **3 stat cards** (`15K+ NCERT chunks`, `3 Subjects`, `30+ PYQs indexed`) were engineer-perspective, not student-perspective. Students don't care about RAG corpus size; they care about whether the tutor will actually help them.
+3. **"Your data never leaves Supabase"** in the trust footer leaked an implementation detail that students don't recognize and competitors could exploit.
+
+### What shipped (`frontend/web/app/auth/login/page.tsx`, ~120 LOC net)
+
+**1. Em-dash removal.** Two user-visible em-dashes scrubbed:
+- Subhead: `"…the rank you actually want — not the answer you can google."` → `"…the rank you actually want, not the answer you could just google."`
+- Session-expired toast: `"Your session expired — please log in again."` → `"Your session expired. Please log in again."`
+
+**2. Stat cards → student-facing benefit cards.** The `STATS` array + `StatCard` component were replaced with `BENEFITS` + `BenefitCard`:
+- 💡 **Think it through** — "Hints that guide, never spoil" (Lightbulb icon, violet)
+- 🎓 **Tutor for you** — "Adapts to how you learn" (GraduationCap icon, indigo)
+- 🎯 **Catch mistakes** — "Spot errors before exam day" (Target icon, blue)
+Each card now has tilt-on-hover (rotateX/Y + scale + perspective) and the icon does a subtle wobble on hover.
+
+**3. New `ChatPreview` component.** A glassmorphic card showing a live Socratic exchange:
+- Header: pulsing emerald dot + "LIVE TUTOR" + "Socratic mode"
+- Student bubble (right-aligned): "I'm stuck on the integral of x²·eˣ"
+- AI bubble (left-aligned) with a `Typewriter` component that types "What does integration by parts suggest you pick as u and dv?" character-by-character with a blinking caret. Pure framer-motion + useEffect, no extra deps.
+
+**4. Trust footer.** `"Bank-grade encryption · Your data never leaves Supabase"` → `"…never leaves our database"`. Copyright line updated: `"© 2026 UpMyRank · For JEE & NEET aspirants"` (was `"© 2026 UpMyRank · 15K+ NCERT chunks · 30+ JEE PYQs"`).
+
+**5. Additional motion graphics.**
+- **Pulse-rings on logo** — two concentric rings rippling outward from the logo on a 2.4s loop, phased 0/0.8s for continuous-signal feel.
+- **Sparkle-burst on `think`** — six small sparkles fly outward at evenly-spaced angles after the gradient underline finishes drawing, fading as they travel. Fires once on mount.
+- **Tilt-on-hover** on benefit cards (perspective: 800).
+- All animations honour `useReducedMotion`.
+
+### Verification
+- `npx tsc --noEmit` → 0 errors.
+- `npm run build` → ✓ 15 routes.
+- Preview at 1440x900: visible in screenshot — Live Tutor chat preview renders, 3 benefit cards in place, em-dash text replaced, trust footer says "our database", copyright says "For JEE & NEET aspirants".
+- 0 console errors during render.
+- Session-expired toast still works (carried over from v0.20.12).
+
+### Files changed
+- **MODIFIED** `frontend/web/app/auth/login/page.tsx` — copy edits, `ChatPreview` + `Typewriter` + `SparkleEmit` components added, `BenefitCard` replacing `StatCard`, logo pulse-rings, imports updated.
+
+### Lesson
+Marketing copy on a public-facing page is a product surface. Em-dashes, engineer metrics, and implementation names ("Supabase") all leak hints that the product was built quickly or thoughtlessly. None of these are technical bugs; all of them affect conversion. Audit the actual rendered copy, not the spec sheet.
 
 ---
 

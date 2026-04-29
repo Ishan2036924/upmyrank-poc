@@ -2,57 +2,83 @@
 
 > **Maintainers:** Update this file whenever a major feature ships or an architectural decision is made.
 > **Claude sessions:** Read this file at the start of every new session — after `docs/version_history.md` and `docs/session_log.md`.
-> **Current version:** v0.20.7.1 (2026-04-25) — cross-subject pivot guard restoring topic-shift after the v0.20.7 over-fire.
+> **Current version:** v0.20.14 (2026-04-29) — login-page polish: em-dashes scrubbed, engineer stats swapped for student-facing benefit cards, animated LIVE TUTOR chat-preview, no Supabase mention, more motion graphics.
+> **Prod state (verified 2026-04-29):** All v0.20.9 → v0.20.14 changes live. Backend healthy, Vercel frontend healthy, Upstash Redis connected (zero "connection refused" in prod logs), CORS clean, `/health` accepts both GET and HEAD. UptimeRobot pinging `/health` every 5 min keeps Render free-tier warm 24/7 (no more cold-start UX tax for active users). Conversation-arc judge (v0.20.9) writing rows to `conversation_arc_quality` on every `/session/end`. Beta-ready on free tier.
+> **Outstanding infra:** Render paid tier ($7/mo) is OPTIONAL now that UptimeRobot keep-alive eliminates the cold-start window — cost-neutral for solo project. Vercel "AI Assist" toolbar can be disabled in dashboard to silence the cosmetic "Assessment failed: output_config.format.schema" message (Vercel/Anthropic schema collision; not visible to end users).
 
 ---
 
-## 🎯 Current architecture (v0.20.7.1) — the 60-second summary
+## 🎯 Current architecture (v0.20.14) — the 60-second summary
 
 **Dual-loop product** feeding one Knowledge Genome:
 
-- **Mode 1 — Study Path** (`/study`, `/study/[subject]/[chapter]/[topic]`): structured concept cards. Each card = Notes (top-3 NCERT chunks, deduped + heading-diversity, optional hand-polished override) + Practice (3 problems) + PYQs + Mastery snapshot. Zero LLM cost to assemble. Files: `app/api/study.py`, `app/services/study/card_composer.py`, `scripts/concept_card_overrides.json`, `frontend/web/app/study/...`.
+- **Mode 1 — Study Path** (`/study`, `/study/[subject]/[chapter]/[topic]`): structured concept cards. Each card = Notes (top-3 NCERT chunks, deduped + heading-diversity, optional hand-polished override) + Practice (3 problems) + PYQs + Mastery snapshot. Zero LLM cost to assemble.
 - **Mode 2 — Ask Anything** (`/doubt`): free-form inbox. Backend auto-segments doubt_blocks on topic shift (via `_detect_topic_shift` in `app/api/doubt.py`).
-  - **v0.20.7 + v0.20.7.1 (2026-04-25):** asymmetric continuation guard. Same-subject markers (`why`/`hmm`/`wait`/`ok so` …) → trust continuation; cross-subject markers (`"Wait, what's the integral of sin(x²)?"` from a Physics block) → re-promote to topic-shift. The classifier always runs; the marker only changes the decision rule.
-  - **v0.21 (2026-04-25):** `explanation` intent now opens a doubt_block when `study_session_id` is set — short concept queries (`"what is atom?"`, `"what is log?"`) get RAG + mastery, instead of bypassing the Genome.
-- **Misconception detection (v0.20.8):** `check_for_misconception()` now fires inside `start_session` + `start_session_stream` (was only in `get_hint`). Misconception_id is stamped on doubt_blocks at creation, so `_genome_update_task` applies the 1.5× penalty on resolve. Library matcher gained a topic-agnostic 2-keyword fallback for cases where the LLM topic-classifier returns a coarser/wrong topic.
-- **Backstop:** `_reclassify_block_topic` runs at every block close, logs `drift_topic` into `session_events.payload` if the dominant topic from conversation_history differs from session.topic stamp. Logging-only.
+  - **v0.20.7 + v0.20.7.1:** asymmetric continuation guard. Same-subject markers (`why`/`hmm`/`wait`/`ok so` …) → trust continuation; cross-subject markers re-promote to topic-shift via deterministic `_SUBJECT_KEYWORDS` regex.
+  - **v0.21:** `explanation` intent opens a doubt_block when `study_session_id` is set — short concept queries (`"what is atom?"`) get RAG + mastery, not bypassed.
+- **Misconception detection (v0.20.8):** `check_for_misconception()` fires inside `start_session` + `start_session_stream` (was only `get_hint`). misconception_id stamped on doubt_blocks at creation; `_genome_update_task` applies 1.5× penalty on resolve. Library matcher has a topic-agnostic 2-keyword fallback.
+- **LaTeX sanitizer (v0.20.10):** auto-wraps bare `\frac` / `\int` / `\mathrm` lines + drops orphan `$$` + fixes the close-`$$`-jamming-prose bug. 7/7 unit tests against the 2026-04-27 prod incident.
+- **Conversation-arc judge (v0.20.9):** `app/services/eval/conversation_arc_judge.py` scores whole flows on coherence/adaptation/context_persistence/closure/pedagogy_arc/back_and_forth_overall. Fires async from `/session/end` after the per-response judge. Writes to `conversation_arc_quality` (migration v18).
+- **Backstop:** `_reclassify_block_topic` runs at every block close, logs `drift_topic` into `session_events.payload`. Logging-only.
 - Shared: `_genome_update_task` (sole mastery writer, Rule #2), persona evolution every 5 sessions, misconception library, Socratic L0→L3 ladder.
 - **Admin observability:** `/admin/study-path` panel surfaces top-viewed cards, override hit-rate, drift count, daily views sparkline, CSV export.
 
-## ✅ Recently shipped (last 4 versions)
+### Frontend stack (v0.20.12 → v0.20.14 UX hardening)
+- **Login page** (`frontend/web/app/auth/login/page.tsx`) — premium framer-motion design: animated mesh-gradient background, drifting orbs, floating math symbols (∫, π, Σ, ∂), glassmorphic form, pulse-rings on logo, sparkle-burst on `think`, **LIVE TUTOR chat-preview with typewriter** (Socratic exchange demo), 3 student-facing benefit cards (Think it through / Tutor for you / Catch mistakes), session-expired toast on `?reason=session_expired` redirect, Suspense-wrapped (Next.js 16 prerender requirement). Em-dash-free copy. No Supabase mention in trust footer.
+- **`api.ts`:** cold-start toast at 3 s (was 8 s), redirect on JWT-refresh-fail to `/auth/login?reason=session_expired`.
+- **Onboarding:** form state persisted to `localStorage.umr_onboarding_draft` on every change; restored on mount; wiped on successful submit. Survives cold-start submit timeouts.
+- **Home (`/`):** `pingBackend()` on mount wakes Render before user clicks anything.
 
-- **v0.20.7.1 (2026-04-25)** — patch: cross-subject pivot guard. v0.20.7's continuation marker no longer eats cross-subject pivots like `"Wait, what's the integral of sin(x²)?"`. Topic-shift pass rate 58 % → ≥ 80 % (smoke-verified).
-- **v0.21 (2026-04-25)** — `explanation` intent opens a doubt_block + mastery tracking when `study_session_id` is set. Short-pivot block-open rate 33 % → 100 % on the 100Q diagnostic. Backward-compat: legacy non-session callers still hit `handle_non_physics_intent`.
-- **v0.20.8 (2026-04-25)** — `check_for_misconception` runs on initial doubts; topic-agnostic 2-keyword fallback in the library; centrifugal-misconception keyword expansion. Wiring proven by 3/3 smoke; library coverage gap noted for v0.22.
-- **v0.20.7 (2026-04-25)** — asymmetric continuation guard (`_looks_like_continuation`) early-returns from `_detect_topic_shift` for follow-up starter phrases. Follow-up continuation rate 50 % → 100 % on the 100Q diagnostic. Unit-tested 17/17.
+### Infra (2026-04-29)
+- **Render free tier** (web service `upmyrank-poc`). 750-hour/month cap. Cold start 22-116 s.
+- **UptimeRobot** pings `https://upmyrank-poc.onrender.com/health` every 5 min from N. Virginia. Render's 15-min idle timer never trips → service stays warm 24/7. `/health` now accepts BOTH GET and HEAD (v0.20.13 fix; UptimeRobot defaults to HEAD).
+- **Upstash Redis (Free)** at `desired-sturgeon-106299.upstash.io:6379` — `REDIS_URL` env var on Render. Hot-context cache + semantic cache + rate-limiter state all wired. Free tier limits (256 MB / 10 GB / unlimited cmds) are far above projected usage.
+- **Vercel** hosts the Next.js 16 frontend at `https://upmyrank-poc.vercel.app`. CORS to Render is verified clean (allow-origin matches, OPTIONS + POST both 200).
+- **Supabase Postgres + pgvector** at `aws-0-us-west-2.pooler.supabase.com:5432`, project `vgctqmhwezmihhmnwtzm`. 18 migrations applied (latest: `migrate_v18_arc_judge.sql`).
 
-(Older versions in `docs/version_history.md`. Quality verified by `reports/comparison_2026-04-25.md`.)
+## ✅ Recently shipped (latest 6 versions)
 
-## 🚧 Next up
+- **v0.20.14 (2026-04-29)** — login-page polish: em-dashes scrubbed, engineer stat cards swapped for 3 student-facing benefit cards, animated LIVE TUTOR chat-preview with typewriter, "Supabase" → "our database" in trust footer, logo pulse-rings + sparkle-burst on `think` + tilt-on-hover.
+- **v0.20.13 (2026-04-29)** — `/health` accepts HEAD (UptimeRobot 405 fix) + premium framer-motion login page redesign + `pingBackend()` on home mount + cold-start telemetry timestamps in lifespan logs.
+- **v0.20.12 (2026-04-29)** — frontend UX hardening from real-user issue diagnosis: cold-start toast at 3 s with clearer copy + session-expired login-page toast + onboarding-form localStorage recovery.
+- **v0.20.11 (2026-04-27)** — edge-100 harness JWT-refresh on 401 + partial-report safety net (survives Supabase 50-min token expiry mid-run).
+- **v0.20.10 (2026-04-27)** — LaTeX sanitizer auto-wraps bare `\frac` / `\int` / `\mathrm` + drops orphan `$$` + fixes pre-existing close-`$$`-jamming-prose bug. 7/7 unit tests on 2026-04-27 prod incident.
+- **v0.20.9 (2026-04-26)** — conversation-arc judge for whole-flow quality scoring. New `conversation_arc_quality` table (migration v18). Wired into `_run_judge_for_session`.
 
-1. **Push v0.20.7.1** — patch staged; run the printed `git add/commit/push` sequence in `docs/session_log.md` (top entry).
-2. **Provision Upstash Redis (Free tier)** — set `REDIS_URL` env var on Render. Validates v0.20.5 R1; saves ~$20-30/mo on OpenAI at 30-student beta scale (semantic cache + hot context).
-3. **Render paid tier ($7/mo)** — kills the 22 s cold start. Do this when beta launches.
-4. **v0.22 — misconception library expansion** — ~50-100 keyword additions across 30 entries to cover natural student phrasings (smoke-aligned phrasings already work; diagnostic-100 natural phrasings don't).
-5. **v0.22 — personalization-prompt strengthening** — top-of-system-prompt do/don't examples per `learning_preference` (formula / example / analogy). Multi-user diagnostic showed length divergence is real (σ/μ = 0.231) but style-keyword diagonal only fires for HIGH (formula); MEDIUM/LOW also lean formula because gpt-4.1-mini defaults to formulae on technical questions.
-6. **Cleanup 8 synthetic accounts** in Supabase from today's smoke + multi-user + 100Q runs. Use `scripts/diag_cleanup_test_accounts.py --dry-run` first.
-7. **Onboarding restyle** on new primitives (deferred — current works, low marginal pre-beta value).
-8. **Drift backstop concept_id re-derivation** — currently logging-only. If beta `block-close drift` rate > 5 %, wire EMA shift to dominant-topic concepts.
-9. **Dark mode activation** — tokens already in `globals.css` `.dark` block; enable toggle in `/settings?tab=appearance`.
+## 🚧 Next up (post 2026-04-29 wrap-up)
 
-## 🔍 Where to find today's diagnostic artefacts (2026-04-25)
+1. ✅ **DONE — v0.20.12 / v0.20.13 / v0.20.14 pushed** (bundled commit `e2fb8c8`, live on Render after auto-deploy).
+2. ✅ **DONE — UptimeRobot keep-alive** for `/health` every 5 min keeps Render free-tier warm 24/7.
+3. ✅ **DONE — `/health` HEAD support** stops UptimeRobot's 405 alerts.
+4. ✅ **DONE — Login page student-facing redesign** with motion graphics + chat-preview.
+5. **Cleanup synthetic accounts** in Supabase. Many accumulated across diagnostic runs (probe-*, edge-edge-*, redis-probe-*, latex-probe-*, arc-smoke-*). Run `scripts/diag_cleanup_test_accounts.py --dry-run` first.
+6. **Real-user E2E walkthrough** — sign up at `https://upmyrank-poc.vercel.app/auth/signup` with a real Gmail address. Time signup → first AI Socratic response. Catches UI/CSS/click-event bugs synthetic personas miss.
+7. **v0.22 — misconception library expansion** — ~50-100 keyword additions across 30 entries to cover natural student phrasings. Wiring is correct (v0.20.8); library coverage is the gap.
+8. **v0.22 — personalization prompt strengthening** — top-of-system-prompt do/don't examples per `learning_preference`. Multi-user diagnostic showed length divergence is real (σ/μ = 0.231) but style-keyword diagonal only fires for HIGH; MED/LOW also lean formula.
+9. **Edge-100 full re-run on prod** — the 35-flow salvaged report from 2026-04-27 missed classes B/C/D/H/I + class J. With v0.20.11's JWT-refresh patch, a full 100-flow run should complete in one pass.
+10. **Vercel "AI Assist" toolbar disable** — Settings → Toolbar → off, removes the cosmetic "Assessment failed: output_config.format.schema" message.
+11. **Render paid tier ($7/mo)** — OPTIONAL now that UptimeRobot keep-alive is live. Solo project budget; not required.
+12. **Sentry / cost monitoring** — wire Sentry for backend exceptions + OpenAI cost alerts before scaling beyond 30 students.
+13. **Onboarding restyle** + **dark mode activation** — deferred, low marginal pre-beta value.
 
-- `reports/comparison_2026-04-25.md` — full before/after technical comparison across all 4 pillars.
-- `reports/diagnostic_post_fixes_2026-04-25.md` + `.json` — the 100Q post-fix run by scenario class.
-- `reports/multiuser_post_fixes_2026-04-25.md` + `.json` — the 3-persona run.
-- `reports/smoke_r4_043537.json` — 12-of-12 targeted smoke for v0.20.7 / v0.20.8 / v0.21.
-- `reports/smoke_v0207_1_*.json` — v0.20.7.1 smoke (4 cross-subject + 5 same-subject regression guards).
-- `docs/cofounder_summary_2026-04-25.md` — 1-2 page summary written for sir.
-- `scripts/data/diagnostic_100.json` — the 100-prompt set (9 scenario classes).
-- `scripts/data/diagnostic_smoke_fixes.json` — bug-#1/#2/#3 smoke fixtures.
-- `scripts/data/diagnostic_smoke_v0207_1.json` — v0.20.7.1 regression fixtures.
+## 🔍 Diagnostic + report artefacts in `reports/`
+
+- `reports/comparison_2026-04-25.md` — full before/after technical comparison across 4 pillars.
+- `reports/diagnostic_post_fixes_2026-04-25.md` — 100Q post-fix run by scenario class.
+- `reports/multiuser_post_fixes_2026-04-25.md` — 3-persona personalization run.
+- `reports/diagnostic_edge_2026-04-27.md` — 35/50 salvaged edge-case flows (avg arc composite 0.801, class E misconceptions 0.915 strongest).
+- `reports/smoke_*` — targeted regression-guard fixtures for individual fixes.
+- `docs/cofounder_summary_2026-04-25.md` — 1-2 page summary for sir.
+
+## 🛠 Test / diagnostic scripts
+
 - `scripts/diagnostic_100.py` — 100Q harness (reusable for any prompt set).
 - `scripts/diagnostic_multiuser.py` — 3-personas-in-parallel personalization harness.
+- `scripts/diagnostic_edge_100.py` — multi-turn edge-case harness with student-LLM driver + JWT-refresh on 401 + partial-report safety net.
+- `scripts/data/diagnostic_100.json` — 100 prompts, 9 scenario classes.
+- `scripts/data/diagnostic_edge_100.json` — 100 multi-turn edge-case flows, 10 stress classes (A=adversarial, B=ambiguous, C=notation chaos, D=multi-step, E=misconception chains, F=hint-ladder, G=long-context, H=personalization, I=frontend, J=pedagogically tricky).
+- `scripts/data/diagnostic_smoke_*.json` — targeted smoke fixtures per fix.
+- `scripts/diag_cleanup_test_accounts.py` — synthetic-account cleanup tool with allowlist for real users.
 
 ---
 
