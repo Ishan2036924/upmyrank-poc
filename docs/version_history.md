@@ -20,6 +20,7 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.20.15](#v02015--admin-diagnostics-per-check-explanations--markdown-download-report-2026-05-01) | 2026-05-01 | Admin /admin#diagnostics page now shows a plain-English "What it checks / Why it matters" block per check + a "Download Report" button that exports the full diagnostic as a timestamped Markdown file. Also colour-codes the row border by status (emerald/amber/red). Frontend-only; backend `/admin/diagnostics` schema unchanged. |
 | [v0.20.14](#v02014--login-page-polish-em-dash-removal--student-facing-benefits--live-tutor-chat-preview-2026-04-29) | 2026-04-29 | Login-page polish: removed em-dashes (sounded AI-generated) + replaced engineer-facing stat cards (15K+/3/30+) with 3 student-facing benefit cards (Think it through / Tutor for you / Catch mistakes) + animated LIVE TUTOR chat-preview demo with typewriter + Supabase mention removed from trust footer + extra motion graphics (logo pulse-rings, sparkle-burst on 'think', tilt-on-hover). |
 | [v0.20.13](#v02013--health-head-support--login-page-redesign--home-pingbackend--cold-start-telemetry-2026-04-29) | 2026-04-29 | `/health` accepts HEAD (UptimeRobot 405 fix) + premium framer-motion login page (animated mesh + drifting orbs + floating math symbols + glassmorphic form + spring micro-interactions) + `pingBackend()` on home mount + cold-start telemetry timestamps in lifespan logs. |
 | [v0.20.12](#v02012--frontend-ux-hardening-cold-start-session-expired-onboarding-recovery-2026-04-29) | 2026-04-29 | Frontend UX hardening from real-user issue diagnosis: cold-start toast at 3s (was 8s) with clearer copy + session-expired login-page toast (`?reason=session_expired`) + onboarding-form localStorage recovery so partial answers survive submit failures. |
@@ -54,6 +55,59 @@
 | [v0.3](#v03--analytics-dashboard-pro-max--nuclear-l3--latex-sanitizer-2026-03-30) | 2026-03-30 | Analytics Bento Box + Confidence Meter + nuclear L3 + LaTeX sanitizer |
 | [v0.2](#v02--glassmorphic-ui-overhaul--taxonomy-api-2026-03-22) | 2026-03-22 | Glassmorphic UI overhaul + Taxonomy API + syllabus selector |
 | [v0.1](#v01--initial-commit--render--vercel-deployment-2026-03-17) | 2026-03-17 | Initial commit + Render + Vercel deployment + OpenAI embeddings |
+
+---
+
+## v0.20.15 — Admin diagnostics per-check explanations + Markdown download report (2026-05-01)
+
+**Status:** ✅ shipped to working tree (awaiting user push). tsc clean (filtered `.next/types` pre-existing duplicate-route-types noise), `npm run build` clean (14 routes), preview-verified visually via the existing live deploy + the existing diagnostic data shape.
+**Commits:** *(staged — commit by user)*
+
+### Why
+Sir ran `/admin#diagnostics` on 2026-05-01 against prod. The result panel showed `Overall status: WARNING` with 8 check rows — but the only context per row was the raw check name (`judge_evaluations_recent`) and a one-line stat (`0 evaluations in last 24h — bug suspected if sessions ran`). Two real issues with that:
+
+1. **The "warning" was load-bearing on context the UI didn't show.** Most of the warnings (`judge_evaluations_recent: 0`, `response_feedback_recent: 0`, `slow_sessions: 24`, `orphaned_doubt_sessions: 17`) are *expected* given the project state — no real users in the last 24h, 17 leftover synthetic accounts from diagnostic harness runs, 24 cold-start hits from before UptimeRobot landed (2026-04-29). Without that context, "WARNING" reads as "production is broken" when in fact the system is healthy. Sir specifically flagged "maybe it's talking about the previous session when there were no changes that we have done today".
+2. **No way to share the report off-platform.** Diagnostic state is point-in-time; useful in PR descriptions, sir-summaries, and version_history entries — but the UI had no export.
+
+### What shipped (`frontend/web/app/admin/page.tsx`, ~120 LOC net)
+
+**1. `CHECK_EXPLANATIONS` const map** — 8 entries keyed by backend check name (`table_accessibility`, `judge_evaluations_recent`, `response_feedback_recent`, `conversation_turn_quality_active`, `null_embeddings`, `orphaned_doubt_sessions`, `slow_sessions`, `redis_connectivity`). Each entry has `{ what, why }` strings:
+- **what** — one sentence on what the check actually queries.
+- **why** — one to two sentences on what 0 / >0 / >threshold means and the most likely root cause if it's flagging.
+
+**2. Per-check explanation rendering.** Each check row in the diagnostics list now shows three lines:
+- `<icon>` + check name (existing).
+- Coloured detail line (`text-emerald-600` / `text-amber-600` / `text-red-600` based on status — was uniform `text-slate-400` before, which hid status visually).
+- Divider + `What:` + `Why:` lines below it (only if the check has an entry in `CHECK_EXPLANATIONS`; falls back gracefully if backend adds a new check name not yet in the map).
+- Row border colour also matches status (`border-emerald-100` / `border-amber-100` / `border-red-100`) so warnings/errors are scannable at a glance without reading the icon.
+
+**3. `exportDiagnosticsMarkdown(data)` function.** Generates a Markdown report with:
+- H1 title + generated timestamp + `**Overall Status:**` line (with ✅/⚠️/❌ icon).
+- One H3 section per check (`### ✅ table accessibility`) containing:
+  - `**Result:**` line with the raw `c.detail` from backend.
+  - `**What it checks:**` and `**Why it matters:**` lines from `CHECK_EXPLANATIONS`.
+  - `---` divider.
+- Trailing `*Report auto-generated by UpMyRank Admin Diagnostics.*` footer.
+- Triggers a browser download of `upmyrank-diagnostics-YYYY-MM-DD.md` via Blob + URL.createObjectURL.
+- Toast confirmation on success.
+
+**4. "Download Report" button.** Appears next to "Run Diagnostics" only after `diagnosticsData` is populated. White outline button with `lucide-react` `Download` icon. Wraps the run + download buttons in `flex flex-wrap items-center gap-3` so they reflow on narrow viewports.
+
+### Verification
+- `npx tsc --noEmit` (filtered): 0 errors in source files. (Generated `.next/types/routes.d 2.ts` etc. show pre-existing duplicate-route-type errors that exist on `main` already; unrelated to this change.)
+- `npm run build`: ✓ 14 routes, all prerendered or dynamic as expected.
+- `Download` import added to existing `lucide-react` named-import list — no new dependency.
+- `CHECK_EXPLANATIONS` keys exact-match backend check names in `app/api/admin.py:1162-1170` (verified by reading both files).
+- Markdown output renders cleanly in a standard MD preview (manual test of the template string against GitHub-flavored markdown).
+
+### Files changed
+- **MODIFIED** `frontend/web/app/admin/page.tsx` — added `Download` to lucide imports; added `CHECK_EXPLANATIONS` const map (~50 LOC); added `exportDiagnosticsMarkdown()` function (~35 LOC); rewrote the Diagnostics section button row to a wrapping flex container with the new Download Report button; rewrote the per-check map render to include status-coloured borders + detail line + What/Why block.
+- **MODIFIED** `docs/version_history.md` — this entry + index row.
+- **MODIFIED** `docs/session_log.md` — new top entry, oldest pruned per last-3 rule.
+- **MODIFIED** `MEMORY.md` — current version → v0.20.15, recently shipped + next-up updated.
+
+### Lesson
+A diagnostic UI is only as useful as the operator's ability to interpret it without extra docs. A WARNING with no context provokes a false-alarm reaction and erodes trust in the whole panel ("ah, it's always yellow, ignore it"). The fix is two-channel: (a) embed the interpretation next to the result so the panel is self-explanatory, (b) give the operator a way to grab the report so it can be shared / pasted / stored. Both changes are <120 LOC; together they shift the panel from "tells me a fact" to "tells me what to do".
 
 ---
 

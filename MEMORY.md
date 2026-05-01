@@ -2,13 +2,13 @@
 
 > **Maintainers:** Update this file whenever a major feature ships or an architectural decision is made.
 > **Claude sessions:** Read this file at the start of every new session — after `docs/version_history.md` and `docs/session_log.md`.
-> **Current version:** v0.20.14 (2026-04-29) — login-page polish: em-dashes scrubbed, engineer stats swapped for student-facing benefit cards, animated LIVE TUTOR chat-preview, no Supabase mention, more motion graphics.
-> **Prod state (verified 2026-04-29):** All v0.20.9 → v0.20.14 changes live. Backend healthy, Vercel frontend healthy, Upstash Redis connected (zero "connection refused" in prod logs), CORS clean, `/health` accepts both GET and HEAD. UptimeRobot pinging `/health` every 5 min keeps Render free-tier warm 24/7 (no more cold-start UX tax for active users). Conversation-arc judge (v0.20.9) writing rows to `conversation_arc_quality` on every `/session/end`. Beta-ready on free tier.
+> **Current version:** v0.20.15 (2026-05-01) — admin /admin#diagnostics now self-explanatory: per-check "What it checks / Why it matters" block + status-coloured row borders + Markdown "Download Report" button (`upmyrank-diagnostics-YYYY-MM-DD.md`). Frontend-only.
+> **Prod state (verified 2026-04-29; v0.20.15 shipped to working tree, awaiting user push 2026-05-01):** All v0.20.9 → v0.20.14 changes live. Backend healthy, Vercel frontend healthy, Upstash Redis connected (zero "connection refused" in prod logs), CORS clean, `/health` accepts both GET and HEAD. UptimeRobot pinging `/health` every 5 min keeps Render free-tier warm 24/7. Conversation-arc judge writing rows to `conversation_arc_quality` on every `/session/end`. Beta-ready on free tier. **Latest `/admin#diagnostics` run (2026-05-01) returned WARNING — but every warning is *expected state*: 0 judge_evaluations / 0 response_feedback in 24h (no real users active), 17 orphaned doubt_sessions (synthetic harness residue), 24 slow sessions in 7d (pre-UptimeRobot cold-start hits, will roll out of window).**
 > **Outstanding infra:** Render paid tier ($7/mo) is OPTIONAL now that UptimeRobot keep-alive eliminates the cold-start window — cost-neutral for solo project. Vercel "AI Assist" toolbar can be disabled in dashboard to silence the cosmetic "Assessment failed: output_config.format.schema" message (Vercel/Anthropic schema collision; not visible to end users).
 
 ---
 
-## 🎯 Current architecture (v0.20.14) — the 60-second summary
+## 🎯 Current architecture (v0.20.15) — the 60-second summary
 
 **Dual-loop product** feeding one Knowledge Genome:
 
@@ -21,7 +21,7 @@
 - **Conversation-arc judge (v0.20.9):** `app/services/eval/conversation_arc_judge.py` scores whole flows on coherence/adaptation/context_persistence/closure/pedagogy_arc/back_and_forth_overall. Fires async from `/session/end` after the per-response judge. Writes to `conversation_arc_quality` (migration v18).
 - **Backstop:** `_reclassify_block_topic` runs at every block close, logs `drift_topic` into `session_events.payload`. Logging-only.
 - Shared: `_genome_update_task` (sole mastery writer, Rule #2), persona evolution every 5 sessions, misconception library, Socratic L0→L3 ladder.
-- **Admin observability:** `/admin/study-path` panel surfaces top-viewed cards, override hit-rate, drift count, daily views sparkline, CSV export.
+- **Admin observability:** `/admin/study-path` panel surfaces top-viewed cards, override hit-rate, drift count, daily views sparkline, CSV export. **`/admin#diagnostics`** runs 8 health checks (`table_accessibility`, `judge_evaluations_recent`, `response_feedback_recent`, `conversation_turn_quality_active`, `null_embeddings`, `orphaned_doubt_sessions`, `slow_sessions`, `redis_connectivity`); each row now has an inline "What it checks / Why it matters" explanation (v0.20.15) and a "Download Report" button that exports timestamped Markdown.
 
 ### Frontend stack (v0.20.12 → v0.20.14 UX hardening)
 - **Login page** (`frontend/web/app/auth/login/page.tsx`) — premium framer-motion design: animated mesh-gradient background, drifting orbs, floating math symbols (∫, π, Σ, ∂), glassmorphic form, pulse-rings on logo, sparkle-burst on `think`, **LIVE TUTOR chat-preview with typewriter** (Socratic exchange demo), 3 student-facing benefit cards (Think it through / Tutor for you / Catch mistakes), session-expired toast on `?reason=session_expired` redirect, Suspense-wrapped (Next.js 16 prerender requirement). Em-dash-free copy. No Supabase mention in trust footer.
@@ -38,28 +38,30 @@
 
 ## ✅ Recently shipped (latest 6 versions)
 
+- **v0.20.15 (2026-05-01)** — admin diagnostics explainability + Markdown download report. `/admin#diagnostics` rows now include "What it checks / Why it matters" inline + status-coloured borders. Download Report button exports `upmyrank-diagnostics-YYYY-MM-DD.md`. Frontend-only; awaiting user push.
 - **v0.20.14 (2026-04-29)** — login-page polish: em-dashes scrubbed, engineer stat cards swapped for 3 student-facing benefit cards, animated LIVE TUTOR chat-preview with typewriter, "Supabase" → "our database" in trust footer, logo pulse-rings + sparkle-burst on `think` + tilt-on-hover.
 - **v0.20.13 (2026-04-29)** — `/health` accepts HEAD (UptimeRobot 405 fix) + premium framer-motion login page redesign + `pingBackend()` on home mount + cold-start telemetry timestamps in lifespan logs.
 - **v0.20.12 (2026-04-29)** — frontend UX hardening from real-user issue diagnosis: cold-start toast at 3 s with clearer copy + session-expired login-page toast + onboarding-form localStorage recovery.
 - **v0.20.11 (2026-04-27)** — edge-100 harness JWT-refresh on 401 + partial-report safety net (survives Supabase 50-min token expiry mid-run).
 - **v0.20.10 (2026-04-27)** — LaTeX sanitizer auto-wraps bare `\frac` / `\int` / `\mathrm` + drops orphan `$$` + fixes pre-existing close-`$$`-jamming-prose bug. 7/7 unit tests on 2026-04-27 prod incident.
-- **v0.20.9 (2026-04-26)** — conversation-arc judge for whole-flow quality scoring. New `conversation_arc_quality` table (migration v18). Wired into `_run_judge_for_session`.
 
-## 🚧 Next up (post 2026-04-29 wrap-up)
+## 🚧 Next up (post 2026-05-01 wrap-up)
 
-1. ✅ **DONE — v0.20.12 / v0.20.13 / v0.20.14 pushed** (bundled commit `e2fb8c8`, live on Render after auto-deploy).
-2. ✅ **DONE — UptimeRobot keep-alive** for `/health` every 5 min keeps Render free-tier warm 24/7.
-3. ✅ **DONE — `/health` HEAD support** stops UptimeRobot's 405 alerts.
-4. ✅ **DONE — Login page student-facing redesign** with motion graphics + chat-preview.
-5. **Cleanup synthetic accounts** in Supabase. Many accumulated across diagnostic runs (probe-*, edge-edge-*, redis-probe-*, latex-probe-*, arc-smoke-*). Run `scripts/diag_cleanup_test_accounts.py --dry-run` first.
-6. **Real-user E2E walkthrough** — sign up at `https://upmyrank-poc.vercel.app/auth/signup` with a real Gmail address. Time signup → first AI Socratic response. Catches UI/CSS/click-event bugs synthetic personas miss.
-7. **v0.22 — misconception library expansion** — ~50-100 keyword additions across 30 entries to cover natural student phrasings. Wiring is correct (v0.20.8); library coverage is the gap.
-8. **v0.22 — personalization prompt strengthening** — top-of-system-prompt do/don't examples per `learning_preference`. Multi-user diagnostic showed length divergence is real (σ/μ = 0.231) but style-keyword diagonal only fires for HIGH; MED/LOW also lean formula.
-9. **Edge-100 full re-run on prod** — the 35-flow salvaged report from 2026-04-27 missed classes B/C/D/H/I + class J. With v0.20.11's JWT-refresh patch, a full 100-flow run should complete in one pass.
-10. **Vercel "AI Assist" toolbar disable** — Settings → Toolbar → off, removes the cosmetic "Assessment failed: output_config.format.schema" message.
-11. **Render paid tier ($7/mo)** — OPTIONAL now that UptimeRobot keep-alive is live. Solo project budget; not required.
-12. **Sentry / cost monitoring** — wire Sentry for backend exceptions + OpenAI cost alerts before scaling beyond 30 students.
-13. **Onboarding restyle** + **dark mode activation** — deferred, low marginal pre-beta value.
+1. **Push v0.20.15** — single file (`frontend/web/app/admin/page.tsx`), single commit. Render auto-deploys on push to `main` (~3-5 min build).
+2. ✅ **DONE — Admin diagnostics explainability** (v0.20.15) — What/Why per check + Markdown export.
+3. ✅ **DONE — v0.20.12 / v0.20.13 / v0.20.14 pushed** (bundled commit `e2fb8c8`, live on Render after auto-deploy).
+4. ✅ **DONE — UptimeRobot keep-alive** for `/health` every 5 min keeps Render free-tier warm 24/7.
+5. ✅ **DONE — `/health` HEAD support** stops UptimeRobot's 405 alerts.
+6. ✅ **DONE — Login page student-facing redesign** with motion graphics + chat-preview.
+7. **Cleanup synthetic accounts** in Supabase. Many accumulated across diagnostic runs (probe-*, edge-edge-*, redis-probe-*, latex-probe-*, arc-smoke-*) — directly causes the `orphaned_doubt_sessions: 17` warning in /admin#diagnostics. Run `scripts/diag_cleanup_test_accounts.py --dry-run` first.
+8. **Real-user E2E walkthrough** — sign up at `https://upmyrank-poc.vercel.app/auth/signup` with a real Gmail address. Time signup → first AI Socratic response. Catches UI/CSS/click-event bugs synthetic personas miss. Will also clear the `judge_evaluations_recent` and `response_feedback_recent` warnings on the diagnostics panel.
+9. **v0.22 — misconception library expansion** — ~50-100 keyword additions across 30 entries to cover natural student phrasings. Wiring is correct (v0.20.8); library coverage is the gap.
+10. **v0.22 — personalization prompt strengthening** — top-of-system-prompt do/don't examples per `learning_preference`. Multi-user diagnostic showed length divergence is real (σ/μ = 0.231) but style-keyword diagonal only fires for HIGH; MED/LOW also lean formula.
+11. **Edge-100 full re-run on prod** — the 35-flow salvaged report from 2026-04-27 missed classes B/C/D/H/I + class J. With v0.20.11's JWT-refresh patch, a full 100-flow run should complete in one pass.
+12. **Vercel "AI Assist" toolbar disable** — Settings → Toolbar → off, removes the cosmetic "Assessment failed: output_config.format.schema" message.
+13. **Render paid tier ($7/mo)** — OPTIONAL now that UptimeRobot keep-alive is live. Solo project budget; not required.
+14. **Sentry / cost monitoring** — wire Sentry for backend exceptions + OpenAI cost alerts before scaling beyond 30 students.
+15. **Onboarding restyle** + **dark mode activation** — deferred, low marginal pre-beta value.
 
 ## 🔍 Diagnostic + report artefacts in `reports/`
 

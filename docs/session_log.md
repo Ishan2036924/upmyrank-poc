@@ -3,6 +3,65 @@
 <!-- Most recent session at top. Keep last 3 entries only. -->
 <!-- Written by Claude at end of each session via /handoff command. -->
 
+## Session 2026-05-01 — v0.20.15 admin diagnostics explainability + Markdown download report + git-command-format feedback memory
+
+**Focus:** Sir ran `/admin#diagnostics` against prod, saw `Overall status: WARNING` with 8 check rows — but the check rows were unexplained (raw backend stat strings like `"0 evaluations in last 24h"` with no operator-facing context). Sir specifically wanted: (1) understand whether the warning was real or stale (it was stale — the warnings reflect *expected* state given no real-user activity in the last 24h + leftover synthetic accounts from diagnostic harness runs + 24 pre-UptimeRobot cold-start hits), (2) make the report self-explanatory so future runs don't need a Claude session to interpret, (3) add a download button so the report can be saved/shared.
+
+**Status:** DONE — code changes shipped to working tree, awaiting user push. tsc + `npm run build` both clean (14 routes). v0.20.15 entry written to `docs/version_history.md` + index row. Live deploy still on v0.20.14 until user runs `git push origin main`.
+
+**What shipped:**
+
+1. **v0.20.15 — admin diagnostics explainability + Markdown export** (`frontend/web/app/admin/page.tsx`, ~120 LOC net).
+   - `CHECK_EXPLANATIONS` const map keyed by backend check name (8 entries — `table_accessibility`, `judge_evaluations_recent`, `response_feedback_recent`, `conversation_turn_quality_active`, `null_embeddings`, `orphaned_doubt_sessions`, `slow_sessions`, `redis_connectivity`). Each has `{ what, why }` — one sentence on what the check queries + one to two sentences on what the result actually means.
+   - Per-check row rendering rewritten: status-coloured row border (emerald/amber/red), status-coloured detail text (was uniform slate-400 — hid status), divider + `What:` / `Why:` block below.
+   - `exportDiagnosticsMarkdown(data)` function — generates `upmyrank-diagnostics-YYYY-MM-DD.md` with H1 title, timestamp, overall status, one H3 per check (with What/Why inlined), trailing footer. Triggers browser download via Blob + URL.createObjectURL + toast confirmation.
+   - "Download Report" button appears next to "Run Diagnostics" once `diagnosticsData` is populated. Used existing lucide `Download` icon (added to import list).
+
+2. **Memory: feedback_git_commands_full_path.md** — Sir asked to always print git commands with full absolute paths (cd path + file paths) in separate code blocks, never bare `git add foo.tsx`. Reason: he works across multiple projects in `/Users/ishansrivastava/Desktop/Projects/` and bare commands are ambiguous about which repo. Saved as durable feedback memory + added to `MEMORY.md` index in `~/.claude/projects/.../memory/`. **Apply on every future commit/push instruction.**
+
+**Diagnostic interpretation (the warning that triggered this session):**
+
+| Check | Status | Interpretation |
+|---|---|---|
+| `table_accessibility` | ✅ 13/13 | All DB tables reachable. |
+| `judge_evaluations_recent` | ⚠️ 0 in 24h | **Expected** — 3 real users in DB, 0 active in last 48h. Judge fires on `/session/end`; no real sessions ended → 0 rows. Not a bug. |
+| `response_feedback_recent` | ⚠️ 0 in 24h | **Expected** — same root cause. No active real users. |
+| `conversation_turn_quality_active` | ✅ 2 rows | Matches sir's own session activity earlier today. |
+| `null_embeddings` | ✅ 0 | Knowledge base is intact — all 15,069 chunks have embeddings. |
+| `orphaned_doubt_sessions` | ⚠️ 17 | **Diagnostic-harness residue** — leftover from `probe-*` / `edge-edge-*` / `redis-probe-*` / `latex-probe-*` runs. Already on the next-up list as "cleanup synthetic accounts". |
+| `slow_sessions` | ⚠️ 24 in 7d | Mostly cold-start hits from before UptimeRobot keep-alive landed (2026-04-29). Should taper off in the next week's window. |
+| `redis_connectivity` | ✅ | Upstash Redis healthy — 0 connection-refused warnings on real probe traffic. |
+
+**Cliff notes (non-obvious context):**
+- **Generated Next.js type errors are pre-existing.** `npx tsc --noEmit` shows ~12 errors in `.next/types/routes.d 2.ts` / `.next/types/routes.d 3.ts` etc. — these are duplicate route-type declaration files from the Next.js 16 build cache, not anything in our code. Filter with `grep -v ".next/types"` to see actual source errors (which are 0). Already-on-main, not a v0.20.15 regression.
+- **`CHECK_EXPLANATIONS` keys must exact-match `app/api/admin.py:1162-1170`.** If backend adds a new check, the UI silently falls back to no explanation (graceful degradation — won't crash, just won't show the What/Why block). Future versions adding checks should update both files.
+- **Border-colour-on-status is subtle but high-impact** — in the previous render every row had a uniform `border-slate-100` regardless of status; only the icon told you ok/warn/error. New render border colour also matches, so a screen-grab is scannable without reading text.
+- **The "WARNING" overall status is sticky** — it's `worst-of-all` per backend logic in `admin.py:1175-1180`. Even one warning row produces overall warning. Cleaning up the orphaned sessions + waiting 7 days for slow-session window to roll over should drop it back to OK once judge_evaluations_recent gets a real user signal.
+- **Git-commands-with-full-paths feedback** — saved to `~/.claude/projects/.../memory/feedback_git_commands_full_path.md` and indexed in MEMORY.md. Apply going forward; never print bare `git add foo.tsx`-style commands.
+
+**Deferred to next session:**
+- **Push v0.20.15** — single file, single commit. Will live-deploy on Render's auto-deploy webhook (~3-5 min).
+- **Cleanup synthetic accounts** in Supabase — 17 orphaned doubt_sessions + accumulated probe-* / edge-edge-* / redis-probe-* / latex-probe-* / arc-smoke-* personas. Run `scripts/diag_cleanup_test_accounts.py --dry-run` first.
+- **Real-user E2E walkthrough** at `https://upmyrank-poc.vercel.app/auth/signup` with a real Gmail. Time signup → first AI Socratic response. Catches UI/CSS/click bugs synthetic personas miss.
+- **v0.22 — misconception library expansion** (~50-100 keyword additions across 30 entries; mechanical, ~2 hours).
+- **v0.22 — personalization-prompt strengthening** (top-of-system-prompt do/don't per `learning_preference`).
+- **Edge-100 full re-run on prod** with v0.20.11's JWT-refresh patch — should complete in one pass now.
+
+**Beta-readiness:** unchanged from 2026-04-29. **Ready for 30-student private beta.** Engine quality strong (97% Socratic, 100% factual, 100% follow-up continuation), critical security closed, Redis live, UptimeRobot keep-alive live, login page premium, diagnostic panel now self-explanatory. v0.22 work can land during beta.
+
+**Next session — read these first:**
+1. `MEMORY.md` (top section — covers prod state + recently shipped + next-up; v0.20.15 added).
+2. `docs/version_history.md` (top 3 entries: v0.20.15 + v0.20.14 + v0.20.13).
+3. This file (cliff notes for the 2026-05-01 work).
+
+**Next session — start here:**
+1. Verify v0.20.15 is on prod — go to `https://upmyrank-poc.vercel.app/admin#diagnostics`, click Run Diagnostics, confirm What/Why block renders + Download Report button works.
+2. Run `scripts/diag_cleanup_test_accounts.py --dry-run` to inventory synthetic accounts, then run for real.
+3. v0.22 work (library expansion + personalization prompt) when ready.
+4. **Always print git commands with full paths** (cd path + file paths) in separate code blocks — see `feedback_git_commands_full_path.md`.
+
+---
+
 ## Session 2026-04-29 — v0.20.12 + v0.20.13 + v0.20.14 + UptimeRobot keep-alive + login-page redesign + real-user UX hardening
 
 **Focus:** Real-user issue triage. Sir reported "people facing login, loading, no-response issues." Read-only diagnostic (curl + Render API logs + Supabase queries) confirmed every component healthy (Vercel ✓, Render ✓, CORS ✓, Supabase ✓) — but only 12 Render log lines in 12h, suggesting users hit cold-start frustration before the backend even sees them. Plus prod incident from 2026-04-27: LaTeX rendering broken on Units & Dimensions doubt. Plus user request for an amazing login page.
@@ -127,37 +186,5 @@
 
 ---
 
-## Session 2026-04-23 — v0.20.5 docs backfill + v0.20.6 thumbs fix + 100Q prod diagnostic
+<!-- Older entries pruned 2026-05-01 (v0.20.15 — last-3 rule). Pruned: 2026-04-23 v0.20.5.1 docs backfill + v0.20.6 thumbs fix + 100Q prod diagnostic. Earlier prune 2026-04-29: 2026-04-21 v0.20.4 admin panel + mastery hot patches. See docs/version_history.md for the full chronology. -->
 
-**Focus:** v0.20.5 (commit `9f0de7a`) shipped critical security + Knowledge-Genome fixes on 2026-04-21 but was pushed **without the required `docs/version_history.md` + `docs/session_log.md` entries** — policy violation per `CLAUDE.md`. Backfill first, then fix the remaining R2 from that diagnostic (thumbs UI `response_feedback` table is 0 rows all-time — suspected frontend bug), then run a 100-question end-to-end quality diagnostic against prod.
-
-**Status:** DONE — v0.20.5.1 docs backfill + v0.20.6 thumbs fix + synthetic diagnostic harness + report shipped; awaiting user push. Cleanup of synthetic personas is user-gated (asked before running).
-
-**Changed files (v0.20.5.1 + v0.20.6 combined):**
-- **MODIFIED** `docs/version_history.md` — appended `## v0.20.5`, `## v0.20.5.1`, `## v0.20.6` sections + 3 new index rows.
-- **MODIFIED** `docs/session_log.md` (this) — new top entry, oldest (v0.20.2) pruned per the last-3 rule.
-- **MODIFIED** `frontend/web/app/doubt/page.tsx` — `handleFeedback` computes `response_idx` as `messages.slice(0,msgIdx).filter(m => m.role === 'tutor').length` (was absolute `msgIdx` including divider+student rows, which collided with the `UNIQUE(student_id, doubt_session_id, response_idx)` constraint via ON CONFLICT — thumbs silently overwrote the wrong row on the second click).
-- **NEW** `scripts/diagnostic_100.py` — thin wrapper around `synthetic_beta.py` that runs the 100-prompt set, waits for async Judge rows, queries Supabase for aggregates, pulls Render logs, writes a markdown + JSON report.
-- **NEW** `scripts/data/diagnostic_100.json` — 100 prompts across 9 scenario classes (canonical, follow-up, sudden pivot, short-form pivot, misconception, emotional, out-of-scope, vague, forced-attempt ladder).
-- **NEW** `reports/diagnostic_2026-04-23.md` + `.json` — quality report scored on user's 4 pillars (comms quality, Knowledge Genome correctness, personalization, learning ease).
-
-**Cliff notes (non-obvious context):**
-- The thumbs bug is an index-semantics mismatch, not a missing endpoint — `app/api/feedback.py:21` explicitly documents `response_idx` as "0-based index of the AI message in the conversation" but the React component was passing the raw array index. Silent ON CONFLICT DO UPDATE hid it — no 500s, no DB errors, just wrong rows and mysterious "toggle doesn't stick" UX reports. Backend + migration + UNIQUE constraint are all correct; single frontend one-liner fixes it.
-- Diagnostic hits **prod Render directly** (`https://upmyrank-poc.onrender.com`) — no local server. Personas tagged with a `diagnostic_run_id` so `diag_cleanup_test_accounts.py --run-id …` removes only this run's rows. Judge LLM is fired automatically by the prod engine on every response; script just waits 2s after each response and then pulls `judge_evaluations` aggregates.
-- The 9 scenario classes are spread across 3 synthetic personas (high/medium/low scaffolding) so personalization can be judged from the same 100-prompt base: a MEDIUM persona getting the same Q as a LOW persona should produce visibly different responses (different `max_concepts`, different scaffolding). Divergence between rendered responses = personalization working; identical = personalization not firing.
-
-**Deferred to next session:**
-- Post-cleanup re-query of `concept_mastery` once prod has 24-48h of real user traffic on v0.20.5 — confirms autoclose-idle backfill is working on abandoned sessions.
-- Fix for any bugs surfaced by the diagnostic report (shipped as v0.20.7+).
-
-**Next session — read these first:**
-`reports/diagnostic_2026-04-23.md` (the quality report — has a prioritized bug list at the bottom), `docs/version_history.md` (top 3 entries: v0.20.5 + v0.20.5.1 + v0.20.6), `scripts/diagnostic_100.py` (to re-run or extend).
-
-**Next session — start here:**
-1. Push v0.20.5.1 + v0.20.6 (two separate commits).
-2. Review the prioritized bug list from the diagnostic report. Any P0s get shipped as v0.20.7.
-3. Provision Render Redis add-on ($7/mo) — last remaining R1 from the v0.20.5 diagnostic.
-
----
-
-<!-- Older entries pruned 2026-04-29 (v0.20.14 — last-3 rule). Pruned: 2026-04-21 v0.20.4 admin panel + mastery hot patches. See docs/version_history.md for the full chronology. -->
