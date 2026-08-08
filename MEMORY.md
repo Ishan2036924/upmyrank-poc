@@ -2,13 +2,15 @@
 
 > **Maintainers:** Update this file whenever a major feature ships or an architectural decision is made.
 > **Claude sessions:** Read this file at the start of every new session — after `docs/version_history.md` and `docs/session_log.md`.
-> **Current version:** v0.20.15 (2026-05-01) — admin /admin#diagnostics now self-explanatory: per-check "What it checks / Why it matters" block + status-coloured row borders + Markdown "Download Report" button (`upmyrank-diagnostics-YYYY-MM-DD.md`). Frontend-only.
+> **Current version:** v0.20.17 (2026-08-08) — **portfolio-link triage.** After ~3 months idle, the live demo read as broken to visitors from LinkedIn. A live A-to-Z diagnostic proved the app is healthy (15/15 personas pass a concurrent production E2E run) and the failures were all at the front door: 21.3s Render cold start with no keep-alive (UptimeRobot had stopped), auth pages calling bare `fetch()` instead of `fetchWithRetry` so a cold boot showed a silent spinner, a private GitHub repo 404ing for every visitor, and `.github/` never committed so the v0.20.16 weekly canary never ran. Ships `.github/workflows/keepalive.yml` (*/10 cron), cold-start UI on login/signup, `scripts/portfolio_smoke.py` (15 personas, all params, 5-way concurrent), the repo's first `README.md`, a CORS fix (`upmyrank.vercel.app` was a dead `DEPLOYMENT_NOT_FOUND` origin), an explicit `email_confirmation_required` signup flag, and a fix for a weekly-diagnostic marker that would have false-failed every run.
+>
+> **Previous version:** v0.20.16 (2026-05-01) — weekly automated **full-stack** diagnostic agent. New `scripts/weekly_diagnostic.py` + `.github/workflows/weekly-diagnostic.yml`: every Monday 09:00 IST, GitHub Actions hits 3 Vercel frontend routes, signs up ONE realistic synthetic student, runs signup → onboarding → 3 doubts (Physics/Chem/Maths) → session_end, queries Supabase for per-run footprint + system-wide health (KB size, NULL embeddings, orphaned sessions, slow sessions, 24h judge activity, platform totals). Posts a Markdown report as a GitHub Issue. Goal: keep Supabase free-tier active (7-day auto-pause window) + weekly canary across frontend / backend / DB / LLM pipelines.
 > **Prod state (verified 2026-04-29; v0.20.15 shipped to working tree, awaiting user push 2026-05-01):** All v0.20.9 → v0.20.14 changes live. Backend healthy, Vercel frontend healthy, Upstash Redis connected (zero "connection refused" in prod logs), CORS clean, `/health` accepts both GET and HEAD. UptimeRobot pinging `/health` every 5 min keeps Render free-tier warm 24/7. Conversation-arc judge writing rows to `conversation_arc_quality` on every `/session/end`. Beta-ready on free tier. **Latest `/admin#diagnostics` run (2026-05-01) returned WARNING — but every warning is *expected state*: 0 judge_evaluations / 0 response_feedback in 24h (no real users active), 17 orphaned doubt_sessions (synthetic harness residue), 24 slow sessions in 7d (pre-UptimeRobot cold-start hits, will roll out of window).**
 > **Outstanding infra:** Render paid tier ($7/mo) is OPTIONAL now that UptimeRobot keep-alive eliminates the cold-start window — cost-neutral for solo project. Vercel "AI Assist" toolbar can be disabled in dashboard to silence the cosmetic "Assessment failed: output_config.format.schema" message (Vercel/Anthropic schema collision; not visible to end users).
 
 ---
 
-## 🎯 Current architecture (v0.20.15) — the 60-second summary
+## 🎯 Current architecture (v0.20.16) — the 60-second summary
 
 **Dual-loop product** feeding one Knowledge Genome:
 
@@ -38,30 +40,34 @@
 
 ## ✅ Recently shipped (latest 6 versions)
 
+- **v0.20.17 (2026-08-08)** — portfolio-link triage. Keepalive cron (`*/10`), cold-start "Waking up the server" state on login + signup (both now route through `fetchWithRetry`; they were on bare `fetch` and got neither retry nor toast), `scripts/portfolio_smoke.py` 15-persona harness, first `README.md`, dead CORS origin replaced, `email_confirmation_required` flag on signup, weekly-diagnostic frontend markers fixed (asserted Suspense-hidden text, would have false-failed every Monday). **Live run: 15/15 personas pass, median doubt latency 15.2s.** Known: `/` is still behind `AuthGuard` (user's choice), and the keepalive cron self-disables after 60 days of repo inactivity.
+- **v0.20.16 (2026-05-01)** — weekly automated **full-stack** diagnostic agent. New `scripts/weekly_diagnostic.py` (self-contained, ~390 LOC) + `.github/workflows/weekly-diagnostic.yml` (cron `30 3 * * 1` = Mondays 09:00 IST, plus `workflow_dispatch:` manual trigger). Covers Vercel frontend (3 routes, body-marker checks) + Render backend (signup → onboarding → 3 doubts → session_end) + Supabase DB (per-run footprint + system-wide health snapshot). One synthetic student per week with a realistic Indian name. Posts Markdown report as GitHub Issue tagged `weekly-diagnostic`. Solves Supabase free-tier 7-day auto-pause + catches silent regressions across the whole stack. Requires user to add 2 repo secrets (`BACKEND_URL`, `DATABASE_URL`) and optionally 1 variable (`FRONTEND_URL`, defaults inside the script) before first run.
 - **v0.20.15 (2026-05-01)** — admin diagnostics explainability + Markdown download report. `/admin#diagnostics` rows now include "What it checks / Why it matters" inline + status-coloured borders. Download Report button exports `upmyrank-diagnostics-YYYY-MM-DD.md`. Frontend-only; awaiting user push.
 - **v0.20.14 (2026-04-29)** — login-page polish: em-dashes scrubbed, engineer stat cards swapped for 3 student-facing benefit cards, animated LIVE TUTOR chat-preview with typewriter, "Supabase" → "our database" in trust footer, logo pulse-rings + sparkle-burst on `think` + tilt-on-hover.
 - **v0.20.13 (2026-04-29)** — `/health` accepts HEAD (UptimeRobot 405 fix) + premium framer-motion login page redesign + `pingBackend()` on home mount + cold-start telemetry timestamps in lifespan logs.
 - **v0.20.12 (2026-04-29)** — frontend UX hardening from real-user issue diagnosis: cold-start toast at 3 s with clearer copy + session-expired login-page toast + onboarding-form localStorage recovery.
 - **v0.20.11 (2026-04-27)** — edge-100 harness JWT-refresh on 401 + partial-report safety net (survives Supabase 50-min token expiry mid-run).
-- **v0.20.10 (2026-04-27)** — LaTeX sanitizer auto-wraps bare `\frac` / `\int` / `\mathrm` + drops orphan `$$` + fixes pre-existing close-`$$`-jamming-prose bug. 7/7 unit tests on 2026-04-27 prod incident.
+- **v0.20.10 (2026-04-27)** — LaTeX sanitizer auto-wraps bare `\frac` / `\int` / `\mathrm` + drops orphan `$$` + fixes pre-existing close-`$$`-jamming-prose bug.
 
 ## 🚧 Next up (post 2026-05-01 wrap-up)
 
-1. **Push v0.20.15** — single file (`frontend/web/app/admin/page.tsx`), single commit. Render auto-deploys on push to `main` (~3-5 min build).
-2. ✅ **DONE — Admin diagnostics explainability** (v0.20.15) — What/Why per check + Markdown export.
-3. ✅ **DONE — v0.20.12 / v0.20.13 / v0.20.14 pushed** (bundled commit `e2fb8c8`, live on Render after auto-deploy).
-4. ✅ **DONE — UptimeRobot keep-alive** for `/health` every 5 min keeps Render free-tier warm 24/7.
-5. ✅ **DONE — `/health` HEAD support** stops UptimeRobot's 405 alerts.
-6. ✅ **DONE — Login page student-facing redesign** with motion graphics + chat-preview.
-7. **Cleanup synthetic accounts** in Supabase. Many accumulated across diagnostic runs (probe-*, edge-edge-*, redis-probe-*, latex-probe-*, arc-smoke-*) — directly causes the `orphaned_doubt_sessions: 17` warning in /admin#diagnostics. Run `scripts/diag_cleanup_test_accounts.py --dry-run` first.
-8. **Real-user E2E walkthrough** — sign up at `https://upmyrank-poc.vercel.app/auth/signup` with a real Gmail address. Time signup → first AI Socratic response. Catches UI/CSS/click-event bugs synthetic personas miss. Will also clear the `judge_evaluations_recent` and `response_feedback_recent` warnings on the diagnostics panel.
-9. **v0.22 — misconception library expansion** — ~50-100 keyword additions across 30 entries to cover natural student phrasings. Wiring is correct (v0.20.8); library coverage is the gap.
-10. **v0.22 — personalization prompt strengthening** — top-of-system-prompt do/don't examples per `learning_preference`. Multi-user diagnostic showed length divergence is real (σ/μ = 0.231) but style-keyword diagonal only fires for HIGH; MED/LOW also lean formula.
-11. **Edge-100 full re-run on prod** — the 35-flow salvaged report from 2026-04-27 missed classes B/C/D/H/I + class J. With v0.20.11's JWT-refresh patch, a full 100-flow run should complete in one pass.
-12. **Vercel "AI Assist" toolbar disable** — Settings → Toolbar → off, removes the cosmetic "Assessment failed: output_config.format.schema" message.
-13. **Render paid tier ($7/mo)** — OPTIONAL now that UptimeRobot keep-alive is live. Solo project budget; not required.
-14. **Sentry / cost monitoring** — wire Sentry for backend exceptions + OpenAI cost alerts before scaling beyond 30 students.
-15. **Onboarding restyle** + **dark mode activation** — deferred, low marginal pre-beta value.
+1. **Push v0.20.15 + v0.20.16 together.** v0.20.15 = admin UI changes; v0.20.16 = weekly diagnostic agent (new script + workflow). Single commit covering both is fine.
+2. **Add 2 GitHub repo secrets + 1 optional variable** for the weekly diagnostic to actually run: Secrets tab → `BACKEND_URL` = `https://upmyrank-poc.onrender.com`, `DATABASE_URL` = Supabase pooler URL (same as local `.env`). Variables tab (optional) → `FRONTEND_URL` = `https://upmyrank-poc.vercel.app` (defaults inside script if unset).
+3. **Manually trigger the workflow once** after push: Actions tab → "Weekly Diagnostic" → Run workflow. Confirms the cron pipeline works before next Monday's auto-fire.
+4. ✅ **DONE — Admin diagnostics explainability** (v0.20.15) — What/Why per check + Markdown export.
+5. ✅ **DONE — v0.20.12 / v0.20.13 / v0.20.14 pushed** (bundled commit `e2fb8c8`, live on Render after auto-deploy).
+6. ✅ **DONE — UptimeRobot keep-alive** for `/health` every 5 min keeps Render free-tier warm 24/7.
+7. ✅ **DONE — `/health` HEAD support** stops UptimeRobot's 405 alerts.
+8. ✅ **DONE — Login page student-facing redesign** with motion graphics + chat-preview.
+9. **Cleanup synthetic accounts** in Supabase. Many accumulated across diagnostic runs (probe-*, edge-edge-*, redis-probe-*, latex-probe-*, arc-smoke-*) plus the new weekly-W*@upmyrank.test from v0.20.16. Run `scripts/diag_cleanup_test_accounts.py --dry-run` first.
+10. **Real-user E2E walkthrough** — sign up at `https://upmyrank-poc.vercel.app/auth/signup` with a real Gmail address. Time signup → first AI Socratic response. Catches UI/CSS/click-event bugs synthetic personas miss.
+11. **v0.22 — misconception library expansion** — ~50-100 keyword additions across 30 entries to cover natural student phrasings.
+12. **v0.22 — personalization prompt strengthening** — top-of-system-prompt do/don't examples per `learning_preference`. Multi-user diagnostic showed length divergence is real (σ/μ = 0.231) but style-keyword diagonal only fires for HIGH; MED/LOW also lean formula.
+13. **Edge-100 full re-run on prod** — the 35-flow salvaged report from 2026-04-27 missed classes B/C/D/H/I + class J.
+14. **Vercel "AI Assist" toolbar disable** — Settings → Toolbar → off.
+15. **Render paid tier ($7/mo)** — OPTIONAL now that UptimeRobot keep-alive is live.
+16. **Sentry / cost monitoring** — wire Sentry for backend exceptions + OpenAI cost alerts before scaling beyond 30 students.
+17. **Onboarding restyle** + **dark mode activation** — deferred, low marginal pre-beta value.
 
 ## 🔍 Diagnostic + report artefacts in `reports/`
 

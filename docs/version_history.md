@@ -20,6 +20,8 @@
 
 | Version | Date | Headline |
 |---|---|---|
+| [v0.20.17](#v02017--portfolio-link-triage-cold-start-ux--keepalive-cron--15-persona-smoke-2026-08-08) | 2026-08-08 | **Portfolio-link triage.** The live demo read as broken to anyone arriving from LinkedIn. Root cause was not the app (15/15 personas pass E2E) but the front door: a dead 21s cold start with no keep-alive, auth pages that spun silently with zero feedback, a private GitHub repo 404ing for every visitor, and a dead `upmyrank.vercel.app` hardcoded in CORS. Adds a keepalive cron, cold-start UI on login/signup, a 15-persona smoke harness, and the repo's first README. Also fixes a false-failing marker in the weekly diagnostic. |
+| [v0.20.16](#v02016--weekly-automated-end-to-end-diagnostic-agent-github-actions-2026-05-01) | 2026-05-01 | Weekly automated **full-stack** diagnostic agent. New `scripts/weekly_diagnostic.py` + `.github/workflows/weekly-diagnostic.yml`: every Monday 09:00 IST, GitHub Actions hits 3 Vercel frontend routes (200 + body marker), signs up ONE realistic synthetic student, runs signup → onboarding → 3 doubts (Physics/Chem/Maths) → session_end, then queries Supabase for both per-run footprint AND system-wide health (KB chunk count, NULL embeddings, orphaned sessions, slow sessions, 24h judge activity, total platform counts). Posts a Markdown report as a GitHub Issue. Primary goal: keep Supabase free-tier active (7-day auto-pause window) + full canary across frontend / backend / DB / LLM pipelines. |
 | [v0.20.15](#v02015--admin-diagnostics-per-check-explanations--markdown-download-report-2026-05-01) | 2026-05-01 | Admin /admin#diagnostics page now shows a plain-English "What it checks / Why it matters" block per check + a "Download Report" button that exports the full diagnostic as a timestamped Markdown file. Also colour-codes the row border by status (emerald/amber/red). Frontend-only; backend `/admin/diagnostics` schema unchanged. |
 | [v0.20.14](#v02014--login-page-polish-em-dash-removal--student-facing-benefits--live-tutor-chat-preview-2026-04-29) | 2026-04-29 | Login-page polish: removed em-dashes (sounded AI-generated) + replaced engineer-facing stat cards (15K+/3/30+) with 3 student-facing benefit cards (Think it through / Tutor for you / Catch mistakes) + animated LIVE TUTOR chat-preview demo with typewriter + Supabase mention removed from trust footer + extra motion graphics (logo pulse-rings, sparkle-burst on 'think', tilt-on-hover). |
 | [v0.20.13](#v02013--health-head-support--login-page-redesign--home-pingbackend--cold-start-telemetry-2026-04-29) | 2026-04-29 | `/health` accepts HEAD (UptimeRobot 405 fix) + premium framer-motion login page (animated mesh + drifting orbs + floating math symbols + glassmorphic form + spring micro-interactions) + `pingBackend()` on home mount + cold-start telemetry timestamps in lifespan logs. |
@@ -55,6 +57,143 @@
 | [v0.3](#v03--analytics-dashboard-pro-max--nuclear-l3--latex-sanitizer-2026-03-30) | 2026-03-30 | Analytics Bento Box + Confidence Meter + nuclear L3 + LaTeX sanitizer |
 | [v0.2](#v02--glassmorphic-ui-overhaul--taxonomy-api-2026-03-22) | 2026-03-22 | Glassmorphic UI overhaul + Taxonomy API + syllabus selector |
 | [v0.1](#v01--initial-commit--render--vercel-deployment-2026-03-17) | 2026-03-17 | Initial commit + Render + Vercel deployment + OpenAI embeddings |
+
+---
+
+## v0.20.17 — Portfolio-link triage: cold-start UX + keepalive cron + 15-persona smoke (2026-08-08)
+
+**Status:** ✅ shipped to working tree (awaiting user push). `npm run build` clean (15 routes), `tsc --noEmit` clean (filtered pre-existing `.next/types` duplicate-route noise). Backend AST-parse clean. Workflow YAML valid. **15/15 personas passed a live production E2E run.**
+**Commits:** *(staged — commit by user)*
+
+### Why
+
+The project sat untouched for ~3 months (last push `8369860`, 2026-05-01) while linked from the user's LinkedIn and public portfolio. Report: "whenever I'm clicking, it's not working."
+
+A full live diagnostic on 2026-08-08 found **the application itself is healthy**. Signup, onboarding, session start, agentic-RAG doubt turns, follow-up continuation, student profile and session end all returned 200 against production. Supabase is alive and taking writes, OpenAI is alive, CORS preflight is clean, all frontend routes serve 200, and the deployed Vercel bundle correctly targets `https://upmyrank-poc.onrender.com` with no `localhost:8000` fallback leaked into the build.
+
+**The app was fine. The front door was not.** Four independent failures, none of which the app's own health checks could see:
+
+| # | Failure | Evidence |
+|---|---|---|
+| 1 | Render cold start, no keep-alive | First `/health` hit took **21.27s**, then 0.13s. The UptimeRobot monitor had stopped at some point during the inactive period |
+| 2 | Auth pages gave no feedback during that boot | `login/page.tsx` and `signup/page.tsx` both called bare `fetch()`, **not** `fetchWithRetry` — so they got neither the cold-start toast nor the retry ladder. Just a spinner, for up to a minute |
+| 3 | GitHub repo private | Anonymous API and web both 404. Every visitor clicking the repo link saw "not found" |
+| 4 | Monitoring never ran | `.github/` was **never committed** (`git log -- .github` empty). The v0.20.16 weekly diagnostic existed only in the working tree, so nothing caught #1 for three months |
+
+Root cause of the reported symptom: a visitor lands on `/auth/login`, `pingBackend()` fires but Render is asleep, they type credentials in ~15s and click **Sign in** while the boot is still in flight. The request queues behind the cold start with no visible progress. It reads as frozen.
+
+### What shipped
+
+**1. `.github/workflows/keepalive.yml`** (NEW) — `*/10 * * * *` cron plus `workflow_dispatch`, curls `/health` with `-m 120` so the ping waits out a genuine boot instead of abandoning it half-woken. `concurrency: { group: keepalive, cancel-in-progress: true }`. Two caveats documented in the file itself: **GitHub disables scheduled workflows after 60 days of repo inactivity** (exactly the failure mode just lived through), and cron drift can slip past Render's 15-minute idle timer. The weekly-diagnostic Issue is the designated canary for the first; an external UptimeRobot monitor is the recommended belt-and-braces for both.
+
+**2. Cold-start UX** (`frontend/web/lib/api.ts`, `app/auth/login/page.tsx`, `app/auth/signup/page.tsx`).
+- `pingBackend()` now returns `Promise<boolean>` and tracks module-level readiness; concurrent calls share one in-flight request and it never rejects. New `isBackendReady()` export.
+- `fetchWithRetry` is now exported, and both auth pages use it instead of bare `fetch`. They post before a token exists so they cannot use `apiPost`, which is why they were bypassing the retry ladder in the first place. Only retries on thrown network errors, so a 401 still resolves normally and never burns the login rate limiter.
+- Both submit buttons switch to **"Waking up the server"** after 2.5s in flight, with an indeterminate progress bar and the line "The demo server sleeps when idle. First sign in can take up to a minute. Everything after this is fast." Em-dash-free per the v0.20.14 lesson.
+
+**3. `scripts/portfolio_smoke.py`** (NEW, ~380 LOC) — 15 personas with realistic Indian student names covering all three `class_level` values, both signup `exam_type` values, all three onboarding `exam_type` values, all three subjects, four `learning_preference` values, and weak/medium/strong marks bands (driving HIGH/MEDIUM/LOW scaffolding). Each runs signup → onboarding status → onboarding submit → session start → doubt → follow-up → session end. Default concurrency 5 to surface pool exhaustion. Emails use `smoke-{RUN_TAG}-NN@upmyrank.test` so the existing cleanup script purges them. Emits a Markdown report with a per-step latency table.
+
+**4. Two latent backend bugs.**
+- `app/main.py:91` — `allow_origins` hardcoded `https://upmyrank.vercel.app`, which is **`DEPLOYMENT_NOT_FOUND`**. Only the `allow_origin_regex=r"https://.*\.vercel\.app"` was keeping production alive. Replaced with the real origin, and commented that **a custom domain will not match that regex** and must be added explicitly.
+- `app/api/auth.py` — signup returned HTTP 200 with `token: null` when Supabase email confirmation is enabled, which is indistinguishable from a bug for any non-browser client. Now returns an explicit `email_confirmation_required` flag and logs a warning. *Deliberately not turned into a 400:* the signup page already handles the null-token case gracefully at lines 68-75 by redirecting to a confirm flow, and a 400 would have regressed that.
+
+**5. `scripts/weekly_diagnostic.py` marker fix.** Its frontend check asserted the literal strings `"Sign in"` and `"Create"` against `/auth/login` and `/auth/signup`. Both pages are client components behind a Suspense boundary, so that copy lives in the JS bundle and never appears in the server-rendered HTML. **Those two rows would have false-failed on every single weekly run**, turning the whole job red and training the user to ignore it. Now asserts `"UpMyRank"`, which comes from document metadata and still separates a live deploy from a Vercel 404.
+
+**6. `README.md`** (NEW) — the repo had none at all. Covers the problem, the three-layer PTB approach, the Socratic L0-L3 ladder and why L3 starves the model structurally rather than by instruction, misconceptions vs knowledge gaps, how pedagogy is measured, an architecture diagram, the stack table, five defended engineering decisions, the test harness, local setup, and an explicit note about free-tier cold start.
+
+### Verification
+
+Live production run, 2026-08-08, 5-way concurrency: **15/15 personas passed**, frontend 3/3.
+
+| Step | n | min | median | max |
+|---|---|---|---|---|
+| signup | 15 | 0.79s | 1.23s | 1.85s |
+| onboarding_status | 15 | 0.40s | 0.60s | 1.09s |
+| onboarding_submit | 15 | 3.96s | 5.07s | 7.10s |
+| session_start | 15 | 0.64s | 0.75s | 1.14s |
+| doubt_ask | 15 | 11.36s | **15.20s** | 42.83s |
+| doubt_followup | 15 | 8.61s | 11.62s | 24.89s |
+| session_end | 15 | 1.10s | 1.48s | 3.24s |
+
+Report at `reports/portfolio_smoke_2026-08-08.md`. Frontend `npm run build` clean at 15 routes.
+
+### Known issues carried forward
+
+- **`/` is behind `AuthGuard`** (`frontend/web/app/page.tsx:206`). Every logged-out visitor is bounced to a login wall with no public product page; a recruiter must create a real account and finish 4-step onboarding to see anything. Raised with the user, who chose to keep the current behaviour. This is the largest remaining conversion problem on the demo.
+- **Median 15.2s first response** is the real cost even on a warm backend. Nothing in this version reduces it.
+- **The keepalive cron will be auto-disabled after 60 days of repo inactivity**, which recreates the exact problem this version fixes. The mitigation is procedural, not technical.
+- `upmyrank.com` is a parked domain lander on AWS and is not owned by this project. Do not link it.
+
+### Lesson
+
+Health checks that only test the parts you wrote will tell you a broken product is fine. Every backend check passed for three months while the actual visitor experience was a 404 on the repo link and a frozen button on the demo. The two bugs that mattered most, the auth pages bypassing `fetchWithRetry` and the weekly diagnostic asserting on text that Suspense guarantees is absent, were both invisible to every existing test because no test ever took the visitor's path. Measure the front door, from outside, as a stranger.
+
+---
+
+## v0.20.16 — Weekly automated full-stack diagnostic agent (GitHub Actions) (2026-05-01)
+
+**Status:** ✅ shipped to working tree (awaiting user push + secret config). Python AST-parse clean. Workflow YAML valid (IDE warnings on `secrets.DATABASE_URL` and `vars.FRONTEND_URL` are pre-config noise — resolve once secrets are added in GitHub Settings). No backend code changes; no `requirements.txt` changes (CI installs `httpx` + `asyncpg` ad-hoc).
+**Commits:** *(staged — commit by user)*
+
+### Why
+User is shifting attention to other projects and won't be using UpMyRank actively for stretches of time. Free-tier risks per provider:
+- **Render** (backend): kept warm by UptimeRobot every 5 min — no sleep concern.
+- **Upstash Redis**: persists data, no auto-pause.
+- **Vercel** (frontend): free projects don't sleep, but Vercel deploys can break silently if build config changes.
+- **Supabase Postgres**: **free tier auto-pauses the project after 7 days of zero database activity**. When paused, the DB returns 503 until manually unpaused via the dashboard — the user-facing app breaks silently for any visitor until the user intervenes.
+
+So the actual goal is three things at once: (a) generate weekly DB activity to keep Supabase from auto-pausing, (b) confirm Vercel-served frontend is still rendering, (c) do a real end-to-end exercise of the full request path so any silent regression (JWT-issuance break, cold-start failure, judge pipeline failure, broken Vercel build, etc.) is caught within a week instead of "next time I look."
+
+### What shipped
+
+**1. `scripts/weekly_diagnostic.py`** (~390 LOC self-contained Python).
+- Self-contained `APIClient` (lifted from [scripts/synthetic_beta.py](../scripts/synthetic_beta.py) + [scripts/diagnostic_100.py](../scripts/diagnostic_100.py) — no sibling imports, so CI runs cleanly without Poetry venv).
+- **Deterministic synthetic-user naming.** Hardcoded list of 30 realistic Indian student names (Aarav, Diya, Rohan, Ananya, ...). Rotation index = `(iso_year * 53 + iso_week) % 30` so each week's run uses a different name, but the same week always picks the same name (idempotent on repeat fires).
+- **Email format:** `weekly-{YYYY}-W{WW}@upmyrank.test` — matches the `@upmyrank.test` allowlist in [scripts/diag_cleanup_test_accounts.py](../scripts/diag_cleanup_test_accounts.py) so future cleanup runs purge them automatically.
+- **3 doubts inlined in the script** (1 Physics — incline acceleration, 1 Chemistry — water vs CO2 shape, 1 Maths — derivative of x²·sin(x)). Covers all three subjects every week without a separate JSON file.
+- **Frontend availability checks (`check_frontend`):** HTTP GET against 3 Vercel routes (`/`, `/auth/login`, `/auth/signup`) with `follow_redirects=True`, asserting both HTTP 200 AND a body-substring marker ("UpMyRank", "Sign in", "Create"). Catches "Vercel build broken" vs "page renders but build is stale" vs "deploy missing."
+- **Backend + DB flow:** `/health` → `/auth/signup` → `/onboarding/submit` → `/session/start` → 3× `/doubt/ask` → `/session/end` (blocking; triggers per RULES.md #2) → `asyncio.sleep(8)` to let async judge tasks land → asyncpg query for DB footprint.
+- **Per-run DB checks** (replicates `/admin/diagnostics` SQL without needing admin auth): counts rows in `doubt_sessions`, `doubt_blocks`, `judge_evaluations`, `conversation_arc_quality`, `concept_mastery`, `session_metrics` filtered to this run's `student_id`. Warns if any count is below the expected minimum (e.g. <3 judge rows = judge pipeline silent).
+- **System-wide DB health (new — the "full sanity check"):** `kb_chunks` total (warns if dropped below 15,000), NULL embedding count, total students / study_sessions / doubt_sessions across all time (visibility metrics), orphaned doubt_sessions (warns if >50), slow sessions >10s in 7d (cold-start regression signal), `judge_evaluations` + `conversation_arc_quality` rows in last 24h (proves the background pipelines fired for OUR run), and the platform-wide `MAX(created_at)` doubt timestamp (proves the DB itself wrote in the last 24 h).
+- **Report:** Markdown with H2 sections for `Verdict` (PASS/WARN/FAIL), `Steps` (per-step ✓/✗ table with latencies — including the 3 frontend rows), `Database Footprint (rows created by THIS run)`, **`System Health (whole-platform snapshot)`**, `Warnings`.
+- **Verdict logic:** any failed step name beginning with `step.` OR `frontend` is a FAIL; warnings without step failures = WARN; otherwise PASS.
+- **GitHub Issue posting:** single httpx POST to `https://api.github.com/repos/{GITHUB_REPOSITORY}/issues` using the auto-provided `GITHUB_TOKEN`. Issue title format: `[Weekly Diagnostic] YYYY-MM-DD <icon> VERDICT — <student_name>`. Labels: `weekly-diagnostic`. User reads the title on phone; opens the Issue only if WARN/FAIL.
+- **Exit code:** 0 on PASS, 1 on WARN or FAIL — turns the Actions run red automatically.
+
+**2. `.github/workflows/weekly-diagnostic.yml`** (~55 LOC).
+- Triggers: `schedule: cron: "30 3 * * 1"` (Mondays 03:30 UTC = 09:00 IST) AND `workflow_dispatch:` (manual "Run workflow" button for on-demand testing).
+- `permissions: { issues: write, contents: read }` so the auto-token can open the Issue.
+- Steps: `actions/checkout@v4` → `actions/setup-python@v5` (Python 3.11) → `pip install httpx asyncpg` → `python scripts/weekly_diagnostic.py`.
+- Env wires `BACKEND_URL`, `DATABASE_URL` from repo secrets; `FRONTEND_URL` from repo variable (non-secret); `GITHUB_TOKEN` from `secrets.GITHUB_TOKEN` (auto); `GITHUB_REPOSITORY` from `github.repository` (auto).
+
+### Setup required from user (one-time, ~3 min)
+
+GitHub repo → Settings → Secrets and variables → Actions:
+
+**Secrets tab → New repository secret:**
+- `BACKEND_URL` = `https://upmyrank-poc.onrender.com`
+- `DATABASE_URL` = Supabase Postgres pooler URL (same one in local `.env`)
+
+**Variables tab → New repository variable (non-secret, optional):**
+- `FRONTEND_URL` = `https://upmyrank-poc.vercel.app` (defaults to this inside the script if unset, so skipping is fine).
+
+After secrets are set + workflow pushed: Actions tab → "Weekly Diagnostic" → Run workflow → validate green check + Issue creation.
+
+### Verification
+- `python3 -c "import ast; ast.parse(open('scripts/weekly_diagnostic.py').read())"` → OK (no syntax errors).
+- Self-contained: no imports from other scripts; only stdlib + `httpx` + `asyncpg`.
+- Email pattern `weekly-*@upmyrank.test` confirmed against [scripts/diag_cleanup_test_accounts.py:106-135](../scripts/diag_cleanup_test_accounts.py) allowlist patterns (caught by the blanket `@upmyrank.test` substring match).
+- DB query shape mirrors the proven patterns in [scripts/diagnostic_100.py:320-414](../scripts/diagnostic_100.py).
+
+### Files changed
+- **NEW** `scripts/weekly_diagnostic.py` — self-contained weekly E2E agent.
+- **NEW** `.github/workflows/weekly-diagnostic.yml` — cron + manual workflow.
+- **MODIFIED** `docs/version_history.md` — this entry + index row.
+- **MODIFIED** `MEMORY.md` — current version → v0.20.16, recently shipped, next-up updated.
+- **MODIFIED** `docs/session_log.md` — new top entry, oldest pruned.
+
+### Lesson
+The cheapest way to keep free-tier infra honest is to act like a user, weekly, for free. GitHub Actions is the right primitive: it's free for public+private repos under 2,000 min/month, the auto-token has just enough scope to post Issues without any extra setup, and "cron + workflow_dispatch" gives both the unattended cadence and the manual override. The scheduled job is also the canary — if it fails for two weeks in a row, you know something silent regressed before any real user finds it.
 
 ---
 

@@ -1,0 +1,55 @@
+name: Weekly Diagnostic
+
+# Runs every Monday at 03:30 UTC (09:00 IST). Also manually triggerable
+# from the Actions tab via the "Run workflow" button.
+#
+# Purpose:
+#   1. Keep Supabase free-tier active (auto-pauses after 7 days of zero DB queries).
+#   2. End-to-end exercise the full request path so any silent regression is
+#      caught within a week.
+#   3. Post a Markdown health report as a GitHub Issue tagged "weekly-diagnostic".
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions -> Secrets):
+#   BACKEND_URL     e.g. https://upmyrank-poc.onrender.com
+#   DATABASE_URL    Supabase Postgres pooler URL (same as local .env)
+#
+# Optional repo variable (Settings -> Secrets and variables -> Actions -> Variables):
+#   FRONTEND_URL    e.g. https://upmyrank-poc.vercel.app
+#                   Defaults to upmyrank-poc.vercel.app inside the script if unset.
+#
+# GITHUB_TOKEN is auto-provided by Actions; the `permissions:` block below
+# grants it issues:write so the script can open the report Issue.
+
+on:
+  schedule:
+    - cron: "30 3 * * 1"  # Mondays 03:30 UTC = 09:00 IST
+  workflow_dispatch:       # manual "Run workflow" button
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install minimal deps
+        run: pip install --no-cache-dir httpx asyncpg
+
+      - name: Run weekly diagnostic
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          # FRONTEND_URL is not secret; defaults inside the script if unset.
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/weekly_diagnostic.py

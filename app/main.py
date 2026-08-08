@@ -88,8 +88,12 @@ app.add_middleware(
         "http://localhost:8501",        # Streamlit (legacy)
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8501",
-        "https://upmyrank.vercel.app",  # production (update if custom domain)
+        "https://upmyrank-poc.vercel.app",  # production
     ],
+    # NOTE: this regex is what actually keeps prod alive — it matches the
+    # production origin above and every Vercel preview URL. If a custom domain
+    # is ever added (e.g. upmyrank.in), it will NOT match this regex and CORS
+    # will fail for every request. Add the custom origin to allow_origins above.
     allow_origin_regex=r"https://.*\.vercel\.app",  # all Vercel preview URLs
     allow_credentials=True,
     allow_methods=["*"],

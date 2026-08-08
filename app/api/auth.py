@@ -138,6 +138,24 @@ async def signup(body: SignupRequest, request: Request):
         logger.error("DB insert for student %s failed: %s", student_id, exc)
         raise HTTPException(status_code=500, detail="Student record creation failed") from exc
 
+    # Supabase returns user-but-no-session when "Confirm email" is enabled in
+    # the Auth settings. That is a legitimate state, not an error: the students
+    # row above is committed and the account works once the user confirms.
+    #
+    # But a bare token=null was ambiguous — indistinguishable from a bug — for
+    # anything that isn't the signup page (the smoke harness and the weekly
+    # diagnostic both read this response). Return an explicit flag so callers
+    # can tell "confirm your email" apart from "auth is broken", and log it,
+    # because flipping that Supabase setting silently changes the signup
+    # contract for every client.
+    confirmation_required = response.session is None
+    if confirmation_required:
+        logger.warning(
+            "Signup for %s created a user but no session. Email confirmation "
+            "is enabled in Supabase Auth settings.",
+            body.email,
+        )
+
     token         = response.session.access_token  if response.session else None
     refresh_token = response.session.refresh_token if response.session else None
     return {
@@ -146,6 +164,7 @@ async def signup(body: SignupRequest, request: Request):
         "student_id": str(student_id),
         "name": body.name,
         "exam_type": body.exam_type,
+        "email_confirmation_required": confirmation_required,
     }
 
 

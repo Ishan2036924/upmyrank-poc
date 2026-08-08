@@ -7,7 +7,7 @@ import { Eye, EyeOff, Sparkles, Mail, Lock, User, ArrowRight } from 'lucide-reac
 import { toast } from 'sonner'
 
 import { useAuth } from '@/lib/auth'
-import { pingBackend } from '@/lib/api'
+import { pingBackend, fetchWithRetry } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -45,6 +45,8 @@ export default function SignupPage() {
   const [targetYear, setTargetYear] = useState('2027')
   const [error,      setError]      = useState<string | null>(null)
   const [loading,    setLoading]    = useState(false)
+  // v0.20.17 — true while a submit is sitting behind a Render cold boot.
+  const [warming,    setWarming]    = useState(false)
 
   const strength = useMemo(() => passwordStrength(password), [password])
 
@@ -53,8 +55,13 @@ export default function SignupPage() {
     setError(null)
     setLoading(true)
 
+    // v0.20.17 — see the matching comment in the login page. A cold Render
+    // instance takes 20 to 60 s; without this the button spins silently and
+    // the page reads as broken.
+    const warmTimer = setTimeout(() => setWarming(true), 2500)
+
     try {
-      const res = await fetch(`${API_URL}/auth/signup`, {
+      const res = await fetchWithRetry(`${API_URL}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, exam_type: examType, target_year: Number(targetYear) }),
@@ -83,6 +90,8 @@ export default function SignupPage() {
       setError(display)
       toast.error(display)
     } finally {
+      clearTimeout(warmTimer)
+      setWarming(false)
       setLoading(false)
     }
   }
@@ -220,9 +229,22 @@ export default function SignupPage() {
                 loading={loading}
                 disabled={!name || !email || !password}
               >
-                Create account
-                <ArrowRight className="h-4 w-4" />
+                {warming ? 'Waking up the server' : 'Create account'}
+                {!warming && <ArrowRight className="h-4 w-4" />}
               </Button>
+
+              {/* v0.20.17 — cold-start explainer, mirrors the login page. */}
+              {warming && (
+                <div>
+                  <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                    <div className="h-full w-1/3 rounded-full bg-primary animate-pulse" />
+                  </div>
+                  <p className="text-[12px] text-muted-foreground text-center mt-2">
+                    The demo server sleeps when idle. First request can take up to a minute.
+                    Everything after this is fast.
+                  </p>
+                </div>
+              )}
 
               <p className="text-[11px] text-muted-foreground text-center">
                 By creating an account, you agree to our Terms and Privacy Policy.

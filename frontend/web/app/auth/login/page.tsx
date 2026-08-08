@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { motion, useReducedMotion, AnimatePresence } from 'framer-motion'
 
 import { useAuth } from '@/lib/auth'
-import { pingBackend } from '@/lib/api'
+import { pingBackend, fetchWithRetry } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -89,6 +89,8 @@ function LoginPageInner() {
   const [capsOn,   setCapsOn]   = useState(false)
   const [error,    setError]    = useState<string | null>(null)
   const [loading,  setLoading]  = useState(false)
+  // v0.20.17 — true while a submit is sitting behind a Render cold boot.
+  const [warming,  setWarming]  = useState(false)
 
   // For inline focus animation (drives label scale + ring colour)
   const [emailFocus,    setEmailFocus]    = useState(false)
@@ -101,8 +103,15 @@ function LoginPageInner() {
     setError(null)
     setLoading(true)
 
+    // v0.20.17 — on Render's free tier a cold instance takes 20 to 60 seconds
+    // to boot. Before this, the button just spun with no explanation and the
+    // page read as frozen, which is what made the live demo look broken to
+    // anyone arriving from a profile link. If the request is still in flight
+    // after 2.5 s, say what is actually happening.
+    const warmTimer = setTimeout(() => setWarming(true), 2500)
+
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res = await fetchWithRetry(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -150,6 +159,8 @@ function LoginPageInner() {
       setShakeKey((k) => k + 1)
       toast.error(display)
     } finally {
+      clearTimeout(warmTimer)
+      setWarming(false)
       setLoading(false)
     }
   }
@@ -444,15 +455,43 @@ function LoginPageInner() {
                   loading={loading}
                   disabled={!email || !password}
                 >
-                  Sign in
-                  <motion.span
-                    animate={{ x: loading ? 0 : [0, 3, 0] }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                  >
-                    <ArrowRight className="h-4 w-4 ml-1" />
-                  </motion.span>
+                  {warming ? 'Waking up the server' : 'Sign in'}
+                  {!warming && (
+                    <motion.span
+                      animate={{ x: loading ? 0 : [0, 3, 0] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                    >
+                      <ArrowRight className="h-4 w-4 ml-1" />
+                    </motion.span>
+                  )}
                 </Button>
               </motion.div>
+
+              {/* v0.20.17 — cold-start explainer. The free-tier instance sleeps
+                  after 15 min idle; without this the 20-60 s boot reads as a
+                  frozen page. */}
+              <AnimatePresence>
+                {warming && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="h-1 w-full rounded-full bg-slate-200/80 overflow-hidden">
+                      <motion.div
+                        className="h-full w-1/3 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500"
+                        animate={{ x: ['-100%', '300%'] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                      />
+                    </div>
+                    <p className="text-[12px] text-slate-500 text-center mt-2">
+                      The demo server sleeps when idle. First sign in can take up to a minute.
+                      Everything after this is fast.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Divider */}
               <div className="relative py-1">

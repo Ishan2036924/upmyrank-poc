@@ -106,11 +106,45 @@ async function fetchWithRetry(input: string, init: RequestInit): Promise<Respons
   throw lastError
 }
 
-/** Silently wake up the Render backend. Call on page mount so the server
- *  is warm by the time the user submits a form. */
-export function pingBackend(): void {
-  fetch(`${API_URL}/health`).catch(() => {/* silent */})
+// v0.20.17 — the auth pages need to know whether the backend is awake so they
+// can tell the user "waking up the server" instead of spinning silently for a
+// minute. Previously pingBackend() was fire-and-forget with no readable state.
+let _backendReady = false
+let _warmupInFlight: Promise<boolean> | null = null
+
+/** True once /health has answered 200 at least once this page load. */
+export function isBackendReady(): boolean {
+  return _backendReady
 }
+
+/** Wake up the Render backend. Call on page mount so the server is warm by the
+ *  time the user submits a form. Safe to call repeatedly: concurrent calls
+ *  share one in-flight request. Resolves true when /health answers 200, and
+ *  never rejects. */
+export function pingBackend(): Promise<boolean> {
+  if (_backendReady) return Promise.resolve(true)
+  if (_warmupInFlight) return _warmupInFlight
+
+  const inFlight = fetch(`${API_URL}/health`)
+    .then((res) => {
+      _backendReady = res.ok
+      return res.ok
+    })
+    .catch(() => false)
+    .then((ok) => {
+      _warmupInFlight = null
+      return ok
+    })
+
+  _warmupInFlight = inFlight
+  return inFlight
+}
+
+/** Exposed so the auth pages (which post before a token exists, and so cannot
+ *  use apiPost) still get the cold-start retry + toast. Only retries on thrown
+ *  network errors; a 401 resolves normally and is never retried, so this does
+ *  not burn the login rate limiter. */
+export { fetchWithRetry }
 
 export async function apiPost(endpoint: string, body: unknown) {
   const res = await fetchWithRetry(`${API_URL}${endpoint}`, {

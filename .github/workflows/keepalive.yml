@@ -1,0 +1,63 @@
+name: Keepalive
+
+# Pings the Render backend every 10 minutes so the free-tier instance never
+# hits its 15-minute idle timer.
+#
+# Why this exists (2026-08-08):
+#   The UptimeRobot monitor that used to do this stopped at some point during
+#   the ~3 months of project inactivity. A live check on 2026-08-08 measured a
+#   21.3 s cold start on /health. That 21-60 s boot is what makes the app look
+#   broken to anyone arriving from the LinkedIn/portfolio link: they land on
+#   /auth/login, type their credentials in ~15 s, click "Sign in", and the
+#   request queues behind the cold boot with no obvious sign of progress.
+#
+# /health accepts both GET and HEAD (v0.20.13), so a plain curl works.
+#
+# Optional repo variable (Settings -> Secrets and variables -> Actions -> Variables):
+#   BACKEND_URL    Defaults to https://upmyrank-poc.onrender.com if unset.
+#
+# TWO CAVEATS - read before trusting this as the only keep-alive:
+#
+#   1. GitHub DISABLES scheduled workflows after 60 days of repository
+#      inactivity. That is exactly the failure mode this project just lived
+#      through. If you stop committing for two months, this silently switches
+#      off and the cold start comes back. The weekly-diagnostic Issue is the
+#      canary: if two consecutive Mondays produce no Issue, this cron was
+#      disabled and needs re-enabling from the Actions tab.
+#
+#   2. GitHub cron is best-effort and drifts under load. A */10 schedule can
+#      occasionally slip past Render's 15-minute idle window. This reduces
+#      cold starts; it does not guarantee zero.
+#
+#   Belt and braces: also keep an external UptimeRobot monitor on /health,
+#   since that one does not depend on repo activity.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"  # every 10 minutes
+  workflow_dispatch:         # manual "Run workflow" button
+
+permissions:
+  contents: read
+
+# If a run is somehow still going when the next fires, drop the older one
+# rather than piling up.
+concurrency:
+  group: keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping /health
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL || 'https://upmyrank-poc.onrender.com' }}
+        run: |
+          # --max-time 120 because a genuinely cold Render instance can take
+          # up to ~60 s to boot; we want the ping to WAIT for the boot rather
+          # than time out and leave the instance half-woken.
+          code=$(curl -sS -o /dev/null -w '%{http_code}' -m 120 "$BACKEND_URL/health")
+          echo "GET $BACKEND_URL/health -> $code"
+          test "$code" = "200"
